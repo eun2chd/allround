@@ -1,0 +1,10 @@
+venv/
+__pycache__/
+*.pyc
+data/
+*.db
+sample.html
+raw_*.html
+sample_li.html
+debug_card.txt
+test_result.txt
