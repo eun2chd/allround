@@ -1,9 +1,18 @@
-# Crawling
+# --- 필수 (현재 코드에서 사용) ---
 requests>=2.31.0
 beautifulsoup4>=4.12.0
-
-# Web app
 flask>=3.0.0
-
-# Data
+python-dotenv>=1.0.0
+supabase>=2.0.0
 pandas>=2.0.0
+
+# --- Web App & API ---
+flask-cors>=4.0.0
+gunicorn>=21.0.0
+
+# --- Image Processing ---
+Pillow>=10.0.0
+
+# --- Utils ---
+python-dateutil>=2.8.0
+lxml>=4.9.0

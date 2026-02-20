@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>디자인 컨셉 | 컬러 & 버튼</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    @font-face {
+      font-family: 'Pretendard Variable';
+      src: url("static/font/PretendardVariable.ttf") format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+    :root {
+      --main-purple: #6d28d9;
+      --main-purple-hover: #5b21b6;
+      --soft-purple: #ede9fe;
+      --text-dark: #1f2937;
+      --gray-muted: #9ca3af;
+      --accent-yellow: #f59e0b;
+      --bg-white: #ffffff;
+      --border-gray: #e5e7eb;
+      --radius: 8px;
+      --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-white);
+      color: var(--text-dark);
+      padding: 40px 24px;
+    }
+    h1 { font-size: 1.25rem; margin-bottom: 32px; }
+    .palette { display: flex; flex-wrap: wrap; gap: 24px; margin-bottom: 48px; }
+    .swatch {
+      width: 100px;
+      height: 100px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-gray);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .swatch-info { margin-top: 8px; font-size: 0.85rem; }
+    .swatch-name { font-weight: 600; }
+    .swatch-code { color: var(--gray-muted); font-family: monospace; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 12px; }
+    .btn-primary {
+      background: var(--main-purple);
+      color: #fff;
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover { background: var(--main-purple-hover); }
+    .btn-secondary {
+      background: var(--bg-white);
+      color: var(--main-purple);
+      padding: 10px 20px;
+      border: 1px solid var(--main-purple);
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover { background: var(--soft-purple); }
+  </style>
+</head>
+<body>
+  <h1>컬러 팔레트</h1>
+  <div class="palette">
+    <div>
+      <div class="swatch" style="background:#6d28d9"></div>
+      <div class="swatch-info"><span class="swatch-name">Main Purple</span><br><span class="swatch-code">#6d28d9</span></div>
+    </div>
+    <div>
+      <div class="swatch" style="background:#ede9fe"></div>
+      <div class="swatch-info"><span class="swatch-name">Soft Purple</span><br><span class="swatch-code">#ede9fe</span></div>
+    </div>
+    <div>
+      <div class="swatch" style="background:#1f2937"></div>
+      <div class="swatch-info"><span class="swatch-name">Text Dark</span><br><span class="swatch-code">#1f2937</span></div>
+    </div>
+    <div>
+      <div class="swatch" style="background:#f59e0b"></div>
+      <div class="swatch-info"><span class="swatch-name">Accent Yellow</span><br><span class="swatch-code">#f59e0b</span></div>
+    </div>
+    <div>
+      <div class="swatch" style="background:#9ca3af"></div>
+      <div class="swatch-info"><span class="swatch-name">Gray Muted</span><br><span class="swatch-code">#9ca3af</span></div>
+    </div>
+    <div>
+      <div class="swatch" style="background:#e5e7eb"></div>
+      <div class="swatch-info"><span class="swatch-name">Border Gray</span><br><span class="swatch-code">#e5e7eb</span></div>
+    </div>
+  </div>
+
+  <h1>버튼</h1>
+  <div class="buttons">
+    <button type="button" class="btn-primary">Primary</button>
+    <button type="button" class="btn-secondary">Secondary</button>
+  </div>
+</body>
+</html>

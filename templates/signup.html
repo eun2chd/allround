@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+  <title>회원가입 | Ntpercent</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    @font-face {
+      font-family: 'Pretendard Variable';
+      src: url("{{ url_for('static', filename='font/PretendardVariable.ttf') }}") format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+    :root {
+      --main-purple: #6d28d9;
+      --main-purple-hover: #5b21b6;
+      --soft-purple: #ede9fe;
+      --text-dark: #212121;
+      --gray-muted: #9ca3af;
+      --bg-white: #ffffff;
+      --border-gray: #9ca3af;
+      --radius: 8px;
+      --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-white);
+      color: var(--text-dark);
+      font-weight: 500;
+      min-height: 100vh;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .signup-wrap {
+      width: 100%;
+      max-width: 520px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .signup-logo {
+      display: block;
+      width: 180px;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto 24px;
+    }
+    .signup-card {
+      width: 100%;
+      background: var(--bg-white);
+      border-radius: 16px;
+      padding: 40px 32px;
+      border: 1px solid var(--border-gray);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .signup-card h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .signup-form table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .signup-form th {
+      width: 120px;
+      padding: 14px 16px 14px 0;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-dark);
+      text-align: left;
+      vertical-align: middle;
+    }
+    .signup-form td {
+      padding: 14px 0;
+    }
+    .signup-form input {
+      width: 100%;
+      padding: 12px 14px;
+      font-family: var(--font);
+      font-size: 0.95rem;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .signup-form input:focus {
+      border-color: var(--main-purple);
+      box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.15);
+    }
+    .signup-form input::placeholder {
+      color: var(--gray-muted);
+    }
+    .btn-signup {
+      width: 100%;
+      padding: 14px 24px;
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--main-purple);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 24px;
+    }
+    .btn-signup:hover {
+      background: var(--main-purple-hover);
+    }
+    .signup-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.9rem;
+      color: var(--gray-muted);
+    }
+    .signup-footer a {
+      color: var(--main-purple);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .signup-footer a:hover {
+      text-decoration: underline;
+    }
+    .signup-flash {
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      color: #b91c1c;
+      background: #fef2f2;
+      border-radius: var(--radius);
+      text-align: center;
+    }
+    .signup-flash.success {
+      color: #059669;
+      background: #f0fdf4;
+    }
+    .field-hint {
+      font-size: 0.8rem;
+      margin-top: 6px;
+    }
+    .field-hint.valid { color: #059669; }
+    .field-hint.invalid { color: #b91c1c; }
+    .field-hint.checking { color: var(--gray-muted); }
+    .signup-form input.dup { border-color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div class="signup-wrap">
+    <div class="signup-card">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent" class="signup-logo">
+      <h2>회원가입</h2>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="signup-flash{% if messages[0][0] == 'success' %} success{% endif %}">{{ messages[0][1] }}</div>
+        {% endif %}
+      {% endwith %}
+      <form class="signup-form" id="signupForm" action="/signup" method="POST">
+        <table>
+          <tr>
+            <th><label for="email">이메일</label></th>
+            <td>
+              <input type="email" id="email" name="email" placeholder="example@email.com" required autocomplete="email">
+              <span class="field-hint" id="emailHint"></span>
+            </td>
+          </tr>
+          <tr>
+            <th><label for="password">비밀번호</label></th>
+            <td>
+              <input type="password" id="password" name="password" placeholder="숫자 6자 + 특수문자 1개" required autocomplete="new-password">
+              <small style="display:block;margin-top:6px;font-size:0.8rem;color:var(--gray-muted)">숫자 6자 이상, 특수문자 1개 이상 포함</small>
+            </td>
+          </tr>
+          <tr>
+            <th><label for="password_confirm">비밀번호 확인</label></th>
+            <td><input type="password" id="password_confirm" name="password_confirm" placeholder="비밀번호 다시 입력" required></td>
+          </tr>
+          <tr>
+            <th><label for="nickname">닉네임</label></th>
+            <td>
+              <input type="text" id="nickname" name="nickname" placeholder="닉네임 입력" required>
+              <span class="field-hint" id="nicknameHint"></span>
+            </td>
+          </tr>
+        </table>
+        <button type="submit" class="btn-signup">가입하기</button>
+      </form>
+      <p class="signup-footer">
+        이미 계정이 있으신가요? <a href="{{ url_for('login_page') }}">로그인</a>
+      </p>
+    </div>
+  </div>
+  <script>
+    let emailValid = null;
+    let nicknameValid = null;
+
+    function validatePassword(pw) {
+      const digits = (pw.match(/\d/g) || []).length;
+      const hasSpecial = /[!@#$%^&*()_+\-=[\]{}|;':",.<>?/`~\\]/.test(pw);
+      return digits >= 6 && hasSpecial;
+    }
+
+    function debounce(fn, ms) {
+      let t;
+      return function() {
+        clearTimeout(t);
+        t = setTimeout(() => fn.apply(this, arguments), ms);
+      };
+    }
+
+    async function checkEmail() {
+      const email = document.getElementById('email').value.trim();
+      const hint = document.getElementById('emailHint');
+      const input = document.getElementById('email');
+      if (!email || email.indexOf('@') < 0) {
+        hint.textContent = '';
+        hint.className = 'field-hint';
+        input.classList.remove('dup');
+        emailValid = null;
+        return;
+      }
+      hint.textContent = '확인 중...';
+      hint.className = 'field-hint checking';
+      input.classList.remove('dup');
+      try {
+        const r = await fetch('/api/check-email?email=' + encodeURIComponent(email));
+        const j = await r.json();
+        emailValid = !j.exists;
+        if (j.exists) {
+          hint.textContent = '이미 사용 중인 이메일입니다.';
+          hint.className = 'field-hint invalid';
+          input.classList.add('dup');
+        } else {
+          hint.textContent = '사용 가능합니다.';
+          hint.className = 'field-hint valid';
+        }
+      } catch (e) {
+        hint.textContent = '';
+        emailValid = null;
+      }
+    }
+
+    async function checkNickname() {
+      const nickname = document.getElementById('nickname').value.trim();
+      const hint = document.getElementById('nicknameHint');
+      const input = document.getElementById('nickname');
+      if (!nickname) {
+        hint.textContent = '';
+        hint.className = 'field-hint';
+        input.classList.remove('dup');
+        nicknameValid = null;
+        return;
+      }
+      hint.textContent = '확인 중...';
+      hint.className = 'field-hint checking';
+      input.classList.remove('dup');
+      try {
+        const r = await fetch('/api/check-nickname?nickname=' + encodeURIComponent(nickname));
+        const j = await r.json();
+        nicknameValid = !j.exists;
+        if (j.exists) {
+          hint.textContent = '이미 사용 중인 닉네임입니다.';
+          hint.className = 'field-hint invalid';
+          input.classList.add('dup');
+        } else {
+          hint.textContent = '사용 가능합니다.';
+          hint.className = 'field-hint valid';
+        }
+      } catch (e) {
+        hint.textContent = '';
+        nicknameValid = null;
+      }
+    }
+
+    const debouncedCheckEmail = debounce(checkEmail, 400);
+    const debouncedCheckNickname = debounce(checkNickname, 400);
+
+    document.getElementById('email').addEventListener('input', debouncedCheckEmail);
+    document.getElementById('email').addEventListener('blur', checkEmail);
+    document.getElementById('nickname').addEventListener('input', debouncedCheckNickname);
+    document.getElementById('nickname').addEventListener('blur', checkNickname);
+
+    document.getElementById('signupForm').addEventListener('submit', function(e) {
+      const pw = document.getElementById('password').value;
+      const pw2 = document.getElementById('password_confirm').value;
+      if (pw !== pw2) {
+        e.preventDefault();
+        alert('비밀번호가 일치하지 않습니다.');
+        return false;
+      }
+      if (!validatePassword(pw)) {
+        e.preventDefault();
+        alert('비밀번호는 숫자 6자 이상 + 특수문자 1개 이상을 포함해야 합니다.');
+        return false;
+      }
+      if (emailValid === false) {
+        e.preventDefault();
+        alert('이미 사용 중인 이메일입니다.');
+        return false;
+      }
+      if (nicknameValid === false) {
+        e.preventDefault();
+        alert('이미 사용 중인 닉네임입니다.');
+        return false;
+      }
+    });
+  </script>
+</body>
+</html>

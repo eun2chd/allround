@@ -1,0 +1,30 @@
+<nav class="navbar">
+  <div class="navbar-inner">
+    <a href="{{ url_for('index') }}" class="navbar-logo">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent">
+    </a>
+    {% if session.get('logged_in') %}
+    <div class="navbar-nav">
+      <a href="#" class="nav-link active" data-page="allyoung">요즘것들</a>
+      <a href="#" class="nav-link" data-page="wavity">위비티</a>
+    </div>
+    <div class="navbar-right navbar-user">
+      <div class="user-profile">
+        <div class="user-avatar" style="background-image: url('{{ session.get('profile_url') or '' }}')">
+          {% if not session.get('profile_url') %}<span>{{ (session.get('nickname') or '?')[:1] }}</span>{% endif %}
+        </div>
+        <span class="user-nickname">{{ session.get('nickname', '') or '회원' }}</span>
+      </div>
+      <a href="#" class="nav-btn-icon" title="알림"><img src="{{ url_for('static', filename='images/notification.png') }}" alt="알림"></a>
+      <a href="{{ url_for('mypage') }}" class="nav-btn-mypage">마이페이지</a>
+      <a href="{{ url_for('logout') }}" class="nav-btn-logout">로그아웃</a>
+    </div>
+    {% else %}
+    <div class="navbar-nav"></div>
+    <div class="navbar-right">
+      <a href="{{ url_for('login_page') }}">로그인</a>
+      <a href="{{ url_for('signup') }}">회원가입</a>
+    </div>
+    {% endif %}
+  </div>
+</nav>

@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+  <title>로그인 | Ntpercent</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    @font-face {
+      font-family: 'Pretendard Variable';
+      src: url("{{ url_for('static', filename='font/PretendardVariable.ttf') }}") format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+    :root {
+      --main-purple: #6d28d9;
+      --main-purple-hover: #5b21b6;
+      --soft-purple: #ede9fe;
+      --text-dark: #212121;
+      --gray-muted: #9ca3af;
+      --bg-white: #ffffff;
+      --border-gray: #9ca3af;
+      --radius: 8px;
+      --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font);
+      background: url("{{ url_for('static', filename='images/background.jpg') }}") center / cover no-repeat fixed;
+      color: var(--text-dark);
+      font-weight: 500;
+      min-height: 100vh;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .login-wrap {
+      width: 100%;
+      max-width: 400px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .login-logo {
+      display: block;
+      width: 180px;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto 24px;
+    }
+    .login-card {
+      width: 100%;
+      background: var(--bg-white);
+      border-radius: 16px;
+      padding: 40px 32px;
+      box-shadow: 0 4px 24px rgba(109, 40, 217, 0.12);
+    }
+    .login-card h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-dark);
+      margin-bottom: 8px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 14px 16px;
+      font-family: var(--font);
+      font-size: 0.95rem;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      border-color: var(--main-purple);
+      box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.15);
+    }
+    .form-group input::placeholder {
+      color: var(--gray-muted);
+    }
+    .btn-login {
+      width: 100%;
+      padding: 14px 24px;
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--main-purple);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.2s;
+      margin-top: 8px;
+    }
+    .btn-login:hover {
+      background: var(--main-purple-hover);
+    }
+    .login-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.9rem;
+      color: var(--gray-muted);
+    }
+    .login-footer a {
+      color: var(--main-purple);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .login-footer a:hover {
+      text-decoration: underline;
+    }
+    .login-flash {
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      color: #b91c1c;
+      background: #fef2f2;
+      border-radius: var(--radius);
+      text-align: center;
+    }
+    .form-group-save {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: -8px;
+    }
+    .form-group-save input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--main-purple);
+      cursor: pointer;
+    }
+    .form-group-save label {
+      font-size: 0.9rem;
+      color: var(--gray-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .login-notice {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--main-purple);
+      text-align: center;
+      margin-top: 16px;
+      margin-bottom: 0;
+      line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-wrap">
+    <div class="login-card">
+      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent" class="login-logo">
+      <h2>로그인</h2>
+      {% with messages = get_flashed_messages() %}
+        {% if messages %}
+          <div class="login-flash">{{ messages[0] }}</div>
+        {% endif %}
+      {% endwith %}
+      <form class="login-form" id="loginForm" action="/login" method="POST">
+        <div class="form-group">
+          <label for="email">이메일</label>
+          <input type="email" id="email" name="email" placeholder="example@email.com" required autocomplete="email">
+        </div>
+        <div class="form-group">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" name="password" placeholder="비밀번호를 입력하세요" required autocomplete="current-password">
+        </div>
+        <div class="form-group-save">
+          <input type="checkbox" id="saveEmail" name="save_email">
+          <label for="saveEmail">아이디 저장</label>
+        </div>
+        <p class="login-notice">아이디/비밀번호 분실 시 관리자에게 문의해 주세요.</p>
+        <button type="submit" class="btn-login">로그인</button>
+      </form>
+      <p class="login-footer">
+        아직 계정이 없으신가요? <a href="/signup">회원가입</a>
+      </p>
+    </div>
+  </div>
+  <script>
+    (function() {
+      const STORAGE_KEY = 'ntp_saved_email';
+      const emailEl = document.getElementById('email');
+      const saveEl = document.getElementById('saveEmail');
+      const form = document.getElementById('loginForm');
+
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        emailEl.value = saved;
+        saveEl.checked = true;
+      }
+
+      form.addEventListener('submit', function() {
+        if (saveEl.checked && emailEl.value.trim()) {
+          localStorage.setItem(STORAGE_KEY, emailEl.value.trim());
+        } else {
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

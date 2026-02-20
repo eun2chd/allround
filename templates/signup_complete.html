@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+  <title>가입 완료 | Ntpercent</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    @font-face {
+      font-family: 'Pretendard Variable';
+      src: url("{{ url_for('static', filename='font/PretendardVariable.ttf') }}") format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+    :root {
+      --main-purple: #6d28d9;
+      --main-purple-hover: #5b21b6;
+      --soft-purple: #ede9fe;
+      --text-dark: #212121;
+      --gray-muted: #9ca3af;
+      --bg-white: #ffffff;
+      --radius: 8px;
+      --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-white);
+      color: var(--text-dark);
+      font-weight: 500;
+      min-height: 100vh;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .complete-wrap {
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+    }
+    .complete-logo {
+      display: block;
+      width: 180px;
+      height: auto;
+      object-fit: contain;
+      margin: 0 auto 32px;
+    }
+    .complete-card {
+      background: var(--bg-white);
+      padding: 48px 32px;
+    }
+    .complete-card h2 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 12px;
+    }
+    .complete-card p {
+      font-size: 0.95rem;
+      color: var(--gray-muted);
+      margin-bottom: 32px;
+      line-height: 1.6;
+    }
+    .btn-login {
+      display: inline-block;
+      padding: 14px 32px;
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--main-purple);
+      border: none;
+      border-radius: var(--radius);
+      text-decoration: none;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-login:hover {
+      background: var(--main-purple-hover);
+    }
+  </style>
+</head>
+<body>
+  <div class="complete-wrap">
+    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent" class="complete-logo">
+    <div class="complete-card">
+      <h2>가입 완료</h2>
+      <p>회원가입이 완료되었습니다.<br>이메일 인증 후 로그인해 주세요.</p>
+      <a href="{{ url_for('login_page') }}" class="btn-login">로그인하러 가기</a>
+    </div>
+  </div>
+</body>
+</html>

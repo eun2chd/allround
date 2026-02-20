@@ -3,96 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>요즘것들 공고 | All For Young</title>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+  <title>Ntpercent 공모전</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
   <style>
+    @font-face {
+      font-family: 'Pretendard Variable';
+      src: url("{{ url_for('static', filename='font/PretendardVariable.ttf') }}") format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+    }
     :root {
-      --bg: #0f1419;
-      --surface: #1a2332;
-      --surface-hover: #243044;
-      --text: #e6edf3;
-      --text-muted: #8b949e;
-      --accent: #58a6ff;
-      --accent-dim: #388bfd66;
-      --success: #3fb950;
-      --border: #30363d;
-      --radius: 10px;
-      --font: 'Noto Sans KR', -apple-system, sans-serif;
+      --main-purple: #6d28d9;
+      --main-purple-hover: #5b21b6;
+      --soft-purple: #ede9fe;
+      --text-dark: #212121;
+      --gray-muted: #9ca3af;
+      --accent-yellow: #f59e0b;
+      --bg-white: #ffffff;
+      --border-gray: #9ca3af;
+      --radius: 8px;
+      --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg-white);
+      color: var(--text-dark);
+      font-weight: 500;
       min-height: 100vh;
       line-height: 1.5;
     }
-    .navbar {
-      border-bottom: 1px solid var(--border);
-      background: var(--surface);
-    }
-    .navbar-inner {
-      max-width: 1440px;
-      margin: 0 auto;
-      padding: 16px 24px;
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-    }
-    .navbar-logo {
-      display: flex;
-      align-items: center;
-      text-decoration: none;
-    }
-    .navbar-logo img {
-      height: 36px;
-      width: auto;
-      object-fit: contain;
-    }
-    .navbar-logo-placeholder {
-      width: 120px;
-      height: 36px;
-      background: var(--surface-hover);
-      border-radius: var(--radius);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      color: var(--text-muted);
-    }
-    .navbar-nav {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    }
-    .navbar-nav a {
-      padding: 10px 20px;
-      color: var(--text);
-      text-decoration: none;
-      font-weight: 500;
-      font-size: 0.95rem;
-      border-radius: var(--radius);
-      transition: all 0.2s;
-    }
-    .navbar-nav a:hover { background: var(--surface-hover); color: var(--accent); }
-    .navbar-nav a.active { background: var(--accent-dim); color: var(--accent); }
-    .page-placeholder { padding: 80px 24px; text-align: center; font-size: 1.1rem; color: var(--text-muted); }
-    .navbar-right {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 12px;
-    }
-    .navbar-right a {
-      padding: 8px 16px;
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.9rem;
-      transition: color 0.2s;
-    }
-    .navbar-right a:hover { color: var(--accent); }
-    .container { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .page-placeholder { padding: 80px 24px; text-align: center; font-size: 0.95rem; color: var(--gray-muted); }
+    .container { max-width: 1100px; margin: 0 auto; padding: 24px 48px; }
     .page-header {
       display: flex;
       align-items: center;
@@ -101,10 +45,10 @@
       gap: 16px;
       margin-bottom: 24px;
       padding-bottom: 20px;
-      border-bottom: 1px solid var(--border);
+      border-bottom: 1px solid var(--border-gray);
     }
-    .page-header h1 { font-size: 1.25rem; font-weight: 700; color: var(--text); }
-    .page-header h1 span { color: var(--accent); }
+    .page-header h1 { font-size: 1.05rem; font-weight: 700; color: var(--text-dark); }
+    .page-header h1 span { color: var(--main-purple); }
     .page-meta {
       display: flex;
       align-items: center;
@@ -112,30 +56,32 @@
       flex-wrap: wrap;
     }
     .last-update {
-      font-size: 0.85rem;
-      color: var(--text-muted);
+      font-size: 0.78rem;
+      color: #212121;
+      font-weight: bold;
     }
     .countdown {
-      font-size: 0.85rem;
-      color: var(--accent);
+      font-size: 0.78rem;
+      color: var(--main-purple);
       margin-left: 12px;
     }
     .btn {
       font-family: var(--font);
-      font-size: 0.9rem;
+      font-size: 0.82rem;
       font-weight: 500;
-      padding: 10px 20px;
+      padding: 8px 16px;
       border: none;
       border-radius: var(--radius);
       cursor: pointer;
       transition: all 0.2s;
+      text-decoration: none;
     }
     .btn-primary {
-      background: var(--accent);
+      background: var(--main-purple);
       color: #fff;
     }
     .btn-primary:hover {
-      background: #79b8ff;
+      background: var(--main-purple-hover);
       transform: translateY(-1px);
     }
     .btn-primary:disabled {
@@ -144,9 +90,7 @@
       transform: none;
     }
     .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
+      background: var(--bg-white);
       overflow: hidden;
     }
     .table-wrap {
@@ -155,76 +99,81 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.9rem;
-      border: 1px solid var(--border);
+      font-size: 0.78rem;
     }
     th {
       text-align: center;
-      padding: 14px 16px;
+      padding: 10px 12px;
       font-weight: 700;
-      color: var(--text);
-      background: rgba(0,0,0,0.2);
-      border: 1px solid var(--border);
+      color: var(--text-dark);
+      background: var(--soft-purple);
+      border: 1px solid var(--border-gray);
       white-space: nowrap;
     }
     td {
       text-align: center;
-      padding: 14px 16px;
-      border: 1px solid var(--border);
+      padding: 10px 12px;
+      border: 1px solid var(--border-gray);
       vertical-align: middle;
     }
-    tr:hover td { background: var(--surface-hover); }
-    tr.row-new { border-left: 3px solid #da3633; background: rgba(218,54,51,0.06); }
-    tr.row-viewed td { opacity: 0.85; color: var(--text-muted); }
-    tr.row-viewed .title-cell a { color: var(--text-muted); }
-    .status-dot { display: inline-block; width: 8px; height: 8px; background: #da3633; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
-    .status-check { color: var(--success); margin-right: 8px; font-weight: bold; }
-    .title-cell { max-width: 320px; text-align: center; }
+    tr:hover td { background: #faf5ff; }
+    tr.row-new { border-left: 3px solid var(--accent-yellow); background: #fffbeb; }
+    tr.row-viewed td { color: var(--text-dark); }
+    tr.row-viewed .title-cell a { color: var(--text-dark); }
+    .status-dot { display: inline-block; width: 8px; height: 8px; background: var(--accent-yellow); border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+    .status-check { color: #059669; margin-right: 8px; font-weight: bold; }
+    .title-cell { max-width: 280px; text-align: center; }
     .title-cell a {
-      color: var(--text);
+      color: var(--text-dark);
       text-decoration: none;
       font-weight: 500;
       display: block;
       text-align: center;
     }
     .title-cell a:hover {
-      color: var(--accent);
+      color: var(--main-purple);
       text-decoration: underline;
     }
     .d-day {
       display: inline-block;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 6px;
-      font-size: 0.8rem;
+      font-size: 0.74rem;
       font-weight: 500;
       white-space: nowrap;
     }
     td:nth-child(2),
+    td:nth-child(4),
     td:nth-child(5),
     td:nth-child(6) {
       white-space: nowrap;
     }
-    .d-day.urgent { background: #da3633; color: #fff; }
-    .d-day.normal { background: var(--accent-dim); color: var(--accent); }
-    .d-day.today { background: var(--success); color: #fff; }
+    td:nth-child(4) {
+      max-width: 140px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .d-day.urgent { background: #dc2626; color: #fff; }
+    .d-day.normal { background: var(--soft-purple); color: var(--main-purple); }
+    .d-day.today { background: var(--accent-yellow); color: #fff; }
     .empty-state {
       padding: 60px 24px;
       text-align: center;
-      color: var(--text-muted);
+      color: var(--gray-muted);
     }
-    .empty-state p { margin-bottom: 16px; font-size: 1rem; }
+    .empty-state p { margin-bottom: 12px; font-size: 0.9rem; }
     .loading {
       padding: 40px;
       text-align: center;
-      color: var(--text-muted);
+      color: var(--gray-muted);
     }
     .loading::after {
       content: '';
       display: inline-block;
       width: 24px;
       height: 24px;
-      border: 3px solid var(--border);
-      border-top-color: var(--accent);
+      border: 3px solid var(--border-gray);
+      border-top-color: var(--main-purple);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       vertical-align: middle;
@@ -233,7 +182,7 @@
     @keyframes spin { to { transform: rotate(360deg); } }
     .new-badge {
       display: inline-block;
-      background: var(--success);
+      background: var(--accent-yellow);
       color: #fff;
       font-size: 0.7rem;
       padding: 2px 8px;
@@ -246,28 +195,19 @@
       bottom: 24px;
       right: 24px;
       padding: 12px 20px;
-      background: var(--surface);
-      border: 1px solid var(--border);
+      background: var(--bg-white);
+      border: 1px solid var(--border-gray);
       border-radius: var(--radius);
       box-shadow: 0 4px 20px rgba(0,0,0,0.4);
       font-size: 0.9rem;
       z-index: 1000;
       animation: slideUp 0.3s ease;
     }
-    .toast.success { border-left: 4px solid var(--success); }
+    .toast.success { border-left: 4px solid var(--main-purple); }
     .toast.error { border-left: 4px solid #da3633; }
     @keyframes slideUp {
       from { opacity: 0; transform: translateY(20px); }
       to { opacity: 1; transform: translateY(0); }
-    }
-    .pages-select {
-      padding: 8px 12px;
-      border-radius: 6px;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      font-family: var(--font);
-      font-size: 0.9rem;
     }
     .pagination {
       display: flex;
@@ -275,13 +215,8 @@
       justify-content: center;
       gap: 12px;
       padding: 20px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--border-gray);
       flex-wrap: wrap;
-    }
-    .pagination-info {
-      font-size: 0.9rem;
-      color: var(--text-muted);
-      margin-right: 8px;
     }
     .pagination-numbers {
       display: flex;
@@ -294,10 +229,10 @@
       padding: 0;
       min-width: 36px;
       min-height: 36px;
-      border: 1px solid var(--border);
+      border: none;
       border-radius: 50%;
-      background: var(--surface);
-      color: var(--text);
+      background: var(--bg-white);
+      color: var(--text-dark);
       cursor: pointer;
       font-size: 0.9rem;
       transition: all 0.2s;
@@ -306,25 +241,28 @@
       justify-content: center;
     }
     .pagination button:hover:not(:disabled) {
-      background: var(--surface-hover);
-      border-color: var(--accent);
+      background: var(--soft-purple);
     }
     .pagination button:disabled {
       opacity: 0.4;
       cursor: not-allowed;
     }
+    .pagination-arrow img {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
     .pagination button.active {
-      background: var(--accent);
-      border-color: var(--accent);
+      background: var(--main-purple);
       color: #fff;
     }
     .detail-row td {
       padding: 0;
       vertical-align: top;
-      border-left: 1px solid var(--border);
-      border-right: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-      background: var(--surface-hover);
+      border-left: 1px solid var(--border-gray);
+      border-right: 1px solid var(--border-gray);
+      border-bottom: 1px solid var(--border-gray);
+      background: var(--soft-purple);
     }
     .detail-row .detail-inner {
       padding: 16px 20px;
@@ -337,52 +275,173 @@
     }
     .detail-row .detail-footer {
       padding: 12px 20px;
-      border-top: 1px solid var(--border);
+      border-top: 1px solid var(--border-gray);
       display: flex;
       gap: 12px;
       justify-content: flex-end;
       flex-shrink: 0;
     }
-    .detail-loading { color: var(--text-muted); text-align: center; padding: 30px; }
-    .detail-meta { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; }
+    .detail-loading { color: var(--gray-muted); text-align: center; padding: 30px; }
+    .detail-meta { font-size: 0.85rem; color: var(--gray-muted); margin-bottom: 12px; }
     .detail-images { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
-    .detail-images img { max-width: 280px; max-height: 200px; object-fit: contain; border-radius: 8px; border: 1px solid var(--border); cursor: pointer; transition: opacity 0.2s; }
+    .detail-images img { max-width: 280px; max-height: 200px; object-fit: contain; border-radius: 8px; border: 1px solid var(--border-gray); cursor: pointer; transition: opacity 0.2s; }
     .detail-images img:hover { opacity: 0.9; }
     .img-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 24px; cursor: pointer; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; }
     .img-modal.open { opacity: 1; visibility: visible; }
     .img-modal img { max-width: 95%; max-height: 95vh; object-fit: contain; border-radius: 8px; }
+    @media (max-width: 768px) {
+      .container { padding: 24px 20px; }
+    }
+    /* 오른쪽 스크롤 따라다니는 사용자 사이드바 */
+    .sidebar-users {
+      position: fixed;
+      right: 0;
+      top: 68px;
+      width: 220px;
+      height: calc(100vh - 68px);
+      background: var(--bg-white);
+      border-left: 1px solid var(--border-gray);
+      box-shadow: -2px 0 12px rgba(0,0,0,0.06);
+      z-index: 90;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.25s ease, transform 0.25s ease;
+    }
+    .sidebar-users.collapsed {
+      width: 48px;
+    }
+    .sidebar-users.collapsed .sidebar-title,
+    .sidebar-users.collapsed .sidebar-user-list { display: none; }
+    .sidebar-users .sidebar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-gray);
+      flex-shrink: 0;
+    }
+    .sidebar-users .sidebar-toggle {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      color: #212121;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 36px;
+      min-height: 36px;
+    }
+    .sidebar-users .sidebar-toggle:hover { color: var(--main-purple); }
+    .sidebar-users .sidebar-toggle svg { width: 18px; height: 18px; }
+    .sidebar-users .sidebar-toggle .sidebar-icon-expand { display: block; }
+    .sidebar-users .sidebar-toggle .sidebar-icon-collapse { display: none; }
+    .sidebar-users.collapsed .sidebar-toggle .sidebar-icon-expand { display: none; }
+    .sidebar-users.collapsed .sidebar-toggle .sidebar-icon-collapse { display: block; }
+    .sidebar-users.collapsed .sidebar-header { display: none; }
+    .sidebar-users.collapsed .sidebar-footer { margin-top: auto; }
+    .sidebar-users .sidebar-footer {
+      flex-shrink: 0;
+      padding: 12px 16px;
+      border-top: 1px solid var(--border-gray);
+      display: flex;
+      justify-content: flex-end;
+      min-height: 44px;
+    }
+    .sidebar-users.collapsed .sidebar-footer {
+      justify-content: center;
+      padding: 12px;
+      border-top: 1px solid var(--border-gray);
+    }
+    .sidebar-users .sidebar-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--gray-muted);
+      margin: 0;
+      flex: 1;
+    }
+    .sidebar-users .sidebar-user-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .sidebar-users .user-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 16px;
+      text-decoration: none;
+      color: inherit;
+      margin: 0 8px;
+      border-radius: var(--radius);
+      font-size: 0.82rem;
+      color: var(--text-dark);
+      width: calc(100% - 16px);
+      box-sizing: border-box;
+      min-height: 48px;
+    }
+    .sidebar-users .user-item:hover {
+      background: var(--soft-purple);
+    }
+    .sidebar-users .user-avatar {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      border-radius: 50%;
+      background: var(--soft-purple);
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--main-purple);
+    }
+    .sidebar-users .user-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .sidebar-users .user-name {
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sidebar-users .user-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+      color: var(--gray-muted);
+    }
+    .sidebar-users .user-status.online { color: #22c55e; font-weight: 600; }
+    .sidebar-users .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .sidebar-users .status-dot.online { background: #22c55e; }
+    .sidebar-users .status-dot.offline { background: #d1d5db; }
+    @media (max-width: 1100px) {
+      .sidebar-users { display: none; }
+    }
   </style>
 </head>
 <body>
-  <nav class="navbar">
-    <div class="navbar-inner">
-      <a href="/" class="navbar-logo">
-        <div class="navbar-logo-placeholder">로고</div>
-      </a>
-      <div class="navbar-nav">
-        <a href="#" class="nav-link active" data-page="allyoung">요즘것들</a>
-        <a href="#" class="nav-link" data-page="wavity">위비티</a>
-      </div>
-      <div class="navbar-right">
-        <a href="#">로그인</a>
-        <a href="#">회원가입</a>
-      </div>
-    </div>
-  </nav>
+  {% include 'partials/_navbar.html' %}
 
   <div class="container">
     <div id="pageAllyoung">
     <header class="page-header">
-      <h1><span>요즘것들</span> 공고 모음</h1>
+      <h1><span>{{ session.get('nickname', '') or '회원' }}</span>님, <span>요즘것들</span> 공고 모음을 확인해보세요</h1>
       <div class="page-meta">
         <span class="last-update" id="lastUpdate">마지막 업데이트: -</span>
         <span class="countdown" id="countdown"></span>
-        <select class="pages-select" id="pagesSelect" title="크롤링할 페이지 수">
-          <option value="1">1페이지</option>
-          <option value="3" selected>3페이지</option>
-          <option value="5">5페이지</option>
-          <option value="10">10페이지</option>
-        </select>
         <button class="btn btn-primary" id="btnRefresh">새로고침</button>
       </div>
     </header>
@@ -406,12 +465,9 @@
         </table>
       </div>
       <div class="pagination" id="pagination" style="display:none">
-        <button type="button" id="btnFirst">처음</button>
-        <button type="button" id="btnPrev">이전</button>
+        <button type="button" id="btnPrev" class="pagination-arrow" title="이전"><img src="{{ url_for('static', filename='images/left.png') }}" alt="이전"></button>
         <span class="pagination-numbers" id="pageNumbers"></span>
-        <button type="button" id="btnNext">다음</button>
-        <button type="button" id="btnLast">끝</button>
-        <span class="pagination-info" id="paginationInfo"></span>
+        <button type="button" id="btnNext" class="pagination-arrow" title="다음"><img src="{{ url_for('static', filename='images/right.png') }}" alt="다음"></button>
       </div>
     </div>
     </div>
@@ -420,6 +476,23 @@
       여기는 위비티 크롤링 데이터화면입니다
     </div>
   </div>
+
+  <aside class="sidebar-users" id="sidebarUsers">
+    <div class="sidebar-header">
+      <span class="sidebar-title">접속 유저</span>
+    </div>
+    <div class="sidebar-user-list">
+      <div id="sidebarUserList">
+        <div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;">로딩 중...</div>
+      </div>
+    </div>
+    <div class="sidebar-footer">
+      <button type="button" class="sidebar-toggle" id="sidebarToggle" title="사이드바 접기">
+        <svg class="sidebar-toggle-icon sidebar-icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 19l-7-7 7-7M18 19l-7-7 7-7"/></svg>
+        <svg class="sidebar-toggle-icon sidebar-icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 5l7 7-7 7M6 5l7 7-7 7"/></svg>
+      </button>
+    </div>
+  </aside>
 
   <div id="toast" class="toast" style="display:none"></div>
 
@@ -433,15 +506,11 @@
     const tableBody = document.getElementById('tableBody');
     const lastUpdate = document.getElementById('lastUpdate');
     const btnRefresh = document.getElementById('btnRefresh');
-    const pagesSelect = document.getElementById('pagesSelect');
     const toast = document.getElementById('toast');
     const pagination = document.getElementById('pagination');
-    const paginationInfo = document.getElementById('paginationInfo');
     const pageNumbers = document.getElementById('pageNumbers');
-    const btnFirst = document.getElementById('btnFirst');
     const btnPrev = document.getElementById('btnPrev');
     const btnNext = document.getElementById('btnNext');
-    const btnLast = document.getElementById('btnLast');
     const countdownEl = document.getElementById('countdown');
 
     const VIEWED_KEY = 'allyoung_viewed';
@@ -534,11 +603,8 @@
 
       if (totalPages > 1) {
         pagination.style.display = 'flex';
-        paginationInfo.textContent = `${start + 1}-${start + pageData.length} / ${data.length}건`;
-        btnFirst.disabled = page <= 1;
         btnPrev.disabled = page <= 1;
         btnNext.disabled = page >= totalPages;
-        btnLast.disabled = page >= totalPages;
 
         let numHtml = '';
         for (let i = 1; i <= totalPages; i++) {
@@ -613,7 +679,7 @@
         const r = await fetch('/api/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pages: parseInt(pagesSelect.value) || 3 })
+          body: JSON.stringify({ pages: 3 })
         });
         const j = await r.json();
         if (j.success) {
@@ -721,10 +787,8 @@
       });
     });
 
-    btnFirst.addEventListener('click', () => goToPage(1));
     btnPrev.addEventListener('click', () => goToPage(currentPage - 1));
     btnNext.addEventListener('click', () => goToPage(currentPage + 1));
-    btnLast.addEventListener('click', () => goToPage(Math.ceil(allData.length / PAGE_SIZE)));
 
     async function doRefresh() {
       btnRefresh.disabled = true;
@@ -733,7 +797,7 @@
         const r = await fetch('/api/refresh', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pages: parseInt(pagesSelect.value) || 3 })
+          body: JSON.stringify({ pages: 3 })
         });
         const j = await r.json();
         console.log('[API /api/refresh]', j);
@@ -753,6 +817,69 @@
 
     btnRefresh.addEventListener('click', doRefresh);
     loadContests();
+
+    // 사용자 사이드바
+    (function() {
+      const sidebarEl = document.getElementById('sidebarUsers');
+      const listEl = document.getElementById('sidebarUserList');
+      const toggleBtn = document.getElementById('sidebarToggle');
+      if (!sidebarEl || !listEl) return;
+
+      const SIDEBAR_KEY = 'allyoung_sidebar_collapsed';
+      const collapsed = localStorage.getItem(SIDEBAR_KEY) === '1';
+      if (collapsed) sidebarEl.classList.add('collapsed');
+      toggleBtn.title = collapsed ? '사이드바 펼치기' : '사이드바 접기';
+      toggleBtn.addEventListener('click', function() {
+        sidebarEl.classList.toggle('collapsed');
+        const isCollapsed = sidebarEl.classList.contains('collapsed');
+        localStorage.setItem(SIDEBAR_KEY, isCollapsed ? '1' : '0');
+        toggleBtn.title = isCollapsed ? '사이드바 펼치기' : '사이드바 접기';
+      });
+      function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+      function formatTimeAgo(isoStr) {
+        if (!isoStr) return '';
+        const date = new Date(isoStr.replace('Z', '+00:00'));
+        const now = new Date();
+        const diffSec = Math.floor((now - date) / 1000);
+        if (diffSec < 60) return '방금 전';
+        if (diffSec < 3600) return Math.floor(diffSec / 60) + '분 전';
+        if (diffSec < 86400) return Math.floor(diffSec / 3600) + '시간 전';
+        if (diffSec < 2592000) return Math.floor(diffSec / 86400) + '일 전';
+        return Math.floor(diffSec / 2592000) + '달 전';
+      }
+      async function loadUsers() {
+        try {
+          const r = await fetch('/api/users');
+          const j = await r.json();
+          if (!j.success || !j.data) {
+            listEl.innerHTML = '<div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;justify-content:center;">표시할 사용자가 없습니다.</div>';
+            return;
+          }
+          const currentId = j.current_user_id || '';
+          listEl.innerHTML = j.data.map(u => {
+            const name = escapeHtml(u.nickname || '회원');
+            const imgStyle = u.profile_url ? "background-image:url('" + u.profile_url.replace(/'/g, "\\'") + "')" : '';
+            const initial = (u.nickname || '?').charAt(0);
+            const statusClass = u.online ? 'online' : 'offline';
+            const ago = formatTimeAgo(u.last_seen);
+            const statusText = u.online
+              ? (ago ? ago + ' 접속' : '온라인')
+              : (ago ? ago + ' 오프라인' : '오프라인');
+            const statusLineClass = u.online ? 'user-status online' : 'user-status';
+            const me = u.id === currentId ? ' (나)' : '';
+            const avatarInner = u.profile_url ? '' : '<span>' + escapeHtml(initial) + '</span>';
+            const mypageUrl = '/mypage/' + encodeURIComponent(u.id);
+            return '<a href="' + mypageUrl + '" class="user-item" style="text-decoration:none;color:inherit;">' + '<div class="user-avatar" style="' + imgStyle + '">' + avatarInner + '</div><div class="user-info"><div class="user-name">' + name + me + '</div><div class="' + statusLineClass + '"><span class="status-dot ' + statusClass + '"></span> ' + statusText + '</div></div>' + '</a>';
+          }).join('');
+        } catch (e) {
+          listEl.innerHTML = '<div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;justify-content:center;">로드 실패</div>';
+        }
+      }
+      (async function init() {
+        await loadUsers();
+      })();
+      setInterval(loadUsers, 120000);
+    })();
   </script>
 </body>
 </html>

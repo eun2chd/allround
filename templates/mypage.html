@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+  <title>{{ '마이페이지' if is_own_profile else (profile.get('nickname', '') or '회원') + ' 프로필' }} | Ntpercent</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+  <style>
+    @font-face {
+      font-family: 'Pretendard Variable';
+      src: url("{{ url_for('static', filename='font/PretendardVariable.ttf') }}") format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+    :root {
+      --main-purple: #6d28d9;
+      --main-purple-hover: #5b21b6;
+      --soft-purple: #ede9fe;
+      --text-dark: #212121;
+      --gray-muted: #9ca3af;
+      --bg-white: #ffffff;
+      --border-gray: #e5e7eb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: #f9fafb;
+      color: var(--text-dark);
+      font-weight: 500;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .page-header {
+      margin-bottom: 32px;
+      padding-bottom: 24px;
+      border-bottom: 1px solid var(--border-gray);
+    }
+    .page-header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+    /* 프로필 영역 */
+    .profile-section {
+      background: var(--soft-purple);
+      border-radius: var(--radius-lg);
+      padding: 32px;
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      margin-bottom: 24px;
+    }
+    .profile-section .avatar-wrap { position: relative; }
+    .profile-section .avatar {
+      width: 96px;
+      height: 96px;
+      border-radius: 50%;
+      background: var(--bg-white);
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.25rem;
+      font-weight: 600;
+      color: var(--main-purple);
+    }
+    .profile-section .btn-avatar-upload {
+      position: absolute;
+      bottom: 0;
+      right: 0;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--main-purple);
+      color: #fff;
+      border: 2px solid var(--bg-white);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      padding: 0;
+      transition: background 0.2s;
+    }
+    .profile-section .btn-avatar-upload:hover { background: var(--main-purple-hover); }
+    .profile-section .btn-avatar-upload input { display: none; }
+    .profile-section .info { flex: 1; }
+    .profile-section .info h2 {
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .role-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--main-purple);
+      background: var(--bg-white);
+      border-radius: 20px;
+    }
+    .profile-section .info p { font-size: 0.9rem; color: var(--gray-muted); }
+    /* 카드 공통 */
+    .card {
+      background: var(--bg-white);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      overflow: hidden;
+    }
+    /* 계정 정보 카드 */
+    .account-card {
+      padding: 0;
+      margin-bottom: 24px;
+    }
+    .account-card .card-title {
+      padding: 20px 24px;
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      border-bottom: 1px solid var(--border-gray);
+    }
+    .account-card .card-body {
+      padding: 20px 24px;
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 16px 24px;
+    }
+    @media (max-width: 600px) {
+      .account-card .card-body { grid-template-columns: 1fr; }
+    }
+    .account-card .row {
+      display: contents;
+    }
+    .account-card .label {
+      font-size: 0.9rem;
+      color: var(--gray-muted);
+    }
+    .account-card .value {
+      font-size: 0.9rem;
+      color: var(--text-dark);
+    }
+    /* 3컬럼 대시보드 */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+    @media (max-width: 768px) {
+      .dashboard-grid { grid-template-columns: 1fr; }
+    }
+    .dashboard-card {
+      padding: 24px;
+    }
+    .dashboard-card h3 {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--gray-muted);
+      margin-bottom: 12px;
+    }
+    .dashboard-card .content {
+      font-size: 0.95rem;
+      color: var(--text-dark);
+      line-height: 1.7;
+    }
+    .dashboard-card .content ul {
+      list-style: none;
+    }
+    .dashboard-card .content li {
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border-gray);
+    }
+    .dashboard-card .content li:last-child { border-bottom: none; }
+    .dashboard-card .content a {
+      color: var(--main-purple);
+      text-decoration: none;
+    }
+    .dashboard-card .content a:hover { text-decoration: underline; }
+    .recent-empty { color: var(--gray-muted); font-size: 0.9rem; }
+    /* 상태 메시지 */
+    .status-section {
+      margin-bottom: 24px;
+    }
+    .status-section .status-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.9rem;
+    }
+    .status-section .status-input:focus {
+      outline: none;
+      border-color: var(--main-purple);
+      box-shadow: 0 0 0 2px rgba(109,40,217,0.15);
+    }
+    /* 하단 버튼 영역 */
+    .actions-section {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-top: 24px;
+      border-top: 1px solid var(--border-gray);
+    }
+    .btn-outline {
+      padding: 12px 24px;
+      font-family: var(--font);
+      font-size: 0.95rem;
+      font-weight: 500;
+      background: var(--bg-white);
+      color: var(--main-purple);
+      border: 2px solid var(--main-purple);
+      border-radius: var(--radius);
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      transition: all 0.2s;
+    }
+    .btn-outline:hover {
+      background: var(--soft-purple);
+    }
+    .btn-outline.danger {
+      color: #dc2626;
+      border-color: #dc2626;
+    }
+    .btn-outline.danger:hover {
+      background: #fef2f2;
+    }
+  </style>
+</head>
+<body>
+  {% include 'partials/_navbar.html' %}
+
+  <div class="container">
+    <header class="page-header">
+      <h1>{{ '마이페이지' if is_own_profile else '프로필' }}</h1>
+    </header>
+
+    <!-- 프로필 영역 -->
+    <section class="profile-section">
+      <div class="avatar-wrap">
+        <div class="avatar" id="profileAvatar" style="background-image: url('{{ profile.get('profile_url') or '' }}')">
+          {% if not profile.get('profile_url') %}<span>{{ (profile.get('nickname') or '?')[:1] }}</span>{% endif %}
+        </div>
+        {% if is_own_profile %}
+        <label class="btn-avatar-upload" title="프로필 이미지 변경">
+          <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        </label>
+        {% endif %}
+      </div>
+      <div class="info">
+        <h2>
+          {{ profile.get('nickname', '') or '회원' }}
+          <span class="role-badge">[{{ role_label }}]</span>
+        </h2>
+        <p>{{ profile.get('email', '') if is_own_profile else '' }}</p>
+      </div>
+    </section>
+
+    {% if is_own_profile %}
+    <!-- 계정 정보 카드 -->
+    <div class="card account-card">
+      <div class="card-title">계정 정보</div>
+      <div class="card-body">
+        <span class="label">이메일</span>
+        <span class="value">{{ profile.get('email', '-') }}</span>
+        <span class="label">닉네임</span>
+        <span class="value">{{ profile.get('nickname', '-') }}</span>
+      </div>
+    </div>
+    {% endif %}
+
+    {% if is_own_profile %}
+    <!-- 3컬럼 대시보드 -->
+    <div class="dashboard-grid">
+      <div class="card dashboard-card">
+        <h3>나의 활동</h3>
+        <div class="content">
+          <p>내가 찜한 공모전 <strong id="wishCount">0</strong>개</p>
+          <p>내가 쓴 댓글 <strong id="commentCount">0</strong>개</p>
+        </div>
+      </div>
+      <div class="card dashboard-card">
+        <h3>팀 내 역할</h3>
+        <div class="content">
+          <p>주력 분야: <strong id="roleField">미설정</strong></p>
+          <p>권한: {{ role_label }}</p>
+        </div>
+      </div>
+      <div class="card dashboard-card">
+        <h3>최근 본 공모전</h3>
+        <div class="content">
+          <ul id="recentContests">
+            <li class="recent-empty">최근 본 공고가 없습니다.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 상태 메시지 (팀원용) -->
+    <div class="card status-section" style="padding: 20px 24px;">
+      <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--gray-muted); margin-bottom: 12px;">상태 메시지</h3>
+      <input type="text" class="status-input" id="statusInput" placeholder="이번 주 OO 공모전 마감입니다!" maxlength="80">
+    </div>
+
+    <!-- 하단 설정 및 관리 -->
+    <div class="actions-section">
+      <a href="{{ url_for('mypage_password') }}" class="btn-outline">비밀번호 변경</a>
+      <a href="{{ url_for('logout') }}" class="btn-outline danger">로그아웃</a>
+    </div>
+    {% else %}
+    <!-- 타인 프로필: 뒤로가기 등 -->
+    <div class="actions-section">
+      <a href="{{ url_for('home') }}" class="btn-outline">홈으로</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <script>
+    const avatarInput = document.getElementById('avatarInput');
+    if (avatarInput) {
+    avatarInput.addEventListener('change', async function(e) {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const formData = new FormData();
+      formData.append('file', file);
+      try {
+        const r = await fetch('/api/profile/update-image', { method: 'POST', body: formData });
+        const j = await r.json();
+        if (j.success && j.profile_url) {
+          location.reload();
+        } else {
+          alert(j.error || '업로드에 실패했습니다.');
+        }
+      } catch (err) {
+        alert('업로드에 실패했습니다.');
+      }
+      e.target.value = '';
+    });
+    }
+
+    // 최근 본 공모전 로드 (내 프로필일 때만)
+    (async function() {
+      const ul = document.getElementById('recentContests');
+      if (!ul) return;
+      try {
+        const raw = localStorage.getItem('allyoung_viewed');
+        const ids = raw ? JSON.parse(raw) : [];
+        if (ids.length === 0) return;
+        const r = await fetch('/api/contests/by-ids?ids=' + ids.slice(-10).reverse().join(','));
+        const j = await r.json();
+        if (!j.success || !j.data || j.data.length === 0) return;
+        ul.innerHTML = j.data.slice(0, 5).map(c =>
+          '<li><a href="' + (c.url || '#') + '" target="_blank">' + (c.title || '-') + '</a></li>'
+        ).join('');
+      } catch (_) {}
+    })();
+  </script>
+</body>
+</html>
