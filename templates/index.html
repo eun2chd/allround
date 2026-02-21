@@ -145,7 +145,8 @@
     td:nth-child(2),
     td:nth-child(4),
     td:nth-child(5),
-    td:nth-child(6) {
+    td:nth-child(6),
+    td:nth-child(7) {
       white-space: nowrap;
     }
     td:nth-child(4) {
@@ -292,144 +293,6 @@
     @media (max-width: 768px) {
       .container { padding: 24px 20px; }
     }
-    /* 오른쪽 스크롤 따라다니는 사용자 사이드바 */
-    .sidebar-users {
-      position: fixed;
-      right: 0;
-      top: 68px;
-      width: 220px;
-      height: calc(100vh - 68px);
-      background: var(--bg-white);
-      border-left: 1px solid var(--border-gray);
-      box-shadow: -2px 0 12px rgba(0,0,0,0.06);
-      z-index: 90;
-      display: flex;
-      flex-direction: column;
-      transition: width 0.25s ease, transform 0.25s ease;
-    }
-    .sidebar-users.collapsed {
-      width: 48px;
-    }
-    .sidebar-users.collapsed .sidebar-title,
-    .sidebar-users.collapsed .sidebar-user-list { display: none; }
-    .sidebar-users .sidebar-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--border-gray);
-      flex-shrink: 0;
-    }
-    .sidebar-users .sidebar-toggle {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 8px;
-      color: #212121;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 36px;
-      min-height: 36px;
-    }
-    .sidebar-users .sidebar-toggle:hover { color: var(--main-purple); }
-    .sidebar-users .sidebar-toggle svg { width: 18px; height: 18px; }
-    .sidebar-users .sidebar-toggle .sidebar-icon-expand { display: block; }
-    .sidebar-users .sidebar-toggle .sidebar-icon-collapse { display: none; }
-    .sidebar-users.collapsed .sidebar-toggle .sidebar-icon-expand { display: none; }
-    .sidebar-users.collapsed .sidebar-toggle .sidebar-icon-collapse { display: block; }
-    .sidebar-users.collapsed .sidebar-header { display: none; }
-    .sidebar-users.collapsed .sidebar-footer { margin-top: auto; }
-    .sidebar-users .sidebar-footer {
-      flex-shrink: 0;
-      padding: 12px 16px;
-      border-top: 1px solid var(--border-gray);
-      display: flex;
-      justify-content: flex-end;
-      min-height: 44px;
-    }
-    .sidebar-users.collapsed .sidebar-footer {
-      justify-content: center;
-      padding: 12px;
-      border-top: 1px solid var(--border-gray);
-    }
-    .sidebar-users .sidebar-title {
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--gray-muted);
-      margin: 0;
-      flex: 1;
-    }
-    .sidebar-users .sidebar-user-list {
-      flex: 1;
-      overflow-y: auto;
-      padding: 8px 0;
-    }
-    .sidebar-users .user-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 16px;
-      text-decoration: none;
-      color: inherit;
-      margin: 0 8px;
-      border-radius: var(--radius);
-      font-size: 0.82rem;
-      color: var(--text-dark);
-      width: calc(100% - 16px);
-      box-sizing: border-box;
-      min-height: 48px;
-    }
-    .sidebar-users .user-item:hover {
-      background: var(--soft-purple);
-    }
-    .sidebar-users .user-avatar {
-      width: 32px;
-      height: 32px;
-      min-width: 32px;
-      border-radius: 50%;
-      background: var(--soft-purple);
-      background-size: cover;
-      background-position: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--main-purple);
-    }
-    .sidebar-users .user-info {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .sidebar-users .user-name {
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .sidebar-users .user-status {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 0.72rem;
-      color: var(--gray-muted);
-    }
-    .sidebar-users .user-status.online { color: #22c55e; font-weight: 600; }
-    .sidebar-users .status-dot {
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .sidebar-users .status-dot.online { background: #22c55e; }
-    .sidebar-users .status-dot.offline { background: #d1d5db; }
-    @media (max-width: 1100px) {
-      .sidebar-users { display: none; }
-    }
   </style>
 </head>
 <body>
@@ -456,11 +319,12 @@
               <th>제목</th>
               <th style="width:180px">주최/주관</th>
               <th style="width:100px">카테고리</th>
+              <th style="width:80px">출처</th>
               <th style="width:140px">가져온 시간</th>
             </tr>
           </thead>
           <tbody id="tableBody">
-            <tr><td colspan="6" class="loading">로딩 중</td></tr>
+            <tr><td colspan="7" class="loading">로딩 중</td></tr>
           </tbody>
         </table>
       </div>
@@ -473,26 +337,11 @@
     </div>
 
     <div id="pageWavity" class="page-placeholder" style="display:none">
-      여기는 위비티 크롤링 데이터화면입니다
+      여기는 창업관련 크롤링 데이터화면입니다
     </div>
   </div>
 
-  <aside class="sidebar-users" id="sidebarUsers">
-    <div class="sidebar-header">
-      <span class="sidebar-title">접속 유저</span>
-    </div>
-    <div class="sidebar-user-list">
-      <div id="sidebarUserList">
-        <div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;">로딩 중...</div>
-      </div>
-    </div>
-    <div class="sidebar-footer">
-      <button type="button" class="sidebar-toggle" id="sidebarToggle" title="사이드바 접기">
-        <svg class="sidebar-toggle-icon sidebar-icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 19l-7-7 7-7M18 19l-7-7 7-7"/></svg>
-        <svg class="sidebar-toggle-icon sidebar-icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 5l7 7-7 7M6 5l7 7-7 7"/></svg>
-      </button>
-    </div>
-  </aside>
+  {% include 'partials/_sidebar_users.html' %}
 
   <div id="toast" class="toast" style="display:none"></div>
 
@@ -566,7 +415,7 @@
     function renderTable(data, page = 1) {
       if (!data || data.length === 0) {
         tableBody.innerHTML = `
-          <tr><td colspan="6" class="empty-state">
+          <tr><td colspan="7" class="empty-state">
             <p>저장된 공고가 없습니다.</p>
             <p>위의 <strong>새로고침</strong> 버튼을 눌러 데이터를 수집하세요.</p>
           </td></tr>
@@ -596,6 +445,7 @@
             </td>
             <td>${escapeHtml(row.host || '-')}</td>
             <td>${escapeHtml(row.category || '공모전')}</td>
+            <td>${escapeHtml(row.source || '요즘것들')}</td>
             <td>${formatFetchTime(row.created_at)}</td>
           </tr>
         `;
@@ -649,7 +499,7 @@
 
     async function loadContests(showLoading = true) {
       if (showLoading) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="loading">로딩 중</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="loading">로딩 중</td></tr>';
         pagination.style.display = 'none';
       }
       try {
@@ -669,7 +519,7 @@
           stopCountdown();
         }
       } catch (e) {
-        tableBody.innerHTML = '<tr><td colspan="6" class="empty-state">데이터를 불러올 수 없습니다.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="7" class="empty-state">데이터를 불러올 수 없습니다.</td></tr>';
         stopCountdown();
       }
     }
@@ -715,7 +565,7 @@
       const detailTr = document.createElement('tr');
       detailTr.className = 'detail-row';
       detailTr.dataset.forId = postId;
-      detailTr.innerHTML = '<td colspan="6"><div class="detail-inner"><div class="detail-loading">불러오는 중...</div></div><div class="detail-footer"></div></td>';
+      detailTr.innerHTML = '<td colspan="7"><div class="detail-inner"><div class="detail-loading">불러오는 중...</div></div><div class="detail-footer"></div></td>';
       clickedRow.after(detailTr);
 
       const inner = detailTr.querySelector('.detail-inner');
@@ -817,69 +667,6 @@
 
     btnRefresh.addEventListener('click', doRefresh);
     loadContests();
-
-    // 사용자 사이드바
-    (function() {
-      const sidebarEl = document.getElementById('sidebarUsers');
-      const listEl = document.getElementById('sidebarUserList');
-      const toggleBtn = document.getElementById('sidebarToggle');
-      if (!sidebarEl || !listEl) return;
-
-      const SIDEBAR_KEY = 'allyoung_sidebar_collapsed';
-      const collapsed = localStorage.getItem(SIDEBAR_KEY) === '1';
-      if (collapsed) sidebarEl.classList.add('collapsed');
-      toggleBtn.title = collapsed ? '사이드바 펼치기' : '사이드바 접기';
-      toggleBtn.addEventListener('click', function() {
-        sidebarEl.classList.toggle('collapsed');
-        const isCollapsed = sidebarEl.classList.contains('collapsed');
-        localStorage.setItem(SIDEBAR_KEY, isCollapsed ? '1' : '0');
-        toggleBtn.title = isCollapsed ? '사이드바 펼치기' : '사이드바 접기';
-      });
-      function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
-      function formatTimeAgo(isoStr) {
-        if (!isoStr) return '';
-        const date = new Date(isoStr.replace('Z', '+00:00'));
-        const now = new Date();
-        const diffSec = Math.floor((now - date) / 1000);
-        if (diffSec < 60) return '방금 전';
-        if (diffSec < 3600) return Math.floor(diffSec / 60) + '분 전';
-        if (diffSec < 86400) return Math.floor(diffSec / 3600) + '시간 전';
-        if (diffSec < 2592000) return Math.floor(diffSec / 86400) + '일 전';
-        return Math.floor(diffSec / 2592000) + '달 전';
-      }
-      async function loadUsers() {
-        try {
-          const r = await fetch('/api/users');
-          const j = await r.json();
-          if (!j.success || !j.data) {
-            listEl.innerHTML = '<div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;justify-content:center;">표시할 사용자가 없습니다.</div>';
-            return;
-          }
-          const currentId = j.current_user_id || '';
-          listEl.innerHTML = j.data.map(u => {
-            const name = escapeHtml(u.nickname || '회원');
-            const imgStyle = u.profile_url ? "background-image:url('" + u.profile_url.replace(/'/g, "\\'") + "')" : '';
-            const initial = (u.nickname || '?').charAt(0);
-            const statusClass = u.online ? 'online' : 'offline';
-            const ago = formatTimeAgo(u.last_seen);
-            const statusText = u.online
-              ? (ago ? ago + ' 접속' : '온라인')
-              : (ago ? ago + ' 오프라인' : '오프라인');
-            const statusLineClass = u.online ? 'user-status online' : 'user-status';
-            const me = u.id === currentId ? ' (나)' : '';
-            const avatarInner = u.profile_url ? '' : '<span>' + escapeHtml(initial) + '</span>';
-            const mypageUrl = '/mypage/' + encodeURIComponent(u.id);
-            return '<a href="' + mypageUrl + '" class="user-item" style="text-decoration:none;color:inherit;">' + '<div class="user-avatar" style="' + imgStyle + '">' + avatarInner + '</div><div class="user-info"><div class="user-name">' + name + me + '</div><div class="' + statusLineClass + '"><span class="status-dot ' + statusClass + '"></span> ' + statusText + '</div></div>' + '</a>';
-          }).join('');
-        } catch (e) {
-          listEl.innerHTML = '<div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;justify-content:center;">로드 실패</div>';
-        }
-      }
-      (async function init() {
-        await loadUsers();
-      })();
-      setInterval(loadUsers, 120000);
-    })();
   </script>
 </body>
 </html>

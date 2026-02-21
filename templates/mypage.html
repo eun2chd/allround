@@ -40,21 +40,97 @@
       margin-bottom: 32px;
       padding-bottom: 24px;
       border-bottom: 1px solid var(--border-gray);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 12px;
     }
     .page-header h1 {
       font-size: 1.5rem;
       font-weight: 700;
       color: var(--text-dark);
+      margin: 0;
     }
     /* 프로필 영역 */
     .profile-section {
-      background: var(--soft-purple);
+      background: linear-gradient(135deg, #ede9fe 0%, #6d28d9 100%);
       border-radius: var(--radius-lg);
       padding: 32px;
       display: flex;
+      flex-direction: column;
+      gap: 0;
+      margin-bottom: 24px;
+    }
+    .profile-section .profile-top {
+      display: flex;
       align-items: center;
       gap: 24px;
-      margin-bottom: 24px;
+      position: relative;
+      z-index: 1;
+    }
+    .profile-section .profile-status-row,
+    .profile-section .level-exp-block {
+      position: relative;
+      z-index: 1;
+    }
+    .profile-section .profile-status-row {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      width: 100%;
+    }
+    .profile-section .profile-status-row .status-input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.9rem;
+    }
+    .profile-section .profile-status-row .status-input:focus {
+      outline: none;
+      border-color: var(--main-purple);
+      box-shadow: 0 0 0 2px rgba(109,40,217,0.15);
+    }
+    .profile-section .profile-status-row .status-row-inner {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .profile-section .profile-status-row .status-row-inner .status-input { flex: 1; }
+    .profile-section .profile-status-row .btn-clear-status {
+      flex-shrink: 0;
+      padding: 8px 14px;
+      font-family: var(--font);
+      font-size: 0.85rem;
+      color: var(--gray-muted);
+      background: var(--bg-white);
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .profile-section .profile-status-row .btn-clear-status:hover {
+      color: #dc2626;
+      border-color: #dc2626;
+      background: #fef2f2;
+    }
+    .profile-section .profile-status-row .btn-save-status {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      font-family: var(--font);
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: #fff;
+      background: var(--main-purple);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .profile-section .profile-status-row .btn-save-status:hover {
+      background: var(--main-purple-hover);
     }
     .profile-section .avatar-wrap { position: relative; }
     .profile-section .avatar {
@@ -70,6 +146,133 @@
       font-size: 2.25rem;
       font-weight: 600;
       color: var(--main-purple);
+    }
+    .profile-section .avatar.legend-border {
+      border: 3px solid #e8b923;
+      box-shadow: 0 0 12px rgba(229, 185, 35, 0.5), inset 0 0 0 1px rgba(255,255,255,0.3);
+    }
+    /* Tier 스타일 */
+    .profile-section.tier-0 {
+      background: var(--bg-white);
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      border: 1px solid var(--border-gray);
+    }
+    .profile-section.tier-1 {
+      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+      border: 2px solid #94a3b8;
+      box-shadow: 0 0 20px rgba(148, 163, 184, 0.4), inset 0 0 40px rgba(255,255,255,0.5);
+    }
+    .profile-section.tier-1 .avatar { box-shadow: 0 0 16px rgba(148, 163, 184, 0.6); border: 2px solid #94a3b8; }
+    .profile-section.tier-2 {
+      background: linear-gradient(135deg, #fef9c3 0%, #fde68a 50%, #fcd34d 100%);
+      border: 2px solid #e8b923;
+      position: relative;
+      overflow: visible;
+    }
+    .profile-section.tier-2::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+      animation: shimmer 3s ease-in-out infinite;
+    }
+    @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+    /* Tier 2: 프로필 영역 Border Animation (테두리 바깥쪽 따라 빛 이동) */
+    .profile-section.tier-2 .profile-border-svg {
+      position: absolute;
+      inset: -4px;
+      width: calc(100% + 8px);
+      height: calc(100% + 8px);
+      border-radius: calc(var(--radius-lg) + 4px);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .profile-section.tier-2 .profile-border-svg rect {
+      fill: none;
+      stroke: url(#goldSectionGradient);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-dasharray: 280 1320;
+      animation: profile-border-travel 5s linear infinite;
+    }
+    @keyframes profile-border-travel { to { stroke-dashoffset: 1600; } }
+    .profile-section.tier-3 {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
+      border: 2px solid rgba(255,255,255,0.15);
+      position: relative;
+      overflow: visible;
+    }
+    /* Tier 3: 테두리 바깥쪽 따라 이동하는 무지개 빛 (회전 없음) */
+    .profile-section.tier-3 .profile-border-svg {
+      position: absolute;
+      inset: -4px;
+      width: calc(100% + 8px);
+      height: calc(100% + 8px);
+      border-radius: calc(var(--radius-lg) + 4px);
+      pointer-events: none;
+      z-index: 2;
+    }
+    .profile-section.tier-3 .profile-border-svg rect {
+      fill: none;
+      stroke: url(#rainbowSectionGradient);
+      stroke-width: 3;
+      stroke-linecap: round;
+      stroke-dasharray: 280 1320;
+      animation: profile-border-travel 5s linear infinite;
+    }
+    .profile-section.tier-3 .info h2,
+    .profile-section.tier-3 .profile-tagline,
+    .profile-section.tier-3 .info p { color: rgba(255,255,255,0.95); }
+    .profile-section.tier-3 .profile-tagline { color: #fde68a; }
+    .profile-section.tier-3 .summary-label,
+    .profile-section.tier-3 .profile-status-row { border-color: rgba(255,255,255,0.15); }
+    /* Tier 3 파티클 */
+    .profile-section.tier-3 .tier-particles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+    .tier-particle {
+      position: absolute;
+      width: 4px;
+      height: 4px;
+      background: rgba(255,255,255,0.5);
+      border-radius: 50%;
+      animation: particle-float 8s ease-in-out infinite;
+    }
+    .tier-particle:nth-child(1) { left: 10%; top: 20%; animation-delay: 0s; }
+    .tier-particle:nth-child(2) { left: 25%; top: 60%; animation-delay: 1s; }
+    .tier-particle:nth-child(3) { left: 60%; top: 15%; animation-delay: 2s; }
+    .tier-particle:nth-child(4) { left: 80%; top: 70%; animation-delay: 0.5s; }
+    .tier-particle:nth-child(5) { left: 45%; top: 85%; animation-delay: 1.5s; }
+    .tier-particle:nth-child(6) { left: 90%; top: 40%; animation-delay: 2.5s; }
+    @keyframes particle-float {
+      0%, 100% { transform: translate(0,0) scale(1); opacity: 0.5; }
+      50% { transform: translate(10px,-15px) scale(1.2); opacity: 0.9; }
+    }
+    .legend-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 10px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      color: #b45309;
+      background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
+      border: 1px solid #e8b923;
+      border-radius: 20px;
+    }
+    .profile-section.tier-3 .legend-badge {
+      color: #fff;
+      background: linear-gradient(135deg, #8b5cf6, #ec4899);
+      border-color: rgba(255,255,255,0.5);
+    }
+    .profile-tagline {
+      font-size: 0.9rem;
+      color: var(--main-purple);
+      font-weight: 600;
+      margin-top: 4px;
     }
     .profile-section .btn-avatar-upload {
       position: absolute;
@@ -110,7 +313,156 @@
       background: var(--bg-white);
       border-radius: 20px;
     }
+    .profile-section.tier-3 .role-badge {
+      background: rgba(255,255,255,0.2);
+      color: #e9d5ff;
+    }
     .profile-section .info p { font-size: 0.9rem; color: var(--gray-muted); }
+    .profile-section .profile-top .profile-logout { flex-shrink: 0; margin-left: auto; }
+    /* 레벨/EXP 바 */
+    .level-exp-block {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(0,0,0,0.06);
+      width: 100%;
+    }
+    .profile-section.tier-3 .level-exp-block { border-color: rgba(255,255,255,0.2); }
+    .level-exp-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 8px;
+    }
+    .level-exp-info {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+    .profile-section.tier-3 .level-exp-info { color: #fff; }
+    .level-exp-info .tier-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      margin-left: 6px;
+      font-weight: 700;
+    }
+    .tier-badge.bronze { background: #f5e6d3; color: #92400e; }
+    .tier-badge.silver { background: #e5e7eb; color: #4b5563; }
+    .tier-badge.gold { background: linear-gradient(180deg, #fef3c7, #fde68a); color: #b45309; }
+    .tier-badge.legend { background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff; }
+    .exp-bar-wrap {
+      height: 12px;
+      background: rgba(0,0,0,0.1);
+      border-radius: 999px;
+      overflow: hidden;
+      flex: 1;
+      min-width: 120px;
+    }
+    .profile-section.tier-3 .exp-bar-wrap { background: rgba(255,255,255,0.2); }
+    .exp-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--main-purple), #a78bfa);
+      border-radius: 999px;
+      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .exp-bar-fill.gold { background: linear-gradient(90deg, #e8b923, #fcd34d); }
+    .exp-bar-fill.legend { background: linear-gradient(90deg, #8b5cf6, #ec4899); }
+    .exp-next-hint {
+      font-size: 0.8rem;
+      color: var(--gray-muted);
+      margin-top: 6px;
+    }
+    .profile-section.tier-3 .exp-next-hint { color: rgba(255,255,255,0.7); }
+    /* 분야 전문성 태그 */
+    .expertise-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+    .expertise-tag {
+      display: inline-block;
+      padding: 6px 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--main-purple);
+      background: rgba(255,255,255,0.9);
+      border: 1px solid rgba(109,40,217,0.3);
+      border-radius: 20px;
+      text-decoration: none;
+      transition: all 0.2s;
+    }
+    .expertise-tag:hover { background: var(--soft-purple); border-color: var(--main-purple); }
+    .profile-section.tier-3 .expertise-tag {
+      background: rgba(255,255,255,0.15);
+      border-color: rgba(255,255,255,0.4);
+      color: #fde68a;
+    }
+    .profile-section.tier-3 .expertise-tag:hover {
+      background: rgba(255,255,255,0.25);
+      border-color: rgba(255,255,255,0.6);
+    }
+    /* 대표 작품 (Pinned Portfolio) */
+    .pinned-portfolio-section {
+      margin-bottom: 24px;
+    }
+    .pinned-portfolio-section h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 16px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-gray);
+    }
+    .pinned-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+    @media (max-width: 768px) {
+      .pinned-cards { grid-template-columns: 1fr; }
+    }
+    .pinned-card {
+      background: var(--bg-white);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      transition: transform 0.2s, box-shadow 0.2s;
+      text-decoration: none;
+      color: inherit;
+      display: block;
+    }
+    .pinned-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+    }
+    .pinned-card-thumb {
+      aspect-ratio: 4/3;
+      background: linear-gradient(135deg, #e0e7ff, #c7d2fe);
+      background-size: cover;
+      background-position: center;
+      position: relative;
+    }
+    .pinned-card-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 4px 10px;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #b45309;
+      background: linear-gradient(180deg, #fef3c7, #fde68a);
+      border: 1px solid #e8b923;
+      border-radius: 20px;
+    }
+    .pinned-card-title {
+      padding: 14px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
     /* 카드 공통 */
     .card {
       background: var(--bg-white);
@@ -150,62 +502,86 @@
       font-size: 0.9rem;
       color: var(--text-dark);
     }
-    /* 3컬럼 대시보드 */
-    .dashboard-grid {
+    /* 요약 대시보드 */
+    .dashboard-summary {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
+      gap: 16px;
       margin-bottom: 24px;
     }
     @media (max-width: 768px) {
-      .dashboard-grid { grid-template-columns: 1fr; }
+      .dashboard-summary { grid-template-columns: 1fr; }
     }
-    .dashboard-card {
+    .summary-card {
+      background: var(--bg-white);
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .summary-card .summary-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    .summary-card .summary-icon.trophy { background: linear-gradient(135deg, #fef3c7, #fde68a); }
+    .summary-card .summary-icon.money { background: linear-gradient(135deg, #d1fae5, #a7f3d0); }
+    .summary-card .summary-icon.rocket { background: linear-gradient(135deg, #e0e7ff, #c7d2fe); }
+    .summary-card .summary-value { font-size: 1.25rem; font-weight: 700; color: var(--text-dark); }
+    .summary-card .summary-label { font-size: 0.85rem; color: var(--gray-muted); margin-top: 2px; }
+    /* 공모전 타임라인 */
+    .timeline-section {
+      background: var(--bg-white);
+      border-radius: var(--radius-lg);
       padding: 24px;
-    }
-    .dashboard-card h3 {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--gray-muted);
-      margin-bottom: 12px;
-    }
-    .dashboard-card .content {
-      font-size: 0.95rem;
-      color: var(--text-dark);
-      line-height: 1.7;
-    }
-    .dashboard-card .content ul {
-      list-style: none;
-    }
-    .dashboard-card .content li {
-      padding: 8px 0;
-      border-bottom: 1px solid var(--border-gray);
-    }
-    .dashboard-card .content li:last-child { border-bottom: none; }
-    .dashboard-card .content a {
-      color: var(--main-purple);
-      text-decoration: none;
-    }
-    .dashboard-card .content a:hover { text-decoration: underline; }
-    .recent-empty { color: var(--gray-muted); font-size: 0.9rem; }
-    /* 상태 메시지 */
-    .status-section {
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
       margin-bottom: 24px;
     }
-    .status-section .status-input {
-      width: 100%;
-      padding: 12px 16px;
-      border: 1px solid var(--border-gray);
-      border-radius: var(--radius);
-      font-family: var(--font);
-      font-size: 0.9rem;
+    .timeline-section h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-gray);
     }
-    .status-section .status-input:focus {
-      outline: none;
-      border-color: var(--main-purple);
-      box-shadow: 0 0 0 2px rgba(109,40,217,0.15);
+    .timeline-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border-gray);
     }
-    /* 하단 버튼 영역 */
+    .timeline-item:last-child { border-bottom: none; }
+    .timeline-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-top: 6px;
+      flex-shrink: 0;
+    }
+    .timeline-dot.win { background: var(--main-purple); }
+    .timeline-dot.lose { background: var(--gray-muted); }
+    .timeline-content { flex: 1; min-width: 0; }
+    .timeline-title { font-size: 0.95rem; font-weight: 600; color: var(--text-dark); margin-bottom: 4px; }
+    .timeline-meta { font-size: 0.82rem; color: var(--gray-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .timeline-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .timeline-badge.award { background: var(--soft-purple); color: var(--main-purple); }
+    .timeline-badge.eliminated { background: #fef2f2; color: #dc2626; }
+    .timeline-link { font-size: 0.8rem; color: var(--main-purple); text-decoration: none; }
+    .timeline-link:hover { text-decoration: underline; }
     .actions-section {
       display: flex;
       gap: 12px;
@@ -238,6 +614,112 @@
     .btn-outline.danger:hover {
       background: #fef2f2;
     }
+    /* 안내 버튼 */
+    .info-buttons {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .btn-info {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--soft-purple);
+      color: var(--main-purple);
+      border: 1px solid rgba(109,40,217,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+    .btn-info:hover {
+      background: var(--main-purple);
+      color: #fff;
+      border-color: var(--main-purple);
+    }
+    .btn-info svg { width: 18px; height: 18px; }
+    /* 모달 */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal-box {
+      background: var(--bg-white);
+      border-radius: var(--radius-lg);
+      max-width: 480px;
+      width: 100%;
+      max-height: 85vh;
+      overflow-y: auto;
+      box-shadow: 0 24px 48px rgba(0,0,0,0.15);
+    }
+    .modal-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border-gray);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .modal-header h4 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 0;
+    }
+    .modal-close {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      border: none;
+      background: transparent;
+      color: var(--gray-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      transition: color 0.2s;
+    }
+    .modal-close:hover { color: var(--text-dark); }
+    .modal-body {
+      padding: 24px;
+      font-size: 0.9rem;
+      line-height: 1.7;
+      color: var(--text-dark);
+    }
+    .modal-body table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      margin: 16px 0;
+    }
+    .modal-body th, .modal-body td {
+      padding: 10px 12px;
+      text-align: left;
+      border: 1px solid var(--border-gray);
+    }
+    .modal-body th {
+      background: var(--soft-purple);
+      color: var(--main-purple);
+      font-weight: 600;
+    }
+    .modal-body .info-item {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border-gray);
+    }
+    .modal-body .info-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
+    .modal-body .info-item strong { color: var(--main-purple); }
   </style>
 </head>
 <body>
@@ -246,29 +728,17 @@
   <div class="container">
     <header class="page-header">
       <h1>{{ '마이페이지' if is_own_profile else '프로필' }}</h1>
-    </header>
-
-    <!-- 프로필 영역 -->
-    <section class="profile-section">
-      <div class="avatar-wrap">
-        <div class="avatar" id="profileAvatar" style="background-image: url('{{ profile.get('profile_url') or '' }}')">
-          {% if not profile.get('profile_url') %}<span>{{ (profile.get('nickname') or '?')[:1] }}</span>{% endif %}
-        </div>
+      <div class="info-buttons">
         {% if is_own_profile %}
-        <label class="btn-avatar-upload" title="프로필 이미지 변경">
-          <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-        </label>
+        <button type="button" class="btn-info" onclick="openModal('modalTier')" title="티어 시스템 안내">🏆</button>
+        <button type="button" class="btn-info" onclick="openModal('modalTags')" title="분야 태그 안내">#</button>
+        <button type="button" class="btn-info" onclick="openModal('modalHeadline')" title="헤드라인 안내">✨</button>
+        {% endif %}
+        {% if not is_own_profile %}
+        <a href="{{ url_for('home') }}" class="btn-outline">홈으로</a>
         {% endif %}
       </div>
-      <div class="info">
-        <h2>
-          {{ profile.get('nickname', '') or '회원' }}
-          <span class="role-badge">[{{ role_label }}]</span>
-        </h2>
-        <p>{{ profile.get('email', '') if is_own_profile else '' }}</p>
-      </div>
-    </section>
+    </header>
 
     {% if is_own_profile %}
     <!-- 계정 정보 카드 -->
@@ -283,53 +753,269 @@
     </div>
     {% endif %}
 
-    {% if is_own_profile %}
-    <!-- 3컬럼 대시보드 -->
-    <div class="dashboard-grid">
-      <div class="card dashboard-card">
-        <h3>나의 활동</h3>
-        <div class="content">
-          <p>내가 찜한 공모전 <strong id="wishCount">0</strong>개</p>
-          <p>내가 쓴 댓글 <strong id="commentCount">0</strong>개</p>
+    <!-- 프로필 영역 (Tier에 따라 tier-0~3 클래스 적용) -->
+    <section class="profile-section tier-{{ tier_level }}">
+      {% if tier_level >= 2 %}
+      <svg class="profile-border-svg" viewBox="0 0 500 300" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="goldSectionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#e8b923" />
+            <stop offset="50%" stop-color="#fcd34d" />
+            <stop offset="100%" stop-color="#fde68a" />
+          </linearGradient>
+          <linearGradient id="rainbowSectionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#f59e0b" />
+            <stop offset="25%" stop-color="#ec4899" />
+            <stop offset="50%" stop-color="#8b5cf6" />
+            <stop offset="75%" stop-color="#06b6d4" />
+            <stop offset="100%" stop-color="#f59e0b" />
+          </linearGradient>
+        </defs>
+        <rect x="1.5" y="1.5" width="497" height="297" rx="12" ry="12" />
+      </svg>
+      {% endif %}
+      {% if tier_level >= 3 %}
+      <div class="tier-particles">
+        <span class="tier-particle"></span><span class="tier-particle"></span><span class="tier-particle"></span>
+        <span class="tier-particle"></span><span class="tier-particle"></span><span class="tier-particle"></span>
+      </div>
+      {% endif %}
+      <div class="profile-top">
+        <div class="avatar-wrap">
+          <div class="avatar {% if tier_level >= 2 %}legend-border{% endif %}" id="profileAvatar" style="background-image: url('{{ profile.get('profile_url') or '' }}')">
+            {% if not profile.get('profile_url') %}<span>{{ (profile.get('nickname') or '?')[:1] }}</span>{% endif %}
+          </div>
+          {% if is_own_profile %}
+          <label class="btn-avatar-upload" title="프로필 이미지 변경">
+            <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          </label>
+          {% endif %}
+        </div>
+        <div class="info">
+          <h2>
+            {{ profile.get('nickname', '') or '회원' }}
+            {% if tier_level >= 3 %}<span class="legend-badge">LEGEND</span>{% endif %}
+            <span class="role-badge">{{ role_label }}</span>
+          </h2>
+          <p class="profile-tagline">
+            {% if tier_level >= 3 %}AI 디자인 분야 누적 상금 1위 · 레전드 크리에이터{% elif tier_level == 2 %}AI 디자인 분야 상위 5% · GOLD 크리에이터{% elif tier_level == 1 %}수상 크리에이터 · SILVER Tier{% else %}새로운 도전을 시작해보세요{% endif %}
+          </p>
+          <div class="expertise-tags">
+            {% for tag in expertise_tags %}
+            <span class="expertise-tag">#{{ tag }}</span>
+            {% endfor %}
+          </div>
+          {% if is_own_profile %}
+          <p style="font-size:0.85rem;color:var(--gray-muted);margin-top:8px;">{{ profile.get('email', '') }}</p>
+          {% endif %}
+        </div>
+        {% if is_own_profile %}
+        <a href="{{ url_for('mypage_password') }}" class="btn-outline profile-logout">비밀번호 변경</a>
+        {% endif %}
+      </div>
+      <!-- 레벨/EXP 바 -->
+      <div class="level-exp-block">
+        <div class="level-exp-row">
+          <span class="level-exp-info">Lv.{{ level }} · <span class="tier-badge {{ tier_name|lower }}">{{ tier_name }} Tier</span></span>
+          <div class="exp-bar-wrap">
+            <div class="exp-bar-fill {% if tier_level >= 3 %}legend{% elif tier_level >= 2 %}gold{% endif %}" style="width: {{ exp_percent }}%"></div>
+          </div>
+        </div>
+        <p class="exp-next-hint">다음 레벨까지 {{ exp_next - exp_current }} EXP 필요 ({{ exp_percent }}% 완료)</p>
+      </div>
+      {% if is_own_profile %}
+      <div class="profile-status-row">
+        <div class="status-row-inner">
+          <input type="text" class="status-input" id="statusInput" value="{{ profile.get('status_message') or '' }}" placeholder="상태 메시지를 입력하세요 (예: 이번 주 OO 공모전 마감입니다!)" maxlength="80">
+          <button type="button" class="btn-save-status" id="btnSaveStatus" title="저장">저장</button>
+          <button type="button" class="btn-clear-status" id="btnClearStatus" title="상태 메시지 삭제">삭제</button>
         </div>
       </div>
-      <div class="card dashboard-card">
-        <h3>팀 내 역할</h3>
-        <div class="content">
-          <p>주력 분야: <strong id="roleField">미설정</strong></p>
-          <p>권한: {{ role_label }}</p>
-        </div>
-      </div>
-      <div class="card dashboard-card">
-        <h3>최근 본 공모전</h3>
-        <div class="content">
-          <ul id="recentContests">
-            <li class="recent-empty">최근 본 공고가 없습니다.</li>
-          </ul>
-        </div>
-      </div>
-    </div>
+      {% endif %}
+    </section>
 
-    <!-- 상태 메시지 (팀원용) -->
-    <div class="card status-section" style="padding: 20px 24px;">
-      <h3 style="font-size: 0.9rem; font-weight: 600; color: var(--gray-muted); margin-bottom: 12px;">상태 메시지</h3>
-      <input type="text" class="status-input" id="statusInput" placeholder="이번 주 OO 공모전 마감입니다!" maxlength="80">
-    </div>
+    <!-- 대표 작품 (Pinned Portfolio) -->
+    <section class="pinned-portfolio-section">
+      <h3>대표 작품</h3>
+      <div class="pinned-cards">
+        {% for item in pinned_portfolio %}
+        <a href="{{ item.url or '#' }}" class="pinned-card" target="_blank">
+          <div class="pinned-card-thumb" style="{% if item.thumbnail %}background-image: url('{{ item.thumbnail }}');{% endif %}">
+            <span class="pinned-card-badge">{{ item.award or '수상' }}</span>
+          </div>
+          <div class="pinned-card-title">{{ item.title or '작품 제목' }}</div>
+        </a>
+        {% endfor %}
+      </div>
+    </section>
 
-    <!-- 하단 설정 및 관리 -->
-    <div class="actions-section">
-      <a href="{{ url_for('mypage_password') }}" class="btn-outline">비밀번호 변경</a>
-      <a href="{{ url_for('logout') }}" class="btn-outline danger">로그아웃</a>
-    </div>
-    {% else %}
-    <!-- 타인 프로필: 뒤로가기 등 -->
-    <div class="actions-section">
-      <a href="{{ url_for('home') }}" class="btn-outline">홈으로</a>
-    </div>
-    {% endif %}
+    <!-- 요약 대시보드 -->
+    <section class="dashboard-summary">
+      <div class="summary-card">
+        <div class="summary-icon trophy">🏆</div>
+        <div>
+          <div class="summary-value">5건</div>
+          <div class="summary-label">수상</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-icon money">💰</div>
+        <div>
+          <div class="summary-value">1,250만원</div>
+          <div class="summary-label">상금</div>
+        </div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-icon rocket">🚀</div>
+        <div>
+          <div class="summary-value">20건</div>
+          <div class="summary-label">도전</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 공모전 타임라인 -->
+    <section class="timeline-section">
+      <h3>공모전 타임라인</h3>
+      <div class="timeline-item">
+        <div class="timeline-dot win"></div>
+        <div class="timeline-content">
+          <div class="timeline-title">OO브랜드 로고 공모전</div>
+          <div class="timeline-meta">
+            <span>2026.02</span>
+            <span class="timeline-badge award">최우수상</span>
+            <span>₩2,000,000</span>
+          </div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot lose"></div>
+        <div class="timeline-content">
+          <div class="timeline-title">XX앱 UI/UX 공모전</div>
+          <div class="timeline-meta">
+            <span>2026.01</span>
+            <span class="timeline-badge eliminated">심사탈락</span>
+            <a href="#" class="timeline-link">피드백 보기</a>
+          </div>
+        </div>
+      </div>
+      <div class="timeline-item">
+        <div class="timeline-dot win"></div>
+        <div class="timeline-content">
+          <div class="timeline-title">△△데이터 시각화 대회</div>
+          <div class="timeline-meta">
+            <span>2025.12</span>
+            <span class="timeline-badge award">대상</span>
+            <span>₩5,000,000</span>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 
+  <!-- 안내 모달: 티어 시스템 -->
+  <div class="modal-overlay" id="modalTier">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h4>🏆 수상 Tier 시스템</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalTier')" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <p>수상 횟수에 따라 프로필 영역의 비주얼이 업그레이드됩니다.</p>
+        <table>
+          <thead><tr><th>Tier</th><th>조건</th><th>효과</th></tr></thead>
+          <tbody>
+            <tr><td>Tier 0</td><td>수상 0회</td><td>기본 흰 배경</td></tr>
+            <tr><td>Tier 1</td><td>수상 1~2회</td><td>실버 테두리 + 아바타 실버 글로우</td></tr>
+            <tr><td>Tier 2</td><td>수상 3~4회</td><td>골드 배경 + 회전 골드 보더 + shimmer 효과</td></tr>
+            <tr><td>Tier 3</td><td>수상 5회 이상</td><td>다크 배경 + 파티클 + 무지개 보더 + LEGEND 뱃지</td></tr>
+          </tbody>
+        </table>
+        <p style="font-size:0.85rem;color:var(--gray-muted);margin-top:12px;">공모전 수상 실적이 쌓일수록 더 화려한 프로필을 갖게 됩니다.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 안내 모달: 분야 태그 -->
+  <div class="modal-overlay" id="modalTags">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h4># 분야 전문성 태그</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalTags')" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <p>참여한 공모전·수상 분야 데이터가 쌓이면 자동으로 해당 태그가 프로필에 추가됩니다.</p>
+        <table>
+          <thead><tr><th>태그</th><th>자동 추가 조건</th></tr></thead>
+          <tbody>
+            <tr><td>#빅데이터</td><td>빅데이터/데이터 시각화 분야 공모전 1회 이상 참여 또는 수상</td></tr>
+            <tr><td>#AI 디자인</td><td>AI·생성형 디자인 분야 공모전 1회 이상 참여 또는 수상</td></tr>
+            <tr><td>#로고 디자인</td><td>로고·브랜딩·CI 분야 공모전 1회 이상 참여 또는 수상</td></tr>
+            <tr><td>#UX/UI</td><td>UX·UI·앱 디자인 분야 공모전 1회 이상 참여 또는 수상</td></tr>
+            <tr><td>#포스터</td><td>포스터·그래픽 디자인 분야 1회 이상 참여 또는 수상</td></tr>
+            <tr><td>#영상</td><td>영상·UCC·광고 분야 1회 이상 참여 또는 수상</td></tr>
+            <tr><td>#캐릭터</td><td>캐릭터·일러스트 분야 1회 이상 참여 또는 수상</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 안내 모달: 자동 헤드라인 -->
+  <div class="modal-overlay" id="modalHeadline">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h4>✨ 자동 생성 헤드라인</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalHeadline')" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <p>역량이 쌓이면 프로필에 노출되는 한 줄 자기소개가 자동으로 업그레이드됩니다. 타인이 프로필 방문 시 즉시 인상적입니다.</p>
+        <div class="info-item">
+          <strong>새로운 도전을 시작해보세요</strong><br>
+          조건: Tier 0 (수상 없음)
+        </div>
+        <div class="info-item">
+          <strong>수상 크리에이터 · SILVER Tier</strong><br>
+          조건: 수상 1~2회 (Tier 1 달성)
+        </div>
+        <div class="info-item">
+          <strong>AI 디자인 분야 상위 5% · GOLD 크리에이터</strong><br>
+          조건: 수상 3~4회 + 해당 분야에서 상위 순위 (Tier 2)
+        </div>
+        <div class="info-item">
+          <strong>AI 디자인 분야 누적 상금 1위 · 레전드 크리에이터</strong><br>
+          조건: 수상 5회 이상 + 분야 내 상금 1위 (Tier 3)
+        </div>
+        <div class="info-item">
+          <strong>[추가 예정] 분야별 문장</strong><br>
+          분야별로 "로고 디자인 수상 3회" 등 데이터에 맞는 문장이 자동 생성됩니다.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% include 'partials/_sidebar_users.html' %}
+  {% include 'partials/_toast.html' %}
+
   <script>
+    function openModal(id) {
+      const el = document.getElementById(id);
+      if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; }
+    }
+    function closeModal(id) {
+      const el = document.getElementById(id);
+      if (el) { el.classList.remove('active'); document.body.style.overflow = ''; }
+    }
+    document.querySelectorAll('.modal-overlay').forEach(function(overlay) {
+      overlay.addEventListener('click', function(e) {
+        if (e.target === overlay) closeModal(overlay.id);
+      });
+    });
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(function(m) { closeModal(m.id); });
+    });
+
     const avatarInput = document.getElementById('avatarInput');
     if (avatarInput) {
     avatarInput.addEventListener('change', async function(e) {
@@ -343,16 +1029,47 @@
         if (j.success && j.profile_url) {
           location.reload();
         } else {
-          alert(j.error || '업로드에 실패했습니다.');
+          showToast(j.error || '업로드에 실패했습니다.', 'error');
         }
       } catch (err) {
-        alert('업로드에 실패했습니다.');
+        showToast('업로드에 실패했습니다.', 'error');
       }
       e.target.value = '';
     });
     }
 
-    // 최근 본 공모전 로드 (내 프로필일 때만)
+    // 상태 메시지 저장 (blur 시)
+    const statusInput = document.getElementById('statusInput');
+    if (statusInput) {
+      let saveTimeout = null;
+      function saveStatusMessage(isDelete) {
+        const val = (statusInput.value || '').trim();
+        fetch('/api/profile/status-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status_message: val })
+        }).then(r => r.json()).then(j => {
+          if (j.success) showToast(isDelete || !val ? '삭제되었습니다.' : '저장되었습니다.', 'success');
+          else showToast(j.error || '저장에 실패했습니다.', 'error');
+        });
+      }
+      statusInput.addEventListener('blur', saveStatusMessage);
+      statusInput.addEventListener('input', function() {
+        clearTimeout(saveTimeout);
+        saveTimeout = setTimeout(saveStatusMessage, 800);
+      });
+      const btnSave = document.getElementById('btnSaveStatus');
+      if (btnSave) btnSave.addEventListener('click', saveStatusMessage);
+      const btnClear = document.getElementById('btnClearStatus');
+      if (btnClear) {
+        btnClear.addEventListener('click', function() {
+          statusInput.value = '';
+          saveStatusMessage(true);
+        });
+      }
+    }
+
+    // 최근 본 공모전 로드 (내 프로필일 때만 - 타임라인 연동 예정)
     (async function() {
       const ul = document.getElementById('recentContests');
       if (!ul) return;

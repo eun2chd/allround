@@ -8,6 +8,34 @@
 cd allyoung
 pip install -r requirements.txt
 ```
+❌ 이전
+
+pip 동작:
+
+requirements.txt 읽기
+→ OS 기본 인코딩 사용
+→ Windows 기본 = cp949
+→ 파일 실제 = UTF-8
+→ 디코딩 실패 → UnicodeDecodeError
+✅ 이번
+export PYTHONUTF8=1
+
+이게 하는 일:
+
+Python 프로세스 전체를 UTF-8 모드로 강제 실행
+
+그러면 pip 내부 동작이 이렇게 바뀜:
+
+requirements.txt 읽기
+→ 기본 인코딩 = UTF-8
+→ 파일 실제 = UTF-8
+→ 정상 파싱
+→ 설치 진행
+
+그래서 성공.
+
+export PYTHONUTF8=1
+pip install -r requirements.txt
 
 ## 실행
 

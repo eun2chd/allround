@@ -1,0 +1,40 @@
+<style>
+  .toast {
+    position: fixed;
+    top: 80px;
+    right: 24px;
+    padding: 12px 20px;
+    background: var(--bg-white);
+    border: 1px solid var(--border-gray);
+    border-radius: var(--radius);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+    font-size: 0.9rem;
+    z-index: 1000;
+    transition: opacity 0.3s, transform 0.3s;
+  }
+  .toast.show {
+    animation: toastSlideUp 0.3s ease;
+  }
+  .toast.success { border-left: 4px solid var(--main-purple); }
+  .toast.error { border-left: 4px solid #dc2626; }
+  @keyframes toastSlideUp {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+<div id="toast" class="toast" style="display:none" role="alert"></div>
+<script>
+  (function() {
+    window.showToast = function(msg, type) {
+      var t = document.getElementById('toast');
+      if (!t) return;
+      t.textContent = msg;
+      t.className = 'toast show ' + (type || 'success');
+      t.style.display = 'block';
+      clearTimeout(t._hideTimer);
+      t._hideTimer = setTimeout(function() {
+        t.style.display = 'none';
+      }, 3000);
+    };
+  })();
+</script>

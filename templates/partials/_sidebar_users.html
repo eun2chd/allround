@@ -1,0 +1,254 @@
+<style>
+  /* 접속 유저 사이드바 - 홈/마이페이지 공유 */
+  .sidebar-users {
+    position: fixed;
+    right: 0;
+    top: 68px;
+    width: 220px;
+    height: calc(100vh - 68px);
+    background: var(--bg-white);
+    border-left: 1px solid var(--border-gray);
+    box-shadow: -2px 0 12px rgba(0,0,0,0.06);
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.25s ease, transform 0.25s ease;
+  }
+  .sidebar-users.collapsed {
+    width: 48px;
+  }
+  .sidebar-users.collapsed .sidebar-title,
+  .sidebar-users.collapsed .sidebar-user-list { display: none; }
+  .sidebar-users .sidebar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border-gray);
+    flex-shrink: 0;
+  }
+  .sidebar-users .sidebar-toggle {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    color: #212121;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+    min-height: 36px;
+  }
+  .sidebar-users .sidebar-toggle:hover { color: var(--main-purple); }
+  .sidebar-users .sidebar-toggle svg { width: 18px; height: 18px; }
+  .sidebar-users .sidebar-toggle .sidebar-icon-expand { display: block; }
+  .sidebar-users .sidebar-toggle .sidebar-icon-collapse { display: none; }
+  .sidebar-users.collapsed .sidebar-toggle .sidebar-icon-expand { display: none; }
+  .sidebar-users.collapsed .sidebar-toggle .sidebar-icon-collapse { display: block; }
+  .sidebar-users.collapsed .sidebar-header { display: none; }
+  .sidebar-users.collapsed .sidebar-footer { margin-top: auto; }
+  .sidebar-users .sidebar-footer {
+    flex-shrink: 0;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border-gray);
+    display: flex;
+    justify-content: flex-end;
+    min-height: 44px;
+  }
+  .sidebar-users.collapsed .sidebar-footer {
+    justify-content: center;
+    padding: 12px;
+    border-top: 1px solid var(--border-gray);
+  }
+  .sidebar-users .sidebar-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--gray-muted);
+    margin: 0;
+    flex: 1;
+  }
+  .sidebar-users .sidebar-user-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+  }
+  .sidebar-users .user-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    text-decoration: none;
+    color: inherit;
+    margin: 0 8px;
+    border-radius: var(--radius);
+    font-size: 0.82rem;
+    color: var(--text-dark);
+    width: calc(100% - 16px);
+    box-sizing: border-box;
+    min-height: 48px;
+  }
+  .sidebar-users .user-item:hover {
+    background: var(--soft-purple);
+  }
+  .sidebar-users .user-avatar {
+    width: 32px;
+    height: 32px;
+    min-width: 32px;
+    border-radius: 50%;
+    background: var(--soft-purple);
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--main-purple);
+  }
+  .sidebar-users .user-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sidebar-users .user-name {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .sidebar-users .user-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--gray-muted);
+  }
+  .sidebar-users .user-status.online { color: #22c55e; font-weight: 600; }
+  .sidebar-users .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .sidebar-users .status-dot.online { background: #22c55e; }
+  .sidebar-users .status-dot.offline { background: #d1d5db; }
+  .sidebar-users .user-status-msg {
+    font-size: 0.72rem;
+    color: var(--main-purple);
+    margin-top: 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  @media (max-width: 1100px) {
+    .sidebar-users { display: none; }
+  }
+</style>
+
+<aside class="sidebar-users" id="sidebarUsers">
+  <div class="sidebar-header">
+    <span class="sidebar-title">접속 유저</span>
+  </div>
+  <div class="sidebar-user-list">
+    <div id="sidebarUserList">
+      <div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;">로딩 중...</div>
+    </div>
+  </div>
+  <div class="sidebar-footer">
+    <button type="button" class="sidebar-toggle" id="sidebarToggle" title="사이드바 접기">
+      <svg class="sidebar-toggle-icon sidebar-icon-collapse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 19l-7-7 7-7M18 19l-7-7 7-7"/></svg>
+      <svg class="sidebar-toggle-icon sidebar-icon-expand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 5l7 7-7 7M6 5l7 7-7 7"/></svg>
+    </button>
+  </div>
+</aside>
+
+<script>
+(function() {
+  const sidebarEl = document.getElementById('sidebarUsers');
+  const listEl = document.getElementById('sidebarUserList');
+  const toggleBtn = document.getElementById('sidebarToggle');
+  if (!sidebarEl || !listEl) return;
+
+  const SIDEBAR_KEY = 'allyoung_sidebar_collapsed';
+  const collapsed = localStorage.getItem(SIDEBAR_KEY) === '1';
+  if (collapsed) sidebarEl.classList.add('collapsed');
+  toggleBtn.title = collapsed ? '사이드바 펼치기' : '사이드바 접기';
+  toggleBtn.addEventListener('click', function() {
+    sidebarEl.classList.toggle('collapsed');
+    const isCollapsed = sidebarEl.classList.contains('collapsed');
+    localStorage.setItem(SIDEBAR_KEY, isCollapsed ? '1' : '0');
+    toggleBtn.title = isCollapsed ? '사이드바 펼치기' : '사이드바 접기';
+  });
+  const CACHE_KEY = 'allyoung_sidebar_users_v2';
+  const CACHE_TTL = 3 * 60 * 1000;  // 3분
+
+  function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+  function formatTimeAgo(isoStr) {
+    if (!isoStr) return '';
+    const date = new Date(isoStr.replace('Z', '+00:00'));
+    const now = new Date();
+    const diffSec = Math.floor((now - date) / 1000);
+    if (diffSec < 60) return '방금 전';
+    if (diffSec < 3600) return Math.floor(diffSec / 60) + '분 전';
+    if (diffSec < 86400) return Math.floor(diffSec / 3600) + '시간 전';
+    if (diffSec < 2592000) return Math.floor(diffSec / 86400) + '일 전';
+    return Math.floor(diffSec / 2592000) + '달 전';
+  }
+  function renderUsers(data, currentId) {
+    if (!data || data.length === 0) {
+      listEl.innerHTML = '<div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;justify-content:center;">표시할 사용자가 없습니다.</div>';
+      return;
+    }
+    listEl.innerHTML = data.map(u => {
+      const name = escapeHtml(u.nickname || '회원');
+      const imgStyle = u.profile_url ? "background-image:url('" + u.profile_url.replace(/'/g, "\\'") + "')" : '';
+      const initial = (u.nickname || '?').charAt(0);
+      const statusClass = u.online ? 'online' : 'offline';
+      const ago = formatTimeAgo(u.last_seen);
+      const statusText = u.online ? (ago ? ago + ' 접속' : '온라인') : (ago ? ago + ' 오프라인' : '오프라인');
+      const statusLineClass = u.online ? 'user-status online' : 'user-status';
+      const me = u.id === currentId ? ' (나)' : '';
+      const statusMsg = (u.status_message || u.statusMessage || '').trim();
+      const statusMsgHtml = statusMsg ? '<div class="user-status-msg">' + escapeHtml(statusMsg) + '</div>' : '';
+      const avatarInner = u.profile_url ? '' : '<span>' + escapeHtml(initial) + '</span>';
+      const mypageUrl = '/mypage/' + encodeURIComponent(u.id);
+      return '<a href="' + mypageUrl + '" class="user-item" style="text-decoration:none;color:inherit;">' + '<div class="user-avatar" style="' + imgStyle + '">' + avatarInner + '</div><div class="user-info"><div class="user-name">' + name + me + '</div><div class="' + statusLineClass + '"><span class="status-dot ' + statusClass + '"></span> ' + statusText + '</div>' + statusMsgHtml + '</div>' + '</a>';
+    }).join('');
+  }
+  async function loadUsers(forceFetch) {
+    try {
+      if (!forceFetch) {
+        try {
+          const cached = sessionStorage.getItem(CACHE_KEY);
+          if (cached) {
+            const { data, current_user_id, ts } = JSON.parse(cached);
+            if (data && Date.now() - ts < CACHE_TTL) {
+              renderUsers(data, current_user_id || '');
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+      const r = await fetch('/api/users');
+      const j = await r.json();
+      if (!j.success || !j.data) {
+        listEl.innerHTML = '<div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;justify-content:center;">표시할 사용자가 없습니다.</div>';
+        return;
+      }
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({
+        data: j.data,
+        current_user_id: j.current_user_id || '',
+        ts: Date.now()
+      }));
+      renderUsers(j.data, j.current_user_id || '');
+    } catch (e) {
+      listEl.innerHTML = '<div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;justify-content:center;">로드 실패</div>';
+    }
+  }
+  loadUsers(false);
+  setInterval(function() { loadUsers(true); }, CACHE_TTL);
+})();
+</script>

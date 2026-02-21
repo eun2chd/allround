@@ -76,6 +76,7 @@ def crawl_contest_page(page: int = 1, max_pages: int = 1) -> list[dict]:
                     "host": host,
                     "url": full_url,
                     "category": category,
+                    "source": "요즘것들",
                 })
 
             time.sleep(1)

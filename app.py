@@ -56,11 +56,18 @@ def init_db(conn):
             host TEXT,
             url TEXT,
             category TEXT,
+            source TEXT DEFAULT '요즘것들',
             created_at TEXT,
             first_seen_at TEXT
         );
         CREATE INDEX IF NOT EXISTS idx_created ON contests(created_at DESC);
     """)
+    # 기존 DB에 source 컬럼 추가 (마이그레이션)
+    try:
+        conn.execute("ALTER TABLE contests ADD COLUMN source TEXT DEFAULT '요즘것들'")
+        conn.commit()
+    except sqlite3.OperationalError:
+        pass  # 이미 존재
     conn.commit()
 
 
@@ -76,11 +83,11 @@ def save_contests(conn, contests: list[dict]) -> tuple[int, int]:
         if is_new:
             new_count += 1
         conn.execute(
-            """INSERT INTO contests (id, title, d_day, host, url, category, created_at, first_seen_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """INSERT INTO contests (id, title, d_day, host, url, category, source, created_at, first_seen_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(id) DO UPDATE SET
                  title=excluded.title, d_day=excluded.d_day, host=excluded.host,
-                 url=excluded.url, category=excluded.category, created_at=excluded.created_at
+                 url=excluded.url, category=excluded.category, source=excluded.source, created_at=excluded.created_at
             """,
             (
                 c["id"],
@@ -89,6 +96,7 @@ def save_contests(conn, contests: list[dict]) -> tuple[int, int]:
                 c.get("host", ""),
                 c.get("url", ""),
                 c.get("category", "공모전"),
+                c.get("source", "요즘것들"),
                 now,
                 now if is_new else None,
             ),
@@ -154,7 +162,7 @@ def _ensure_session_in_presence():
 def get_all_contests(conn) -> tuple[list[dict], str | None]:
     """저장된 공고 목록 조회 (최신순), 마지막 업데이트 시간"""
     rows = conn.execute(
-        "SELECT id, title, d_day, host, url, category, created_at FROM contests "
+        "SELECT id, title, d_day, host, url, category, COALESCE(source, '요즘것들') as source, created_at FROM contests "
         "ORDER BY created_at DESC"
     ).fetchall()
     last = conn.execute("SELECT MAX(created_at) FROM contests").fetchone()[0]
@@ -423,7 +431,7 @@ def mypage_user(user_id):
         return redirect(url_for("mypage"))
     try:
         supabase = get_supabase_admin_client()
-        r = supabase.table("profiles").select("id, nickname, profile_url, role, email").eq("id", user_id).limit(1).execute()
+        r = supabase.table("profiles").select("id, nickname, profile_url, role, email, status_message").eq("id", user_id).limit(1).execute()
         if not r.data or len(r.data) == 0:
             return "사용자를 찾을 수 없습니다.", 404
         profile = r.data[0]
@@ -432,11 +440,36 @@ def mypage_user(user_id):
         is_own = profile["id"] == current_id
         role = profile.get("role", "member")
         role_label = "관리자" if role == "admin" else "팀원"
+        # Tier/Level mock (실제 데이터 연동 시 profiles 테이블 또는 별도 통계 활용)
+        awards_count = profile.get("awards_count", 5)
+        level = profile.get("level", 12)
+        exp_percent = profile.get("exp_percent", 62)
+        exp_current = profile.get("exp_current", 620)
+        exp_next = profile.get("exp_next", 1000)
+        expertise_tags = profile.get("expertise_tags") or ["빅데이터", "AI 디자인", "로고 디자인", "UX/UI"]
+        pinned_portfolio = profile.get("pinned_portfolio") or [
+            {"title": "OO브랜드 로고 공모전", "thumbnail": "", "award": "최우수상", "url": "#"},
+            {"title": "△△데이터 시각화 대회", "thumbnail": "", "award": "대상", "url": "#"},
+            {"title": "YY앱 아이콘 공모전", "thumbnail": "", "award": "우수상", "url": "#"},
+        ]
+        # Tier: 0=0회, 1=1~2회, 2=3~4회, 3=5회 이상
+        tier_level = 0 if awards_count == 0 else (1 if awards_count <= 2 else (2 if awards_count <= 4 else 3))
+        tier_names = ["BRONZE", "SILVER", "GOLD", "LEGEND"]
+        tier_name = tier_names[tier_level]
         return render_template(
             "mypage.html",
             profile=profile,
             role_label=role_label,
             is_own_profile=is_own,
+            awards_count=awards_count,
+            level=level,
+            exp_percent=exp_percent,
+            exp_current=exp_current,
+            exp_next=exp_next,
+            expertise_tags=expertise_tags,
+            pinned_portfolio=pinned_portfolio,
+            tier_level=tier_level,
+            tier_name=tier_name,
         )
     except Exception as e:
         logger.error("마이페이지 조회 실패: %s", e, exc_info=True)
@@ -488,6 +521,30 @@ def api_update_profile_image():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/profile/status-message", methods=["POST", "PUT", "PATCH"])
+def api_update_status_message():
+    """상태 메시지 추가/수정/삭제 (빈 문자열 = 삭제)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    status_message = data.get("status_message")
+    if status_message is None:
+        status_message = ""
+    if not isinstance(status_message, str):
+        return jsonify({"success": False, "error": "잘못된 형식입니다."}), 400
+    status_message = status_message.strip()[:80]
+    email = session.get("email")
+    if not email:
+        return jsonify({"success": False, "error": "사용자 정보가 없습니다."}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("profiles").update({"status_message": status_message or None}).eq("email", email).execute()
+        return jsonify({"success": True, "status_message": status_message or ""})
+    except Exception as e:
+        logger.error("상태 메시지 업데이트 실패: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/contests/by-ids")
 def api_contests_by_ids():
     """ID 목록으로 공고 조회 (최근 본 공고용)"""
@@ -514,13 +571,13 @@ def api_contests_by_ids():
 
 @app.route("/api/users")
 def api_users():
-    """가입된 사용자 목록 (닉네임, 프로필, 접속 상태)"""
+    """가입된 사용자 목록 (닉네임, 프로필, 접속 상태, 상태 메시지)"""
     if not session.get("logged_in"):
         return jsonify({"success": False, "error": "unauthorized"}), 401
     try:
-        supabase = get_supabase_client()
-        r = supabase.table("profiles").select("id, email, nickname, profile_url").order("nickname").execute()
-        users = [{"id": str(u["id"]), "email": u.get("email", ""), "nickname": u.get("nickname", ""), "profile_url": u.get("profile_url") or ""} for u in (r.data or [])]
+        supabase = get_supabase_admin_client()
+        r = supabase.table("profiles").select("id, email, nickname, profile_url, status_message").order("nickname").execute()
+        users = [{"id": str(u["id"]), "email": u.get("email", ""), "nickname": u.get("nickname", ""), "profile_url": u.get("profile_url") or "", "status_message": u.get("status_message") or ""} for u in (r.data or [])]
         current_id = str(session.get("user_id") or "")
 
         for u in users:
