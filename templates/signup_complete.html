@@ -6,6 +6,7 @@
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
   <title>가입 완료 | Ntpercent</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
   <style>
     @font-face {
       font-family: 'Pretendard Variable';
@@ -94,5 +95,7 @@
       <a href="{{ url_for('login_page') }}" class="btn-login">로그인하러 가기</a>
     </div>
   </div>
+  {% include 'partials/_loading_overlay.html' %}
+  <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
 </body>
 </html>

@@ -2,32 +2,25 @@
 
 Supabase PostgreSQL 및 로컬 SQLite 테이블을 여기에 기록합니다.
 **테이블 생성/변경 시 이 파일을 업데이트**해 주세요.
+
+Supabase SQL Editor에서 섹션별로 복사하여 실행합니다.
+
+---
+
 ## Supabase (PostgreSQL)
 
-<!-- 아래에 Supabase에서 생성한 테이블을 추가 -->
+### 1. profiles (유저 테이블)
 
--- 1. 유저 테이블 생성 (비밀번호 제거, 권한 및 닉네임 중심)
+```sql
 CREATE TABLE profiles (
-    -- Supabase Auth의 ID와 연결 (비밀번호 대신 이 ID로 매칭)
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    
-    -- 이메일 (데이터 조회 편의상 추가)
     email TEXT UNIQUE NOT NULL,
-    
-    -- 닉네임
     nickname TEXT NOT NULL,
-
-    -- 권한 (기본값 'member')
     role TEXT NOT NULL DEFAULT 'member' CHECK (role IN ('admin', 'member')),
-    
-    -- 가입일
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    
-    -- 수정일
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- 2. 수정일 자동 업데이트 함수
 CREATE OR REPLACE FUNCTION update_modified_column()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -36,33 +29,148 @@ BEGIN
 END;
 $$ language 'plpgsql';
 
--- 3. 트리거 적용
 CREATE TRIGGER update_profiles_modtime
     BEFORE UPDATE ON profiles
     FOR EACH ROW
     EXECUTE PROCEDURE update_modified_column();
+```
 
--- 4. RLS 정책 (profiles 테이블)
--- 이메일/닉네임 중복체크 API 및 회원가입 시 insert를 위해 필요
--- Supabase Dashboard > Table Editor > profiles > RLS 에서 설정
--- 예: FOR SELECT USING (true);  -- 중복체크용
--- 예: FOR INSERT WITH CHECK (true);  -- 회원가입 시 저장용 (또는 서비스 역할 사용)
+- profile_url, status_message 등 추가 컬럼은 필요 시 ALTER
 
--- 참고: password 컬럼 삭제됨 (Supabase Auth에서 비밀번호 관리)
--- profile_url: 프로필 이미지 URL 컬럼 추가됨
+---
 
--- 5. presence 테이블 (접속 중 상태, 배포 환경 공유용)
+### 2. presence (접속 상태)
+
+```sql
 CREATE TABLE IF NOT EXISTS presence (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID UNIQUE NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
-    last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    last_seen TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    online BOOLEAN DEFAULT true
+);
+```
+
+---
+
+### 3. contests (공모전 리스트)
+
+30분마다 크롤링 → Edge Function → upsert. 리스트만 저장, 본문은 on-demand.
+
+```sql
+CREATE TABLE IF NOT EXISTS contests (
+    source TEXT NOT NULL,           -- 출처 ('요즘것들', 'wavity' 등)
+    id TEXT NOT NULL,               -- 출처별 게시글 ID
+    title TEXT,
+    d_day TEXT,
+    host TEXT,
+    url TEXT,
+    category TEXT DEFAULT 'NULL',
+    created_at TIMESTAMPTZ,
+    first_seen_at TIMESTAMPTZ,
+    PRIMARY KEY (source, id)
 );
 
+CREATE INDEX IF NOT EXISTS idx_contests_created ON contests(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_contests_source ON contests(source);
+```
+
+---
+
+### 4. contest_comments (댓글)
+
+공모전당 댓글 (대댓글 없음)
+
+```sql
+CREATE TABLE IF NOT EXISTS contest_comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    contest_id TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (source, contest_id) REFERENCES contests(source, id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_contest_comments_contest ON contest_comments(source, contest_id);
+```
+
+---
+
+### 5. contest_bookmarks (즐겨찾기/북마크)
+
+```sql
+CREATE TABLE IF NOT EXISTS contest_bookmarks (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    contest_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, source, contest_id),
+    FOREIGN KEY (source, contest_id) REFERENCES contests(source, id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_contest_bookmarks_user ON contest_bookmarks(user_id);
+```
+
+---
+
+### 6. contest_participation (참가/패스)
+
+행 없음 = 미결정. `participate` = 참가, `pass` = 패스
+
+```sql
+CREATE TABLE IF NOT EXISTS contest_participation (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    contest_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('participate', 'pass')),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, source, contest_id),
+    FOREIGN KEY (source, contest_id) REFERENCES contests(source, id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_contest_participation_user ON contest_participation(user_id);
+CREATE INDEX IF NOT EXISTS idx_contest_participation_contest ON contest_participation(source, contest_id);
+```
+
+---
+
+## ER 관계
+
+```
+contests (source, id)
+    │
+    ├── contest_comments (1:N)
+    ├── contest_bookmarks (N:M)
+    └── contest_participation (N:M)
+```
+
+---
+
+## RLS 정책 (참고)
+
+| 테이블 | SELECT | INSERT | UPDATE | DELETE |
+|--------|--------|--------|--------|--------|
+| contest_comments | 모두 | 본인 | 본인 | 본인 |
+| contest_bookmarks | 본인만 | 본인 | 본인 | 본인 |
+| contest_participation | 본인만 | 본인 | 본인 | 본인 |
+
+---
+
 ## 로컬 SQLite (contests.db)
--- contests만 사용. presence는 Supabase에 저장
+
+- 예전에 사용하던 로컬 contests. 이후 Supabase contests로 통합 예정
+
+---
+
+## 크롤링 (GitHub Actions + Edge Function)
+
+- 30분마다 `crawl-contests` Edge Function 호출 → contests 테이블 upsert
+- 상세: [docs/크롤링_설정.md](크롤링_설정.md)
+
+---
 
 ## Supabase Storage
--- 버킷명: profile (Dashboard > Storage에서 생성, public 권한 권장)
--- 경로: private/{user_id}/avatar.{ext} (정책: foldername[1]='private' 필요)
--- 업로드 시 사용자 JWT 사용 (get_supabase_client_with_auth) - RLS 정책 auth.role()='authenticated' 만족
--- 상세: docs/프로필_이미지_Storage_설정.md
+
+- 버킷: `profile`
+- 경로: `private/{user_id}/avatar.{ext}`
+- 상세: docs/프로필_이미지_Storage_설정.md
