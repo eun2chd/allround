@@ -1,4 +1,4 @@
-name: Crawl Contests (30min - 최신만)
+name: Crawl Contests (30min)
 
 on:
   schedule:
@@ -9,9 +9,15 @@ jobs:
   crawl:
     runs-on: ubuntu-latest
     steps:
-      - name: Invoke Edge Function
+      - name: Crawl 요즘것들 (allforyoung)
         run: |
           curl -sS -X POST \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Content-Type: application/json" \
             "${{ secrets.SUPABASE_URL }}/functions/v1/crawl-contests"
+      - name: Crawl 위비티 (wevity)
+        run: |
+          curl -sS -X POST \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
+            -H "Content-Type: application/json" \
+            "${{ secrets.SUPABASE_URL }}/functions/v1/crawl-wevity"

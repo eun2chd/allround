@@ -816,6 +816,210 @@ def api_bookmarks_assign():
         return jsonify({"success": False, "error": err_msg}), 500
 
 
+@app.route("/api/user/contest-status")
+def api_user_contest_status():
+    """현재 사용자의 내용확인/참가/패스 상태 + 댓글 작성한 공모전 (내용 봤음)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": {"content_checks": [], "participation": {}, "commented": []}})
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": {"content_checks": [], "participation": {}, "commented": []}})
+    try:
+        supabase = get_supabase_admin_client()
+        content_checks = []
+        try:
+            r = supabase.table("contest_content_checks").select("source, contest_id").eq("user_id", user_id).execute()
+            content_checks = [(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])]
+        except Exception:
+            pass
+        participation = {}
+        try:
+            r = supabase.table("contest_participation").select("source, contest_id, status").eq("user_id", user_id).execute()
+            for x in (r.data or []):
+                k = (x.get("source") or "") + ":" + (x.get("contest_id") or "")
+                participation[k] = x.get("status") or ""
+        except Exception:
+            pass
+        commented = []
+        try:
+            r = supabase.table("contest_comments").select("source, contest_id").eq("user_id", user_id).execute()
+            commented = list({(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])})
+        except Exception:
+            pass
+        return jsonify({"success": True, "data": {"content_checks": content_checks, "participation": participation, "commented": commented}})
+    except Exception as e:
+        logger.error("api/user/contest-status 오류: %s", e)
+        return jsonify({"success": True, "data": {"content_checks": [], "participation": {}, "commented": []}})
+
+
+def _post_comment(supabase, user_id, source, contest_id, body):
+    """댓글 자동 등록 (내부용)"""
+    try:
+        supabase.table("contest_comments").insert({
+            "user_id": user_id,
+            "source": source,
+            "contest_id": contest_id,
+            "body": body,
+        }).execute()
+    except Exception as ex:
+        logger.warning("댓글 자동 등록 실패: %s", ex)
+
+
+def _upsert_participation_comment(supabase, user_id, source, contest_id, body):
+    """참가/패스 댓글: 기존 참가 또는 패스 댓글이 있으면 업데이트, 없으면 신규 등록"""
+    try:
+        r = supabase.table("contest_comments").select("id").eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).in_("body", ["공모전 참가", "공모전 패스"]).execute()
+        if r.data and len(r.data) > 0:
+            supabase.table("contest_comments").update({"body": body}).eq("id", r.data[0]["id"]).execute()
+        else:
+            supabase.table("contest_comments").insert({
+                "user_id": user_id,
+                "source": source,
+                "contest_id": contest_id,
+                "body": body,
+            }).execute()
+    except Exception as ex:
+        logger.warning("참가/패스 댓글 업데이트 실패: %s", ex)
+
+
+@app.route("/api/contests/<source>/<contest_id>/content-check", methods=["POST"])
+def api_contest_content_check(source, contest_id):
+    """내용확인 클릭: contest_content_checks 기록 + 댓글 '공모전 내용확인 완료' 작성"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        try:
+            supabase.table("contest_content_checks").upsert(
+                {"user_id": user_id, "source": source, "contest_id": contest_id},
+                on_conflict="user_id,source,contest_id"
+            ).execute()
+        except Exception:
+            supabase.table("contest_content_checks").insert({
+                "user_id": user_id,
+                "source": source,
+                "contest_id": contest_id,
+            }).execute()
+        _post_comment(supabase, user_id, source, contest_id, "공모전 내용확인 완료")
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/contest/content-check 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/contests/<source>/<contest_id>/participation", methods=["POST"])
+def api_contest_participation(source, contest_id):
+    """참가/패스 클릭: contest_participation 업데이트 + 댓글 작성. 내용확인 후에만 가능."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    data = request.get_json(silent=True) or {}
+    status = (data.get("status") or "").strip()
+    if status not in ("participate", "pass"):
+        return jsonify({"success": False, "error": "status는 participate 또는 pass"}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        try:
+            chk = supabase.table("contest_content_checks").select("user_id").eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).execute()
+            if not chk.data or len(chk.data) == 0:
+                return jsonify({"success": False, "error": "먼저 내용확인을 해주세요"}), 400
+        except Exception:
+            return jsonify({"success": False, "error": "먼저 내용확인을 해주세요"}), 400
+        supabase.table("contest_participation").upsert(
+            {"user_id": user_id, "source": source, "contest_id": contest_id, "status": status},
+            on_conflict="user_id,source,contest_id"
+        ).execute()
+        comment_body = "공모전 참가" if status == "participate" else "공모전 패스"
+        _upsert_participation_comment(supabase, user_id, source, contest_id, comment_body)
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/contest/participation 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/contests/<source>/<contest_id>/comments")
+def api_contest_comments(source, contest_id):
+    """공모전 댓글 목록 조회"""
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contest_comments").select("id, user_id, body, created_at").eq("source", source).eq("contest_id", contest_id).order("created_at").execute()
+        rows = r.data or []
+        # nickname, profile_url 조회 (profiles)
+        user_ids = list({x["user_id"] for x in rows if x.get("user_id")})
+        profiles_map = {}
+        if user_ids:
+            try:
+                p = supabase.table("profiles").select("id, nickname, profile_url").in_("id", user_ids).execute()
+                for u in (p.data or []):
+                    profiles_map[u["id"]] = {"nickname": u.get("nickname") or "익명", "profile_url": u.get("profile_url") or ""}
+            except Exception:
+                pass
+        for row in rows:
+            pr = profiles_map.get(row.get("user_id")) or {}
+            row["nickname"] = pr.get("nickname", "익명")
+            row["profile_url"] = pr.get("profile_url", "")
+        current_user_id = str(session.get("user_id") or "") if session.get("logged_in") else None
+        return jsonify({"success": True, "data": rows, "current_user_id": current_user_id})
+    except Exception as e:
+        logger.error("api/contest_comments 오류: %s", e)
+        return jsonify({"success": True, "data": [], "current_user_id": None})
+
+
+@app.route("/api/comments/<comment_id>", methods=["DELETE"])
+def api_comment_delete(comment_id):
+    """본인 댓글 삭제"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contest_comments").select("id, user_id, source, contest_id").eq("id", comment_id).execute()
+        if not r.data or len(r.data) == 0:
+            return jsonify({"success": False, "error": "댓글을 찾을 수 없습니다"}), 404
+        row = r.data[0]
+        if str(row.get("user_id") or "") != str(user_id):
+            return jsonify({"success": False, "error": "본인 댓글만 삭제할 수 있습니다"}), 403
+        supabase.table("contest_comments").delete().eq("id", comment_id).execute()
+        return jsonify({"success": True, "source": row.get("source"), "contest_id": row.get("contest_id")})
+    except Exception as e:
+        logger.error("api/comment_delete 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/contests/<source>/<contest_id>/comments", methods=["POST"])
+def api_contest_comments_create(source, contest_id):
+    """공모전 댓글 등록"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    data = request.get_json(silent=True) or {}
+    body = (data.get("body") or "").strip()
+    if not body:
+        return jsonify({"success": False, "error": "댓글 내용을 입력하세요"}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        row = supabase.table("contest_comments").insert({
+            "user_id": user_id,
+            "source": source,
+            "contest_id": contest_id,
+            "body": body,
+        }).execute()
+        created = row.data[0] if row.data else {}
+        return jsonify({"success": True, "data": created})
+    except Exception as e:
+        logger.error("api/contest_comments POST 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/post/<post_id>")
 def api_post(post_id):
     """상세 페이지 내용 크롤링"""

@@ -37,7 +37,7 @@
       line-height: 1.5;
     }
     .page-placeholder { padding: 80px 24px; text-align: center; font-size: 0.95rem; color: var(--gray-muted); }
-    .container { max-width: 1100px; margin: 0 auto; padding: 24px 48px; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 24px 48px; }
     .page-header {
       display: flex;
       align-items: center;
@@ -120,10 +120,10 @@
       vertical-align: middle;
     }
     tr:hover td { background: #faf5ff; }
-    tr.row-new { border-left: 3px solid var(--accent-yellow); background: #fffbeb; }
+    tr.row-new { border-left: 3px solid #dc2626; background: #fef2f2; }
     tr.row-viewed td { color: var(--text-dark); }
     tr.row-viewed .title-cell a { color: var(--text-dark); }
-    .status-dot { display: inline-block; width: 8px; height: 8px; background: var(--accent-yellow); border-radius: 50%; margin-right: 8px; vertical-align: middle; }
+    .status-dot { display: inline-block; width: 8px; height: 8px; background: #dc2626; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
     .status-check { color: #059669; margin-right: 8px; font-weight: bold; }
     .bookmark-star {
       cursor: pointer;
@@ -222,12 +222,42 @@
     td:nth-child(5),
     td:nth-child(6),
     td:nth-child(7),
-    td:nth-child(8) {
+    td:nth-child(8),
+    td:nth-child(9) {
       white-space: nowrap;
     }
     .d-day.urgent { background: #dc2626; color: #fff; }
     .d-day.normal { background: var(--soft-purple); color: var(--main-purple); }
     .d-day.today { background: var(--accent-yellow); color: #fff; }
+    .action-cell {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      align-items: center;
+    }
+    .btn-action {
+      font-size: 0.72rem;
+      padding: 5px 10px;
+      min-width: 72px;
+      background: var(--bg-white);
+      border: 1px solid var(--border-gray);
+      color: var(--text-dark);
+    }
+    .btn-action:hover:not(:disabled) {
+      background: var(--soft-purple);
+      border-color: var(--main-purple);
+      color: var(--main-purple);
+    }
+    .btn-action:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .btn-action.action-btn-active {
+      background: var(--main-purple);
+      border-color: var(--main-purple);
+      color: #fff;
+    }
     .empty-state {
       padding: 60px 24px;
       text-align: center;
@@ -353,6 +383,82 @@
       justify-content: flex-end;
       flex-shrink: 0;
     }
+    .detail-row .detail-comments {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border-gray);
+      background: rgba(255,255,255,0.5);
+      text-align: left;
+    }
+    .detail-comments-title { font-size: 0.9rem; font-weight: 700; margin-bottom: 12px; color: var(--text-dark); text-align: left; }
+    .detail-comments-list { margin-bottom: 16px; text-align: left; }
+    .detail-comment-item {
+      padding: 12px 14px;
+      margin-bottom: 10px;
+      background: var(--bg-white);
+      border-radius: var(--radius);
+      border: 1px solid var(--border-gray);
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    .detail-comment-item:last-child { margin-bottom: 0; }
+    .comment-delete-btn {
+      display: block;
+      margin-top: 8px;
+      margin-left: auto;
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      background: transparent;
+      border: 1px solid #dc2626;
+      color: #dc2626;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: fit-content;
+    }
+    .comment-delete-btn:hover {
+      opacity: 0.8;
+    }
+    .detail-comment-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .detail-comment-time {
+      margin-left: auto;
+      font-size: 0.75rem;
+      color: var(--gray-muted);
+    }
+    .detail-comment-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--soft-purple);
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--main-purple);
+    }
+    .detail-comment-nickname { font-weight: 600; color: var(--text-dark); font-size: 0.88rem; }
+    .detail-comment-body { white-space: pre-wrap; word-break: break-word; padding-left: 42px; font-size: 0.85rem; line-height: 1.5; }
+    .detail-comment-empty { font-size: 0.85rem; color: var(--gray-muted); padding: 12px 0; }
+    .detail-comment-form { display: flex; gap: 8px; align-items: flex-start; }
+    .detail-comment-form textarea {
+      flex: 1;
+      min-height: 56px;
+      padding: 10px 12px;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      font-family: var(--font);
+      font-size: 0.88rem;
+      resize: vertical;
+    }
+    .detail-comment-form textarea:focus { outline: none; border-color: var(--main-purple); }
     .detail-loading { color: var(--gray-muted); text-align: center; padding: 30px; }
     .detail-meta { font-size: 0.85rem; color: var(--gray-muted); margin-bottom: 12px; }
     .detail-images { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
@@ -425,6 +531,14 @@
     <div class="filter-bar" id="filterBar" style="display:none">
       <input type="text" id="searchInput" placeholder="제목, 주최·주관 검색" autocomplete="off">
       <div class="filter-group">
+        <label for="checkFilterSelect">확인</label>
+        <select id="checkFilterSelect">
+          <option value="">전체</option>
+          <option value="checked">확인함</option>
+          <option value="unchecked">확인 안함</option>
+        </select>
+      </div>
+      <div class="filter-group">
         <label for="categorySelect">카테고리</label>
         <select id="categorySelect">
           <option value="">전체</option>
@@ -451,10 +565,11 @@
               <th style="width:100px">카테고리</th>
               <th style="width:80px">출처</th>
               <th style="width:140px">가져온 시간</th>
+              <th style="width:140px">액션</th>
             </tr>
           </thead>
           <tbody id="tableBody">
-            <tr><td colspan="8" class="loading">로딩 중</td></tr>
+            <tr><td colspan="9" class="loading">로딩 중</td></tr>
           </tbody>
         </table>
       </div>
@@ -530,11 +645,13 @@
     setInterval(updateDateTime, 1000);
     startCountdown();
 
-    const VIEWED_KEY = 'allyoung_viewed';
     let allData = [];
     let filteredData = [];
     let currentPage = 1;
     let bookmarkSet = new Set();
+    let contentChecks = new Set();
+    let participation = {};
+    let commentedSet = new Set();
 
     function getDdaySortKey(dDay) {
       if (!dDay || typeof dDay !== 'string') return 500;
@@ -551,8 +668,13 @@
     function applyFiltersAndSort() {
       let list = [...allData];
       const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+      const checkFilter = (document.getElementById('checkFilterSelect')?.value || '').trim();
       const cat = (document.getElementById('categorySelect')?.value || '').trim();
       const src = (document.getElementById('sourceSelect')?.value || '').trim();
+      const keyFn = (s, c) => (s || '') + ':' + (c || '');
+      const hasContentCheck = (r) => contentChecks.has(keyFn(r.source, r.id));
+      if (checkFilter === 'checked') list = list.filter(r => hasContentCheck(r));
+      if (checkFilter === 'unchecked') list = list.filter(r => !hasContentCheck(r));
       if (q) {
         list = list.filter(r =>
           (r.title || '').toLowerCase().includes(q) ||
@@ -562,7 +684,18 @@
       }
       if (cat) list = list.filter(r => (r.category || '공모전') === cat);
       if (src) list = list.filter(r => (r.source || '요즘것들') === src);
-      list.sort((a, b) => getDdaySortKey(a.d_day) - getDdaySortKey(b.d_day));
+      const isTodayDeadline = (r) => (r.d_day || '').includes('오늘');
+      const getSortPri = (r) => {
+        if (hasContentCheck(r)) return 0;
+        if (isTodayDeadline(r)) return 1;
+        return 2;
+      };
+      list.sort((a, b) => {
+        const pa = getSortPri(a);
+        const pb = getSortPri(b);
+        if (pa !== pb) return pa - pb;
+        return getDdaySortKey(a.d_day) - getDdaySortKey(b.d_day);
+      });
       filteredData = list;
       currentPage = 1;
       renderTable(filteredData, 1);
@@ -583,18 +716,6 @@
       }
     }
 
-    function getViewedIds() {
-      try {
-        const raw = localStorage.getItem(VIEWED_KEY);
-        return new Set(raw ? JSON.parse(raw) : []);
-      } catch { return new Set(); }
-    }
-    function addViewedId(id) {
-      const ids = getViewedIds();
-      ids.add(id);
-      localStorage.setItem(VIEWED_KEY, JSON.stringify([...ids]));
-    }
-
     function showToast(msg, type = 'success') {
       toast.textContent = msg;
       toast.className = 'toast ' + type;
@@ -602,11 +723,44 @@
       setTimeout(() => { toast.style.display = 'none'; }, 3000);
     }
 
+    async function refreshDetailCommentsIfOpen(source, contestId) {
+      const detailRow = Array.from(tableBody.querySelectorAll('tr.detail-row')).find(r => r.dataset.forId === contestId && r.dataset.source === source);
+      if (!detailRow) return;
+      const listEl = detailRow.querySelector('.detail-comments-list');
+      if (!listEl) return;
+      try {
+        const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/comments');
+        const j = await r.json();
+        if (!j.success || !j.data) { listEl.innerHTML = '<div class="detail-comment-empty">아직 댓글이 없습니다.</div>'; return; }
+        const list = j.data;
+        const myId = (j.current_user_id || '').toString();
+        if (!list.length) { listEl.innerHTML = '<div class="detail-comment-empty">아직 댓글이 없습니다.</div>'; return; }
+        listEl.innerHTML = list.map(c => {
+          const nick = c.nickname || '익명';
+          const initial = nick.slice(0, 1).toUpperCase();
+          const avatarStyle = c.profile_url ? "background-image:url('" + escapeHtml(c.profile_url).replace(/'/g, "\\'") + "')" : '';
+          const avatarInner = c.profile_url ? '' : '<span>' + escapeHtml(initial) + '</span>';
+          const timeStr = c.created_at ? new Date(c.created_at).toLocaleString('ko-KR') : '';
+          const isOwn = myId && (c.user_id || '').toString() === myId;
+          const deleteBtn = isOwn ? '<button type="button" class="comment-delete-btn" data-comment-id="' + escapeHtml(c.id || '') + '">삭제</button>' : '';
+          return '<div class="detail-comment-item">' +
+            '<div class="detail-comment-header">' +
+            '<div class="detail-comment-avatar" style="' + avatarStyle + '">' + avatarInner + '</div>' +
+            '<span class="detail-comment-nickname">' + escapeHtml(nick) + '</span>' +
+            (timeStr ? '<span class="detail-comment-time">' + escapeHtml(timeStr) + '</span>' : '') +
+            '</div>' +
+            '<div class="detail-comment-body">' + escapeHtml(c.body || '') + '</div>' +
+            (deleteBtn) +
+            '</div>';
+        }).join('');
+      } catch (e) { /* ignore */ }
+    }
+
     function renderTable(data, page = 1) {
       if (!data || data.length === 0) {
         const isFiltered = allData.length > 0;
         tableBody.innerHTML = `
-          <tr><td colspan="8" class="empty-state">
+          <tr><td colspan="9" class="empty-state">
             <p>${isFiltered ? '검색·필터 조건에 맞는 공고가 없습니다.' : '저장된 공고가 없습니다.'}</p>
             <p>${isFiltered ? '다른 조건으로 검색해 보세요.' : '데이터는 30분마다 자동으로 갱신됩니다.'}</p>
           </td></tr>
@@ -618,12 +772,12 @@
       const start = (page - 1) * PAGE_SIZE;
       const pageData = data.slice(start, start + PAGE_SIZE);
 
-      const viewedIds = getViewedIds();
       const bookmarkedKey = (s, c) => (s || '') + ':' + (c || '');
       const isBookmarked = (r) => bookmarkSet.has(bookmarkedKey(r.source, r.id));
+      const hasCommented = (r) => commentedSet.has(bookmarkedKey(r.source, r.id));
       tableBody.innerHTML = pageData.map((row, idx) => {
         const no = start + idx + 1;
-        const isViewed = viewedIds.has(row.id);
+        const isViewed = hasCommented(row);
         const rowClass = isViewed ? 'row-viewed' : 'row-new';
         const statusHtml = isViewed
           ? '<span class="status-check">✓</span>'
@@ -631,6 +785,15 @@
         const dClass = row.d_day?.includes('마감') ? 'urgent' : (row.d_day?.includes('오늘') ? 'today' : 'normal');
         const starClass = isBookmarked(row) ? 'bookmark-star bookmarked' : 'bookmark-star';
         const starChar = isBookmarked(row) ? '★' : '☆';
+        const key = bookmarkedKey(row.source, row.id);
+        const contentChecked = contentChecks.has(key);
+        const partStatus = participation[key] || '';
+        const btnCheckDisabled = contentChecked ? ' disabled' : '';
+        const btnCheckText = contentChecked ? '확인완료' : '내용확인';
+        const btnPartDisabled = contentChecked ? '' : ' disabled';
+        const btnPassDisabled = contentChecked ? '' : ' disabled';
+        const btnPartActive = partStatus === 'participate' ? ' action-btn-active' : '';
+        const btnPassActive = partStatus === 'pass' ? ' action-btn-active' : '';
         return `
           <tr data-id="${escapeHtml(row.id)}" data-source="${escapeHtml(row.source || '')}" class="${rowClass}">
             <td><span class="${starClass}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}" title="북마크">${starChar}</span></td>
@@ -643,6 +806,11 @@
             <td>${escapeHtml(row.category || '공모전')}</td>
             <td>${escapeHtml(row.source || '요즘것들')}</td>
             <td>${formatFetchTime(row.created_at)}</td>
+            <td class="action-cell">
+              <button type="button" class="btn btn-action btn-content-check" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}"${contentChecked ? ' disabled title="이미 확인함"' : ' title="클릭 시 댓글 자동 작성: 공모전 내용확인 완료"'}>${btnCheckText}</button>
+              <button type="button" class="btn btn-action btn-participate${btnPartActive}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}"${contentChecked ? '' : ' disabled'} title="${contentChecked ? '참가 (댓글: 공모전 참가)' : '내용확인 후 활성화'}">참가</button>
+              <button type="button" class="btn btn-action btn-pass${btnPassActive}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}"${contentChecked ? '' : ' disabled'} title="${contentChecked ? '패스 (댓글: 공모전 패스)' : '내용확인 후 활성화'}">패스</button>
+            </td>
           </tr>
         `;
       }).join('');
@@ -696,7 +864,7 @@
     async function loadContests(showLoading = true) {
       if (showLoading) {
         if (typeof window.showLoading === 'function') window.showLoading();
-        tableBody.innerHTML = '<tr><td colspan="8" class="loading">로딩 중</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="9" class="loading">로딩 중</td></tr>';
         pagination.style.display = 'none';
       }
       try {
@@ -706,16 +874,25 @@
         if (j.success && j.data) {
           allData = j.data;
           document.getElementById('filterBar').style.display = allData.length ? 'flex' : 'none';
-          const br = await fetch('/api/bookmarks');
+          const [br, statusRes] = await Promise.all([
+            fetch('/api/bookmarks'),
+            fetch('/api/user/contest-status')
+          ]);
           const bj = await br.json();
           if (bj.success && bj.data) {
             bookmarkSet = new Set(bj.data.map(x => (x.source || '') + ':' + (x.contest_id || '')));
+          }
+          const statusJ = await statusRes.json();
+          if (statusJ.success && statusJ.data) {
+            contentChecks = new Set(statusJ.data.content_checks || []);
+            participation = statusJ.data.participation || {};
+            commentedSet = new Set(statusJ.data.commented || []);
           }
           populateFilterOptions();
           applyFiltersAndSort();
         }
       } catch (e) {
-        tableBody.innerHTML = '<tr><td colspan="8" class="empty-state">데이터를 불러올 수 없습니다.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="9" class="empty-state">데이터를 불러올 수 없습니다.</td></tr>';
       } finally {
         if (showLoading && typeof window.hideLoading === 'function') window.hideLoading();
       }
@@ -727,29 +904,89 @@
     }
 
     async function toggleDetailRow(postId, url, title, clickedRow) {
+      const source = clickedRow?.dataset?.source || '요즘것들';
       const next = clickedRow.nextElementSibling;
       if (next?.classList.contains('detail-row') && next.dataset.forId === postId) {
         next.remove();
         return;
       }
       removeDetailRow();
-      addViewedId(postId);
-      clickedRow.classList.remove('row-new');
-      clickedRow.classList.add('row-viewed');
-      const noCell = clickedRow.querySelector('td:nth-child(2)');
-      if (noCell && !noCell.querySelector('.status-check')) {
-        const num = (noCell.textContent.match(/\d+/) || [''])[0];
-        noCell.innerHTML = '<span class="status-check">✓</span>' + num;
-      }
 
       const detailTr = document.createElement('tr');
       detailTr.className = 'detail-row';
       detailTr.dataset.forId = postId;
-      detailTr.innerHTML = '<td colspan="8"><div class="detail-inner"><div class="detail-loading">불러오는 중...</div></div><div class="detail-footer"></div></td>';
+      detailTr.dataset.source = source;
+      detailTr.innerHTML = '<td colspan="9"><div class="detail-inner"><div class="detail-loading">불러오는 중...</div></div><div class="detail-footer"></div><div class="detail-comments"><div class="detail-comments-title">댓글</div><div class="detail-comments-list"></div><div class="detail-comment-form"><textarea placeholder="댓글을 입력하세요" rows="2"></textarea><button type="button" class="btn btn-primary detail-comment-submit">등록</button></div></div></td>';
       clickedRow.after(detailTr);
 
       const inner = detailTr.querySelector('.detail-inner');
       const footer = detailTr.querySelector('.detail-footer');
+      const commentsList = detailTr.querySelector('.detail-comments-list');
+      const commentText = detailTr.querySelector('.detail-comment-form textarea');
+      const commentSubmit = detailTr.querySelector('.detail-comment-submit');
+
+      function renderComments(list, currentUserId) {
+        if (!list || list.length === 0) {
+          commentsList.innerHTML = '<div class="detail-comment-empty">아직 댓글이 없습니다.</div>';
+          return;
+        }
+        const myId = (currentUserId || '').toString();
+        commentsList.innerHTML = list.map(c => {
+          const nick = c.nickname || '익명';
+          const initial = nick.slice(0, 1).toUpperCase();
+          const avatarStyle = c.profile_url ? "background-image:url('" + escapeHtml(c.profile_url).replace(/'/g, "\\'") + "')" : '';
+          const avatarInner = c.profile_url ? '' : '<span>' + escapeHtml(initial) + '</span>';
+          const timeStr = c.created_at ? new Date(c.created_at).toLocaleString('ko-KR') : '';
+          const isOwn = myId && (c.user_id || '').toString() === myId;
+          const deleteBtn = isOwn ? '<button type="button" class="comment-delete-btn" data-comment-id="' + escapeHtml(c.id || '') + '">삭제</button>' : '';
+          return '<div class="detail-comment-item">' +
+            '<div class="detail-comment-header">' +
+            '<div class="detail-comment-avatar" style="' + avatarStyle + '">' + avatarInner + '</div>' +
+            '<span class="detail-comment-nickname">' + escapeHtml(nick) + '</span>' +
+            (timeStr ? '<span class="detail-comment-time">' + escapeHtml(timeStr) + '</span>' : '') +
+            '</div>' +
+            '<div class="detail-comment-body">' + escapeHtml(c.body || '') + '</div>' +
+            (deleteBtn) +
+            '</div>';
+        }).join('');
+      }
+      async function loadComments() {
+        try {
+          const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(postId) + '/comments');
+          const j = await r.json();
+          if (j.success && j.data) renderComments(j.data, j.current_user_id);
+          else renderComments([]);
+        } catch (e) { renderComments([]); }
+      }
+      commentSubmit.addEventListener('click', async () => {
+        const body = (commentText.value || '').trim();
+        if (!body) return;
+        try {
+          const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(postId) + '/comments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ body })
+          });
+          const j = await r.json();
+          if (j.success) {
+            commentedSet.add(source + ':' + postId);
+            const row = Array.from(tableBody.querySelectorAll('tr')).find(r => r.dataset.id === postId && r.dataset.source === source);
+            if (row && !row.classList.contains('detail-row')) {
+              row.classList.remove('row-new');
+              row.classList.add('row-viewed');
+              const noCell = row.querySelector('td:nth-child(2)');
+              if (noCell) {
+                const num = (noCell.textContent.match(/\d+/) || [''])[0];
+                noCell.innerHTML = '<span class="status-check">✓</span>' + num;
+              }
+            }
+            await loadComments();
+            commentText.value = '';
+            showToast('댓글이 등록되었습니다');
+          } else showToast(j.error || '등록 실패', 'error');
+        } catch (e) { showToast('등록 실패', 'error'); }
+      });
+      loadComments();
 
       try {
         const r = await fetch('/api/post/' + postId);
@@ -789,6 +1026,151 @@
     imgModalImg.addEventListener('click', (e) => e.stopPropagation());
 
     tableBody.addEventListener('click', async (e) => {
+      const delBtn = e.target.closest('.comment-delete-btn');
+      if (delBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const commentId = delBtn.dataset.commentId || '';
+        if (!commentId) return;
+        const detailRow = delBtn.closest('tr.detail-row');
+        const src = detailRow?.dataset?.source || '';
+        const cid = detailRow?.dataset?.forId || '';
+        try {
+          const r = await fetch('/api/comments/' + encodeURIComponent(commentId), { method: 'DELETE' });
+          const j = await r.json();
+          if (j.success) {
+            const src2 = j.source || src;
+            const cid2 = j.contest_id || cid;
+            await refreshDetailCommentsIfOpen(src2, cid2);
+            const rr = await fetch('/api/contests/' + encodeURIComponent(src2) + '/' + encodeURIComponent(cid2) + '/comments');
+            const jj = await rr.json();
+            const list = jj.success ? (jj.data || []) : [];
+            const myId = (jj.current_user_id || '').toString();
+            const stillHasMine = list.some(c => (c.user_id || '').toString() === myId);
+            if (!stillHasMine) {
+              commentedSet.delete(src2 + ':' + cid2);
+              const row = Array.from(tableBody.querySelectorAll('tr')).find(r => r.dataset.id === cid2 && r.dataset.source === src2 && !r.classList.contains('detail-row'));
+              if (row) {
+                row.classList.add('row-new');
+                row.classList.remove('row-viewed');
+                const noCell = row.querySelector('td:nth-child(2)');
+                if (noCell) {
+                  const num = (noCell.textContent.match(/\d+/) || [''])[0];
+                  noCell.innerHTML = '<span class="status-dot"></span>' + num;
+                }
+              }
+            }
+            showToast('댓글이 삭제되었습니다');
+          } else showToast(j.error || '삭제 실패', 'error');
+        } catch (err) { showToast('삭제 실패', 'error'); }
+        return;
+      }
+      const btnCheck = e.target.closest('.btn-content-check');
+      const btnPart = e.target.closest('.btn-participate');
+      const btnPass = e.target.closest('.btn-pass');
+      if (btnCheck && !btnCheck.disabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        const source = btnCheck.dataset.source || '요즘것들';
+        const contestId = btnCheck.dataset.contestId || '';
+        if (!contestId) return;
+        try {
+          const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/content-check', { method: 'POST' });
+          const j = await r.json();
+          if (j.success) {
+            contentChecks.add(source + ':' + contestId);
+            commentedSet.add(source + ':' + contestId);
+            btnCheck.textContent = '확인완료';
+            btnCheck.disabled = true;
+            btnCheck.title = '이미 확인함';
+            const row = btnCheck.closest('tr');
+            if (row && !row.classList.contains('detail-row')) {
+              const partBtn = row.querySelector('.btn-participate');
+              const passBtn = row.querySelector('.btn-pass');
+              if (partBtn) { partBtn.disabled = false; partBtn.title = '참가 (댓글: 공모전 참가)'; }
+              if (passBtn) { passBtn.disabled = false; passBtn.title = '패스 (댓글: 공모전 패스)'; }
+              row.classList.remove('row-new');
+              row.classList.add('row-viewed');
+              const noCell = row.querySelector('td:nth-child(2)');
+              if (noCell) {
+                const num = (noCell.textContent.match(/\d+/) || [''])[0];
+                noCell.innerHTML = '<span class="status-check">✓</span>' + num;
+              }
+            }
+            refreshDetailCommentsIfOpen(source, contestId);
+            showToast('내용확인 완료');
+          } else showToast(j.error || '실패', 'error');
+        } catch (err) { showToast('오류가 발생했습니다', 'error'); }
+        return;
+      }
+      if (btnPart && !btnPart.disabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        const source = btnPart.dataset.source || '요즘것들';
+        const contestId = btnPart.dataset.contestId || '';
+        if (!contestId) return;
+        try {
+          const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/participation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'participate' })
+          });
+          const j = await r.json();
+          if (j.success) {
+            participation[source + ':' + contestId] = 'participate';
+            commentedSet.add(source + ':' + contestId);
+            const row = btnPart.closest('tr');
+            if (row && !row.classList.contains('detail-row')) {
+              row.querySelector('.btn-participate')?.classList.add('action-btn-active');
+              row.querySelector('.btn-pass')?.classList.remove('action-btn-active');
+              row.classList.remove('row-new');
+              row.classList.add('row-viewed');
+              const noCell = row.querySelector('td:nth-child(2)');
+              if (noCell) {
+                const num = (noCell.textContent.match(/\d+/) || [''])[0];
+                noCell.innerHTML = '<span class="status-check">✓</span>' + num;
+              }
+            }
+            refreshDetailCommentsIfOpen(source, contestId);
+            showToast('공모전 참가');
+          } else showToast(j.error || '실패', 'error');
+        } catch (err) { showToast('오류가 발생했습니다', 'error'); }
+        return;
+      }
+      if (btnPass && !btnPass.disabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        const source = btnPass.dataset.source || '요즘것들';
+        const contestId = btnPass.dataset.contestId || '';
+        if (!contestId) return;
+        try {
+          const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/participation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: 'pass' })
+          });
+          const j = await r.json();
+          if (j.success) {
+            participation[source + ':' + contestId] = 'pass';
+            commentedSet.add(source + ':' + contestId);
+            const row = btnPass.closest('tr');
+            if (row && !row.classList.contains('detail-row')) {
+              row.querySelector('.btn-pass')?.classList.add('action-btn-active');
+              row.querySelector('.btn-participate')?.classList.remove('action-btn-active');
+              row.classList.remove('row-new');
+              row.classList.add('row-viewed');
+              const noCell = row.querySelector('td:nth-child(2)');
+              if (noCell) {
+                const num = (noCell.textContent.match(/\d+/) || [''])[0];
+                noCell.innerHTML = '<span class="status-check">✓</span>' + num;
+              }
+            }
+            refreshDetailCommentsIfOpen(source, contestId);
+            showToast('공모전 패스');
+          } else showToast(j.error || '실패', 'error');
+        } catch (err) { showToast('오류가 발생했습니다', 'error'); }
+        return;
+      }
       const star = e.target.closest('.bookmark-star');
       if (star) {
         e.preventDefault();
@@ -855,6 +1237,7 @@
 
     document.getElementById('searchInput')?.addEventListener('input', () => applyFiltersAndSort());
     document.getElementById('searchInput')?.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyFiltersAndSort(); });
+    document.getElementById('checkFilterSelect')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('categorySelect')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('sourceSelect')?.addEventListener('change', () => applyFiltersAndSort());
 

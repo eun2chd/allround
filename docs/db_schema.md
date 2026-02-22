@@ -75,6 +75,11 @@ CREATE INDEX IF NOT EXISTS idx_contests_created ON contests(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_contests_source ON contests(source);
 ```
 
+**Realtime 구독 사용 시**: INSERT/UPDATE/DELETE 감지를 위해 `contests`가 publication에 있어야 합니다.
+- 대시보드: **Database** → **Replication** → Tables에서 `contests` ON 확인
+- 아직 없다면: `ALTER PUBLICATION supabase_realtime ADD TABLE contests;`
+- `relation "contests" is already member of publication` 오류 시 → 이미 등록된 상태 (정상)
+
 ---
 
 ### 4. contest_comments (댓글)
@@ -138,7 +143,26 @@ CREATE INDEX IF NOT EXISTS idx_contest_bookmarks_folder ON contest_bookmarks(fol
 
 ---
 
-### 7. contest_participation (참가/패스)
+### 7. contest_content_checks (내용확인)
+
+내용확인 버튼 클릭 시 기록. 참가/패스 버튼은 내용확인 후에만 활성화.
+
+```sql
+CREATE TABLE IF NOT EXISTS contest_content_checks (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    contest_id TEXT NOT NULL,
+    checked_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, source, contest_id),
+    FOREIGN KEY (source, contest_id) REFERENCES contests(source, id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_contest_content_checks_user ON contest_content_checks(user_id);
+CREATE INDEX IF NOT EXISTS idx_contest_content_checks_contest ON contest_content_checks(source, contest_id);
+```
+
+---
+
+### 8. contest_participation (참가/패스)
 
 행 없음 = 미결정. `participate` = 참가, `pass` = 패스
 
@@ -176,6 +200,7 @@ contests (source, id)
 | 테이블 | SELECT | INSERT | UPDATE | DELETE |
 |--------|--------|--------|--------|--------|
 | contest_comments | 모두 | 본인 | 본인 | 본인 |
+| contest_content_checks | 본인만 | 본인 | - | 본인 |
 | bookmark_folders | 본인만 | 본인 | 본인 | 본인 |
 | contest_bookmarks | 본인만 | 본인 | 본인 | 본인 |
 | contest_participation | 본인만 | 본인 | 본인 | 본인 |
