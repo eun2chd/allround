@@ -17,6 +17,7 @@
       </div>
       <a href="#" class="nav-btn-icon" id="navNotificationBtn" title="알림" role="button"><img src="{{ url_for('static', filename='images/notification.png') }}" alt="알림"></a>
       <a href="{{ url_for('mypage') }}" class="nav-btn-mypage">마이페이지</a>
+      <a href="{{ url_for('bookmarks_page') }}" class="nav-btn-bookmarks">즐겨찾기</a>
       <a href="{{ url_for('logout') }}" class="nav-btn-logout">로그아웃</a>
     </div>
     {% else %}

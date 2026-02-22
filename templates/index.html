@@ -56,16 +56,18 @@
       gap: 16px;
       flex-wrap: wrap;
     }
-    .last-update {
-      font-size: 0.78rem;
-      color: #212121;
-      font-weight: bold;
+    .page-meta-info {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
     }
-    .countdown {
-      font-size: 0.78rem;
-      color: var(--main-purple);
-      margin-left: 12px;
-    }
+    .page-meta-info .refresh-hint { font-weight: 700; color: var(--text-dark); }
+    .page-meta-info .countdown { color: var(--main-purple); font-weight: 700; }
+    .page-meta-info .datetime { color: var(--text-dark); font-weight: 700; }
     .btn {
       font-family: var(--font);
       font-size: 0.82rem;
@@ -123,17 +125,90 @@
     tr.row-viewed .title-cell a { color: var(--text-dark); }
     .status-dot { display: inline-block; width: 8px; height: 8px; background: var(--accent-yellow); border-radius: 50%; margin-right: 8px; vertical-align: middle; }
     .status-check { color: #059669; margin-right: 8px; font-weight: bold; }
-    .title-cell { max-width: 280px; text-align: center; }
+    .bookmark-star {
+      cursor: pointer;
+      font-size: 1.1rem;
+      user-select: none;
+      color: var(--border-gray);
+      transition: color 0.2s;
+    }
+    .bookmark-star:hover { color: var(--accent-yellow); }
+    .bookmark-star.bookmarked { color: var(--accent-yellow); }
+    .title-cell {
+      max-width: 280px;
+      text-align: center;
+      overflow: hidden;
+    }
     .title-cell a {
       color: var(--text-dark);
       text-decoration: none;
       font-weight: 500;
       display: block;
       text-align: center;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .title-cell a:hover {
       color: var(--main-purple);
       text-decoration: underline;
+    }
+    .host-cell {
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .cell-tooltip {
+      position: relative;
+      cursor: default;
+    }
+    .cell-tooltip[data-tooltip]::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 10px);
+      transform: translateX(-50%);
+      padding: 12px 16px;
+      background: rgba(33, 33, 33, 0.95);
+      color: #fff;
+      font-size: 0.85rem;
+      font-weight: 500;
+      line-height: 1.5;
+      white-space: normal;
+      max-width: 340px;
+      min-width: 120px;
+      border-radius: 10px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      z-index: 2000;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+      word-break: keep-all;
+      overflow-wrap: break-word;
+    }
+    .cell-tooltip[data-tooltip]:hover::after {
+      opacity: 1;
+      visibility: visible;
+    }
+    .cell-tooltip[data-tooltip]::before {
+      content: '';
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% + 2px);
+      transform: translateX(-50%);
+      border: 6px solid transparent;
+      border-top-color: rgba(33, 33, 33, 0.95);
+      z-index: 2001;
+      pointer-events: none;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+    }
+    .cell-tooltip[data-tooltip]:hover::before {
+      opacity: 1;
+      visibility: visible;
     }
     .d-day {
       display: inline-block;
@@ -144,16 +219,11 @@
       white-space: nowrap;
     }
     td:nth-child(2),
-    td:nth-child(4),
     td:nth-child(5),
     td:nth-child(6),
-    td:nth-child(7) {
+    td:nth-child(7),
+    td:nth-child(8) {
       white-space: nowrap;
-    }
-    td:nth-child(4) {
-      max-width: 140px;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
     .d-day.urgent { background: #dc2626; color: #fff; }
     .d-day.normal { background: var(--soft-purple); color: var(--main-purple); }
@@ -194,7 +264,7 @@
     }
     .toast {
       position: fixed;
-      bottom: 24px;
+      top: 80px;
       right: 24px;
       padding: 12px 20px;
       background: var(--bg-white);
@@ -208,7 +278,7 @@
     .toast.success { border-left: 4px solid var(--main-purple); }
     .toast.error { border-left: 4px solid #da3633; }
     @keyframes slideUp {
-      from { opacity: 0; transform: translateY(20px); }
+      from { opacity: 0; transform: translateY(-10px); }
       to { opacity: 1; transform: translateY(0); }
     }
     .pagination {
@@ -291,6 +361,46 @@
     .img-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 3000; padding: 24px; cursor: pointer; opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s; }
     .img-modal.open { opacity: 1; visibility: visible; }
     .img-modal img { max-width: 95%; max-height: 95vh; object-fit: contain; border-radius: 8px; }
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding: 16px;
+      background: var(--soft-purple);
+      border-radius: var(--radius);
+      border: 1px solid rgba(109, 40, 217, 0.2);
+    }
+    .filter-bar input,
+    .filter-bar select {
+      font-family: var(--font);
+      font-size: 0.88rem;
+      padding: 8px 12px;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      background: var(--bg-white);
+      color: var(--text-dark);
+    }
+    .filter-bar input { flex: 1; min-width: 120px; }
+    .filter-bar input::placeholder { color: var(--gray-muted); }
+    .filter-bar input:focus,
+    .filter-bar select:focus {
+      outline: none;
+      border-color: var(--main-purple);
+      box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.15);
+    }
+    .filter-bar label {
+      font-size: 0.8rem;
+      color: var(--gray-muted);
+      margin-right: 4px;
+    }
+    .filter-bar .filter-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .filter-bar .filter-group select { min-width: 100px; }
     @media (max-width: 768px) {
       .container { padding: 24px 20px; }
     }
@@ -304,17 +414,36 @@
     <header class="page-header">
       <h1><span>{{ session.get('nickname', '') or '회원' }}</span>님, <span>요즘것들</span> 공고 모음을 확인해보세요</h1>
       <div class="page-meta">
-        <span class="last-update" id="lastUpdate">마지막 업데이트: -</span>
-        <span class="countdown" id="countdown"></span>
-        <button class="btn btn-primary" id="btnRefresh">새로고침</button>
+        <div class="page-meta-info">
+  
+          <span class="countdown" id="countdown">(다음 갱신까지 30:00)</span>
+          <span class="datetime" id="currentDateTime">-</span>
+        </div>
       </div>
     </header>
+
+    <div class="filter-bar" id="filterBar" style="display:none">
+      <input type="text" id="searchInput" placeholder="제목, 주최·주관 검색" autocomplete="off">
+      <div class="filter-group">
+        <label for="categorySelect">카테고리</label>
+        <select id="categorySelect">
+          <option value="">전체</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="sourceSelect">출처</label>
+        <select id="sourceSelect">
+          <option value="">전체</option>
+        </select>
+      </div>
+    </div>
 
     <div class="card">
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
+              <th style="width:40px" title="북마크">★</th>
               <th style="width:60px">No</th>
               <th style="width:60px">D-day</th>
               <th>제목</th>
@@ -325,7 +454,7 @@
             </tr>
           </thead>
           <tbody id="tableBody">
-            <tr><td colspan="7" class="loading">로딩 중</td></tr>
+            <tr><td colspan="8" class="loading">로딩 중</td></tr>
           </tbody>
         </table>
       </div>
@@ -351,25 +480,108 @@
   </div>
 
   {% include 'partials/_loading_overlay.html' %}
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
   <script>
     const PAGE_SIZE = 10;
-    const REFRESH_INTERVAL = 300;
+    const SUPABASE_URL = {{ (supabase_url or '')|tojson }};
+    const SUPABASE_ANON_KEY = {{ (supabase_anon_key or '')|tojson }};
     const tableBody = document.getElementById('tableBody');
-    const lastUpdate = document.getElementById('lastUpdate');
-    const btnRefresh = document.getElementById('btnRefresh');
     const toast = document.getElementById('toast');
     const pagination = document.getElementById('pagination');
     const pageNumbers = document.getElementById('pageNumbers');
     const btnPrev = document.getElementById('btnPrev');
     const btnNext = document.getElementById('btnNext');
     const countdownEl = document.getElementById('countdown');
+    const dateTimeEl = document.getElementById('currentDateTime');
+
+    const REFRESH_INTERVAL_SEC = 30 * 60;
+    let countdownSec = REFRESH_INTERVAL_SEC;
+    let countdownTimer = null;
+
+    function updateDateTime() {
+      if (dateTimeEl) {
+        const now = new Date();
+        dateTimeEl.textContent = now.toLocaleString('ko-KR', {
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          hour12: false
+        });
+      }
+    }
+
+    function startCountdown() {
+      if (countdownTimer) clearInterval(countdownTimer);
+      countdownSec = REFRESH_INTERVAL_SEC;
+      function fmt() {
+        const m = Math.floor(countdownSec / 60);
+        const s = countdownSec % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+      if (countdownEl) countdownEl.textContent = `(다음 갱신까지 ${fmt()})`;
+      countdownTimer = setInterval(() => {
+        countdownSec--;
+        if (countdownSec <= 0) countdownSec = REFRESH_INTERVAL_SEC;
+        if (countdownEl) countdownEl.textContent = `(다음 갱신까지 ${fmt()})`;
+      }, 1000);
+    }
+
+    updateDateTime();
+    setInterval(updateDateTime, 1000);
+    startCountdown();
 
     const VIEWED_KEY = 'allyoung_viewed';
     let allData = [];
+    let filteredData = [];
     let currentPage = 1;
-    let countdownSec = 0;
-    let countdownTimer = null;
+    let bookmarkSet = new Set();
+
+    function getDdaySortKey(dDay) {
+      if (!dDay || typeof dDay !== 'string') return 500;
+      const s = dDay.trim();
+      const dayMatch = s.match(/(\d+)\s*일/);
+      if (dayMatch) return parseInt(dayMatch[1], 10);
+      const dMatch = s.match(/D-(\d+)/i);
+      if (dMatch) return parseInt(dMatch[1], 10);
+      if (s.includes('오늘') || s === 'D-day') return 0;
+      if (s.includes('마감') && !s.includes('일')) return 999999;
+      return 500;
+    }
+
+    function applyFiltersAndSort() {
+      let list = [...allData];
+      const q = (document.getElementById('searchInput')?.value || '').trim().toLowerCase();
+      const cat = (document.getElementById('categorySelect')?.value || '').trim();
+      const src = (document.getElementById('sourceSelect')?.value || '').trim();
+      if (q) {
+        list = list.filter(r =>
+          (r.title || '').toLowerCase().includes(q) ||
+          (r.host || '').toLowerCase().includes(q) ||
+          (r.category || '').toLowerCase().includes(q)
+        );
+      }
+      if (cat) list = list.filter(r => (r.category || '공모전') === cat);
+      if (src) list = list.filter(r => (r.source || '요즘것들') === src);
+      list.sort((a, b) => getDdaySortKey(a.d_day) - getDdaySortKey(b.d_day));
+      filteredData = list;
+      currentPage = 1;
+      renderTable(filteredData, 1);
+    }
+
+    function populateFilterOptions() {
+      const cats = [...new Set(allData.map(r => r.category || '공모전').filter(Boolean))].sort();
+      const srcs = [...new Set(allData.map(r => r.source || '요즘것들').filter(Boolean))].sort();
+      const catSelect = document.getElementById('categorySelect');
+      const srcSelect = document.getElementById('sourceSelect');
+      if (catSelect) {
+        const cur = catSelect.value;
+        catSelect.innerHTML = '<option value="">전체</option>' + cats.map(c => `<option value="${escapeHtml(c)}"${c === cur ? ' selected' : ''}>${escapeHtml(c)}</option>`).join('');
+      }
+      if (srcSelect) {
+        const cur = srcSelect.value;
+        srcSelect.innerHTML = '<option value="">전체</option>' + srcs.map(s => `<option value="${escapeHtml(s)}"${s === cur ? ' selected' : ''}>${escapeHtml(s)}</option>`).join('');
+      }
+    }
 
     function getViewedIds() {
       try {
@@ -383,31 +595,6 @@
       localStorage.setItem(VIEWED_KEY, JSON.stringify([...ids]));
     }
 
-    function startCountdown() {
-      if (countdownTimer) clearInterval(countdownTimer);
-      countdownSec = REFRESH_INTERVAL;
-      const fmt = (s) => s >= 60 ? `${Math.floor(s/60)}분 ${s%60}초` : `${s}초`;
-      countdownEl.textContent = countdownSec > 0 ? `(다음 갱신까지 ${fmt(countdownSec)})` : '';
-      countdownTimer = setInterval(() => {
-        countdownSec--;
-        countdownEl.textContent = countdownSec > 0 ? `(다음 갱신까지 ${fmt(countdownSec)})` : '';
-        if (countdownSec <= 0) {
-          clearInterval(countdownTimer);
-          countdownTimer = null;
-          refreshInBackground();
-          startCountdown();
-        }
-      }, 1000);
-    }
-
-    function stopCountdown() {
-      if (countdownTimer) {
-        clearInterval(countdownTimer);
-        countdownTimer = null;
-      }
-      countdownEl.textContent = '';
-    }
-
     function showToast(msg, type = 'success') {
       toast.textContent = msg;
       toast.className = 'toast ' + type;
@@ -417,10 +604,11 @@
 
     function renderTable(data, page = 1) {
       if (!data || data.length === 0) {
+        const isFiltered = allData.length > 0;
         tableBody.innerHTML = `
-          <tr><td colspan="7" class="empty-state">
-            <p>저장된 공고가 없습니다.</p>
-            <p>위의 <strong>새로고침</strong> 버튼을 눌러 데이터를 수집하세요.</p>
+          <tr><td colspan="8" class="empty-state">
+            <p>${isFiltered ? '검색·필터 조건에 맞는 공고가 없습니다.' : '저장된 공고가 없습니다.'}</p>
+            <p>${isFiltered ? '다른 조건으로 검색해 보세요.' : '데이터는 30분마다 자동으로 갱신됩니다.'}</p>
           </td></tr>
         `;
         pagination.style.display = 'none';
@@ -431,6 +619,8 @@
       const pageData = data.slice(start, start + PAGE_SIZE);
 
       const viewedIds = getViewedIds();
+      const bookmarkedKey = (s, c) => (s || '') + ':' + (c || '');
+      const isBookmarked = (r) => bookmarkSet.has(bookmarkedKey(r.source, r.id));
       tableBody.innerHTML = pageData.map((row, idx) => {
         const no = start + idx + 1;
         const isViewed = viewedIds.has(row.id);
@@ -439,14 +629,17 @@
           ? '<span class="status-check">✓</span>'
           : '<span class="status-dot"></span>';
         const dClass = row.d_day?.includes('마감') ? 'urgent' : (row.d_day?.includes('오늘') ? 'today' : 'normal');
+        const starClass = isBookmarked(row) ? 'bookmark-star bookmarked' : 'bookmark-star';
+        const starChar = isBookmarked(row) ? '★' : '☆';
         return `
-          <tr data-id="${escapeHtml(row.id)}" class="${rowClass}">
+          <tr data-id="${escapeHtml(row.id)}" data-source="${escapeHtml(row.source || '')}" class="${rowClass}">
+            <td><span class="${starClass}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}" title="북마크">${starChar}</span></td>
             <td>${statusHtml}${no}</td>
             <td><span class="d-day ${dClass}">${escapeHtml(row.d_day || '-')}</span></td>
-            <td class="title-cell">
+            <td class="title-cell cell-tooltip" data-tooltip="${escapeHtml(row.title || '')}">
               <a href="${escapeHtml(row.url)}" target="_blank" rel="noopener" data-id="${escapeHtml(row.id)}" data-url="${escapeHtml(row.url)}" class="title-link">${escapeHtml(row.title)}</a>
             </td>
-            <td>${escapeHtml(row.host || '-')}</td>
+            <td class="host-cell cell-tooltip" data-tooltip="${escapeHtml(row.host || '-')}">${escapeHtml(row.host || '-')}</td>
             <td>${escapeHtml(row.category || '공모전')}</td>
             <td>${escapeHtml(row.source || '요즘것들')}</td>
             <td>${formatFetchTime(row.created_at)}</td>
@@ -478,7 +671,7 @@
 
     function goToPage(page) {
       currentPage = page;
-      renderTable(allData, currentPage);
+      renderTable(filteredData, currentPage);
     }
 
     function escapeHtml(s) {
@@ -503,7 +696,7 @@
     async function loadContests(showLoading = true) {
       if (showLoading) {
         if (typeof window.showLoading === 'function') window.showLoading();
-        tableBody.innerHTML = '<tr><td colspan="7" class="loading">로딩 중</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="8" class="loading">로딩 중</td></tr>';
         pagination.style.display = 'none';
       }
       try {
@@ -512,38 +705,19 @@
         console.log('[API /api/contests]', j);
         if (j.success && j.data) {
           allData = j.data;
-          currentPage = 1;
-          renderTable(allData, 1);
-          if (j.last_updated) {
-            const d = new Date(j.last_updated);
-            lastUpdate.textContent = '마지막 업데이트: ' + d.toLocaleString('ko-KR');
+          document.getElementById('filterBar').style.display = allData.length ? 'flex' : 'none';
+          const br = await fetch('/api/bookmarks');
+          const bj = await br.json();
+          if (bj.success && bj.data) {
+            bookmarkSet = new Set(bj.data.map(x => (x.source || '') + ':' + (x.contest_id || '')));
           }
-          startCountdown();
-        } else {
-          stopCountdown();
+          populateFilterOptions();
+          applyFiltersAndSort();
         }
       } catch (e) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="empty-state">데이터를 불러올 수 없습니다.</td></tr>';
-        stopCountdown();
+        tableBody.innerHTML = '<tr><td colspan="8" class="empty-state">데이터를 불러올 수 없습니다.</td></tr>';
       } finally {
         if (showLoading && typeof window.hideLoading === 'function') window.hideLoading();
-      }
-    }
-
-    async function refreshInBackground() {
-      try {
-        const r = await fetch('/api/refresh', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pages: 3 })
-        });
-        const j = await r.json();
-        if (j.success) {
-          showToast(j.message || '백그라운드 갱신 완료');
-          await loadContests(false);
-        }
-      } catch (e) {
-        showToast('갱신 실패: ' + e.message, 'error');
       }
     }
 
@@ -562,7 +736,7 @@
       addViewedId(postId);
       clickedRow.classList.remove('row-new');
       clickedRow.classList.add('row-viewed');
-      const noCell = clickedRow.querySelector('td:first-child');
+      const noCell = clickedRow.querySelector('td:nth-child(2)');
       if (noCell && !noCell.querySelector('.status-check')) {
         const num = (noCell.textContent.match(/\d+/) || [''])[0];
         noCell.innerHTML = '<span class="status-check">✓</span>' + num;
@@ -571,7 +745,7 @@
       const detailTr = document.createElement('tr');
       detailTr.className = 'detail-row';
       detailTr.dataset.forId = postId;
-      detailTr.innerHTML = '<td colspan="7"><div class="detail-inner"><div class="detail-loading">불러오는 중...</div></div><div class="detail-footer"></div></td>';
+      detailTr.innerHTML = '<td colspan="8"><div class="detail-inner"><div class="detail-loading">불러오는 중...</div></div><div class="detail-footer"></div></td>';
       clickedRow.after(detailTr);
 
       const inner = detailTr.querySelector('.detail-inner');
@@ -614,7 +788,40 @@
     imgModal.addEventListener('click', closeImgModal);
     imgModalImg.addEventListener('click', (e) => e.stopPropagation());
 
-    tableBody.addEventListener('click', (e) => {
+    tableBody.addEventListener('click', async (e) => {
+      const star = e.target.closest('.bookmark-star');
+      if (star) {
+        e.preventDefault();
+        e.stopPropagation();
+        const source = star.dataset.source || '요즘것들';
+        const contestId = star.dataset.contestId || '';
+        if (!contestId) return;
+        try {
+          const r = await fetch('/api/bookmarks/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, contest_id: contestId })
+          });
+          const j = await r.json();
+          if (j.success) {
+            const key = source + ':' + contestId;
+            if (j.bookmarked) {
+              bookmarkSet.add(key);
+              star.textContent = '★';
+              star.classList.add('bookmarked');
+              showToast('북마크에 추가했습니다');
+            } else {
+              bookmarkSet.delete(key);
+              star.textContent = '☆';
+              star.classList.remove('bookmarked');
+              showToast('북마크에서 제거했습니다');
+            }
+          }
+        } catch (err) {
+          showToast('오류가 발생했습니다', 'error');
+        }
+        return;
+      }
       const img = e.target.closest('img.detail-img');
       if (img) {
         e.preventDefault();
@@ -646,35 +853,20 @@
     btnPrev.addEventListener('click', () => goToPage(currentPage - 1));
     btnNext.addEventListener('click', () => goToPage(currentPage + 1));
 
-    async function doRefresh() {
-      btnRefresh.disabled = true;
-      btnRefresh.textContent = '수집 중...';
-      if (typeof window.showLoading === 'function') window.showLoading();
-      try {
-        const r = await fetch('/api/refresh', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pages: 3 })
-        });
-        const j = await r.json();
-        console.log('[API /api/refresh]', j);
-        if (j.success) {
-          showToast(j.message || '저장 완료');
-          await loadContests(false);
-        } else {
-          showToast(j.error || '오류 발생', 'error');
-        }
-      } catch (e) {
-        showToast('연결 실패: ' + e.message, 'error');
-      } finally {
-        btnRefresh.disabled = false;
-        btnRefresh.textContent = '새로고침';
-        if (typeof window.hideLoading === 'function') window.hideLoading();
-      }
-    }
+    document.getElementById('searchInput')?.addEventListener('input', () => applyFiltersAndSort());
+    document.getElementById('searchInput')?.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyFiltersAndSort(); });
+    document.getElementById('categorySelect')?.addEventListener('change', () => applyFiltersAndSort());
+    document.getElementById('sourceSelect')?.addEventListener('change', () => applyFiltersAndSort());
 
-    btnRefresh.addEventListener('click', doRefresh);
     loadContests();
+
+    if (SUPABASE_URL && SUPABASE_ANON_KEY && typeof supabase !== 'undefined') {
+      const { createClient } = supabase;
+      const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabaseClient.channel('contests').on('postgres_changes', { event: '*', schema: 'public', table: 'contests' }, () => {
+        loadContests(false);
+      }).subscribe();
+    }
   </script>
 </body>
 </html>

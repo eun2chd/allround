@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS presence (
 ### 3. contests (공모전 리스트)
 
 30분마다 크롤링 → Edge Function → upsert. 리스트만 저장, 본문은 on-demand.
+프론트엔드: /api/contests 조회 + Realtime 구독(변경 시 자동 갱신).
 
 ```sql
 CREATE TABLE IF NOT EXISTS contests (
@@ -96,24 +97,48 @@ CREATE INDEX IF NOT EXISTS idx_contest_comments_contest ON contest_comments(sour
 
 ---
 
-### 5. contest_bookmarks (즐겨찾기/북마크)
+### 5. bookmark_folders (북마크 폴더 - 최대 2단계)
+
+```sql
+CREATE TABLE IF NOT EXISTS bookmark_folders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    parent_id UUID REFERENCES bookmark_folders(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    sort_order INT DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_bookmark_folders_user ON bookmark_folders(user_id);
+CREATE INDEX IF NOT EXISTS idx_bookmark_folders_parent ON bookmark_folders(parent_id);
+```
+
+- parent_id = null: 1단계 폴더
+- parent_id = 1단계 폴더 id: 2단계 폴더 (더 깊은 단계 금지)
+
+---
+
+### 6. contest_bookmarks (즐겨찾기/북마크)
 
 ```sql
 CREATE TABLE IF NOT EXISTS contest_bookmarks (
     user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
     source TEXT NOT NULL,
     contest_id TEXT NOT NULL,
+    folder_id UUID REFERENCES bookmark_folders(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     PRIMARY KEY (user_id, source, contest_id),
     FOREIGN KEY (source, contest_id) REFERENCES contests(source, id) ON DELETE CASCADE
 );
-
 CREATE INDEX IF NOT EXISTS idx_contest_bookmarks_user ON contest_bookmarks(user_id);
+CREATE INDEX IF NOT EXISTS idx_contest_bookmarks_folder ON contest_bookmarks(folder_id);
 ```
+
+- folder_id = null: 미분류
+- 기존 테이블에 컬럼 추가: `ALTER TABLE contest_bookmarks ADD COLUMN IF NOT EXISTS folder_id UUID REFERENCES bookmark_folders(id) ON DELETE SET NULL;`
 
 ---
 
-### 6. contest_participation (참가/패스)
+### 7. contest_participation (참가/패스)
 
 행 없음 = 미결정. `participate` = 참가, `pass` = 패스
 
@@ -140,7 +165,7 @@ CREATE INDEX IF NOT EXISTS idx_contest_participation_contest ON contest_particip
 contests (source, id)
     │
     ├── contest_comments (1:N)
-    ├── contest_bookmarks (N:M)
+    ├── contest_bookmarks (N:M) ── folder_id ──> bookmark_folders (1단계/2단계)
     └── contest_participation (N:M)
 ```
 
@@ -151,14 +176,15 @@ contests (source, id)
 | 테이블 | SELECT | INSERT | UPDATE | DELETE |
 |--------|--------|--------|--------|--------|
 | contest_comments | 모두 | 본인 | 본인 | 본인 |
+| bookmark_folders | 본인만 | 본인 | 본인 | 본인 |
 | contest_bookmarks | 본인만 | 본인 | 본인 | 본인 |
 | contest_participation | 본인만 | 본인 | 본인 | 본인 |
 
 ---
 
-## 로컬 SQLite (contests.db)
+## 로컬 SQLite (제거됨)
 
-- 예전에 사용하던 로컬 contests. 이후 Supabase contests로 통합 예정
+- data/ 폴더 및 contests.db 제거됨. Supabase contests 사용.
 
 ---
 

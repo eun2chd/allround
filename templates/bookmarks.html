@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+  <title>즐겨찾기 | Ntpercent</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
+  <style>
+    @font-face {
+      font-family: 'Pretendard Variable';
+      src: url("{{ url_for('static', filename='font/PretendardVariable.ttf') }}") format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+    :root {
+      --main-purple: #6d28d9;
+      --main-purple-hover: #5b21b6;
+      --soft-purple: #ede9fe;
+      --text-dark: #212121;
+      --gray-muted: #9ca3af;
+      --accent-yellow: #f59e0b;
+      --bg-white: #ffffff;
+      --border-gray: #9ca3af;
+      --radius: 8px;
+      --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: var(--font);
+      background: var(--bg-white);
+      color: var(--text-dark);
+      font-weight: 500;
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    .container {
+      max-width: 1300px;
+      margin: 0 auto;
+      padding: 24px 48px;
+      display: flex;
+      gap: 28px;
+      align-items: flex-start;
+    }
+    .main-content { flex: 1; min-width: 0; }
+
+    /* ── 사이드바 ── */
+    .sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      background: #faf8ff;
+      border-radius: 12px;
+      padding: 20px 16px 16px;
+      border: 1.5px solid #c4b5fd;
+      box-shadow: 0 2px 12px rgba(109,40,217,0.08);
+      position: sticky;
+      top: 80px;
+    }
+    .sidebar-title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      margin-bottom: 14px;
+      color: var(--main-purple);
+      letter-spacing: -0.2px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .sidebar-title::before { content: '🗂️'; font-size: 1rem; }
+    /* 전체 / 미분류 */
+    .folder-virtual {
+      padding: 9px 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 600;
+      margin-bottom: 3px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #4b5563;
+      transition: background 0.15s;
+    }
+    .folder-virtual:hover { background: rgba(109,40,217,0.1); color: var(--main-purple); }
+    .folder-virtual.active { background: var(--main-purple); color: #fff; }
+    .folder-virtual.folder-all::before,
+    .folder-virtual.folder-unfiled::before { content: none; display: none; }
+    .folder-virtual { justify-content: space-between; }
+    .folder-count {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #6b7280;
+      background: rgba(0,0,0,0.06);
+      padding: 2px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      min-width: 28px;
+      text-align: center;
+      display: inline-block;
+    }
+    .folder-virtual.active .folder-count,
+    .folder-item.active .folder-count { color: rgba(255,255,255,0.9); background: rgba(255,255,255,0.25); }
+
+    /* 구분선 */
+    .folder-divider {
+      height: 1.5px;
+      background: #ddd6fe;
+      margin: 12px 0;
+      border-radius: 2px;
+    }
+
+    /* 폴더 그룹 (부모 + 자식 묶음) */
+    .folder-group {
+      margin-bottom: 4px;
+      padding-left: 0;
+      border-left: none;
+      margin-left: 0;
+    }
+    /* 1단계 폴더 — 아이콘과 텍스트 붙여서 왼쪽 정렬 */
+    .folder-item {
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      margin-bottom: 2px;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      transition: background 0.15s;
+      line-height: 1.4;
+    }
+    .folder-item:hover { background: rgba(109,40,217,0.1); }
+    .folder-item.active { background: var(--main-purple); color: #fff; }
+    .folder-item .folder-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex: 1;
+      min-width: 0;
+    }
+    .folder-item.level-1 .folder-left { flex: 0 1 auto; }
+    .folder-item.level-1 {
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #1f2937;
+    }
+    .folder-item.level-1 .folder-name { text-align: left; }
+    .folder-icon {
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
+      flex-shrink: 0;
+      background: url("{{ url_for('static', filename='images/folder.png') }}") center/contain no-repeat;
+    }
+    .folder-item.active.level-1 { color: #fff; }
+
+    /* 2단계 폴더 — 텍스트 가운데, 1단계와 왼쪽 라인 일치 */
+    .folder-item.level-2 {
+      margin-left: 0;
+      padding-left: 9.5px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: #374151;
+      border-left: 2.5px solid #c4b5fd;
+      border-radius: 0 6px 6px 0;
+    }
+    .folder-item.level-2 .folder-left {
+      flex: 1;
+      min-width: 0;
+    }
+    .folder-item.level-2 .folder-name {
+      padding-left: 6px;
+      text-align: left;
+    }
+    .folder-item.level-2 .folder-left::before {
+      content: '└';
+      display: inline-block;
+      width: 18px;
+      min-width: 18px;
+      font-size: 0.8rem;
+      color: #a78bfa;
+      margin-right: 8px;
+      margin-top: 1px;
+      flex-shrink: 0;
+      text-align: center;
+      line-height: 18px;
+    }
+    .folder-item.active.level-2 {
+      color: #fff;
+      border-left-color: rgba(255,255,255,0.4);
+    }
+    .folder-item.active.level-2 .folder-left::before { color: rgba(255,255,255,0.7); }
+
+    /* 폴더 개수 + 액션 버튼 — 오른쪽 끝라인 정렬 */
+    .folder-item .folder-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      flex-shrink: 0;
+      min-width: 28px;
+    }
+    .folder-actions {
+      display: flex;
+      gap: 3px;
+      opacity: 0;
+      width: 0;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .folder-item:hover .folder-actions,
+    .folder-item.active .folder-actions { opacity: 1; width: auto; overflow: visible; }
+    .folder-actions button {
+      background: rgba(109,40,217,0.1);
+      border: none;
+      cursor: pointer;
+      padding: 2px 6px;
+      font-size: 0.7rem;
+      color: var(--main-purple);
+      border-radius: 4px;
+      font-weight: 600;
+      transition: background 0.15s;
+    }
+    .folder-actions button:hover { background: rgba(109,40,217,0.22); }
+    .folder-item.active .folder-actions button {
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+    }
+    .folder-item.active .folder-actions button:hover {
+      background: rgba(255,255,255,0.35);
+    }
+
+    /* 새 폴더 버튼 */
+    .btn-add-folder {
+      width: 100%;
+      padding: 9px 12px;
+      margin-top: 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      border: 1.5px dashed #a78bfa;
+      background: transparent;
+      border-radius: 8px;
+      cursor: pointer;
+      color: #7c3aed;
+      transition: all 0.15s;
+    }
+    .btn-add-folder:hover {
+      border-color: var(--main-purple);
+      background: rgba(109,40,217,0.06);
+      color: var(--main-purple);
+    }
+    .folder-select {
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      border-radius: 4px;
+      border: 1px solid var(--border-gray);
+      background: var(--bg-white);
+      max-width: 120px;
+    }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1100;
+    }
+    .modal { background: var(--bg-white); padding: 24px; border-radius: var(--radius); min-width: 280px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+    .modal h3 { font-size: 1rem; margin-bottom: 16px; }
+    .modal input { width: 100%; padding: 10px 12px; margin-bottom: 16px; border: 1px solid var(--border-gray); border-radius: 6px; font-size: 0.9rem; }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .modal-btns button { padding: 8px 16px; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
+    .modal-btns .btn-primary { background: var(--main-purple); color: #fff; border: none; }
+    .modal-btns .btn-secondary { background: #e5e7eb; border: none; }
+    .page-header {
+      margin-bottom: 24px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border-gray);
+    }
+    .page-header h1 { font-size: 1.25rem; font-weight: 700; color: var(--text-dark); }
+    .page-header h1 span { color: var(--main-purple); }
+    .card { background: var(--bg-white); overflow: hidden; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; table-layout: fixed; }
+    th {
+      text-align: center;
+      padding: 10px 12px;
+      font-weight: 700;
+      color: var(--text-dark);
+      background: var(--soft-purple);
+      border: 1px solid var(--border-gray);
+      white-space: nowrap;
+    }
+    td {
+      text-align: center;
+      padding: 10px 12px;
+      border: 1px solid var(--border-gray);
+      vertical-align: middle;
+    }
+    tr:hover td { background: #faf5ff; }
+    .bookmark-star {
+      cursor: pointer;
+      font-size: 1.1rem;
+      user-select: none;
+      color: var(--accent-yellow);
+      transition: color 0.2s;
+    }
+    .bookmark-star:hover { color: #dc2626; }
+    .title-cell {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .title-cell a {
+      color: var(--text-dark);
+      text-decoration: none;
+      font-weight: 500;
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .title-cell a:hover {
+      color: var(--main-purple);
+      text-decoration: underline;
+    }
+    .host-cell {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .d-day {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 0.74rem;
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .d-day.urgent { background: #dc2626; color: #fff; }
+    .d-day.normal { background: var(--soft-purple); color: var(--main-purple); }
+    .d-day.today { background: var(--accent-yellow); color: #fff; }
+    .empty-state {
+      padding: 60px 24px;
+      text-align: center;
+      color: var(--gray-muted);
+    }
+    .empty-state p { margin-bottom: 12px; font-size: 0.9rem; }
+    .empty-state a { color: var(--main-purple); font-weight: 500; }
+    .loading {
+      padding: 40px;
+      text-align: center;
+      color: var(--gray-muted);
+    }
+    .loading::after {
+      content: '';
+      display: inline-block;
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--border-gray);
+      border-top-color: var(--main-purple);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      vertical-align: middle;
+      margin-left: 10px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .toast {
+      position: fixed;
+      top: 80px;
+      right: 24px;
+      padding: 12px 20px;
+      background: var(--bg-white);
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+      font-size: 0.9rem;
+      z-index: 1000;
+      animation: slideUp 0.3s ease;
+    }
+    .toast.success { border-left: 4px solid var(--main-purple); }
+    .toast.error { border-left: 4px solid #da3633; }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(-10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    td:nth-child(2), td:nth-child(6), td:nth-child(7), td:nth-child(8) { white-space: nowrap; }
+    @media (max-width: 768px) {
+      .container { flex-direction: column; padding: 24px 20px; }
+      .sidebar { width: 100%; position: static; }
+    }
+  </style>
+</head>
+<body>
+  {% include 'partials/_navbar.html' %}
+
+  <div class="container">
+    <aside class="sidebar">
+      <div class="sidebar-title">폴더</div>
+      <div id="folderList"></div>
+      <button type="button" class="btn-add-folder" id="btnAddFolder">+ 새 폴더</button>
+    </aside>
+    <main class="main-content">
+      <header class="page-header">
+        <h1><span>즐겨찾기</span> - 북마크한 공고</h1>
+      </header>
+
+      <div class="card">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:40px" title="북마크 해제">★</th>
+                <th style="width:50px">No</th>
+                <th style="width:70px">D-day</th>
+                <th style="width:28%">제목</th>
+                <th style="width:18%">주최/주관</th>
+                <th style="width:90px">카테고리</th>
+                <th style="width:70px">출처</th>
+                <th style="width:110px">폴더</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody">
+              <tr><td colspan="8" class="loading">로딩 중</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" style="display:none"></div>
+
+  {% include 'partials/_loading_overlay.html' %}
+  <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
+  <script>
+    const tableBody = document.getElementById('tableBody');
+    const toast = document.getElementById('toast');
+
+    function showToast(msg, type = 'success') {
+      toast.textContent = msg;
+      toast.className = 'toast ' + type;
+      toast.style.display = 'block';
+      setTimeout(() => { toast.style.display = 'none'; }, 3000);
+    }
+
+    function escapeHtml(s) {
+      const d = document.createElement('div');
+      d.textContent = s ?? '';
+      return d.innerHTML;
+    }
+
+    function renderFolderOptions(folders, selectedId) {
+      const roots = folders.filter(f => !f.parent_id);
+      const children = folders.filter(f => f.parent_id);
+      const sel = (id) => ((!id && !selectedId) || (id === selectedId)) ? ' selected' : '';
+      let html = '<option value=""' + sel('') + '>미분류</option>';
+      roots.forEach(r => {
+        html += `<option value="${r.id}"${sel(r.id)}>${escapeHtml(r.name)}</option>`;
+        children.filter(c => c.parent_id === r.id).forEach(c => {
+          html += `<option value="${c.id}"${sel(c.id)}>&nbsp;&nbsp;└ ${escapeHtml(c.name)}</option>`;
+        });
+      });
+      return html;
+    }
+
+    function renderTable(data) {
+      if (!data || data.length === 0) {
+        tableBody.innerHTML = `
+          <tr><td colspan="8" class="empty-state">
+            <p>북마크한 공고가 없습니다.</p>
+            <p><a href="{{ url_for('home') }}">공모전 목록</a>에서 ★를 눌러 즐겨찾기에 추가해 보세요.</p>
+          </td></tr>
+        `;
+        return;
+      }
+      const folders = window.folders || [];
+      tableBody.innerHTML = data.map((row, idx) => {
+        const dClass = row.d_day?.includes('마감') ? 'urgent' : (row.d_day?.includes('오늘') ? 'today' : 'normal');
+        const fid = row.folder_id || '';
+        const opts = renderFolderOptions(folders, fid);
+        const sel = `<select class="folder-select" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}">${opts}</select>`;
+        return `
+          <tr data-id="${escapeHtml(row.id)}" data-source="${escapeHtml(row.source || '')}">
+            <td><span class="bookmark-star" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}" title="북마크 해제">★</span></td>
+            <td>${idx + 1}</td>
+            <td><span class="d-day ${dClass}">${escapeHtml(row.d_day || '-')}</span></td>
+            <td class="title-cell">
+              <a href="${escapeHtml(row.url)}" target="_blank" rel="noopener" title="${escapeHtml(row.title || '')}">${escapeHtml(row.title)}</a>
+            </td>
+            <td class="host-cell" title="${escapeHtml(row.host || '')}">${escapeHtml(row.host || '-')}</td>
+            <td>${escapeHtml(row.category || '공모전')}</td>
+            <td>${escapeHtml(row.source || '요즘것들')}</td>
+            <td>${sel}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function removeRow(tr) {
+      tr.remove();
+      const rows = tableBody.querySelectorAll('tr[data-id]');
+      if (rows.length === 0) {
+        renderTable([]);
+      } else {
+        rows.forEach((r, i) => {
+          const noCell = r.querySelector('td:nth-child(2)');
+          if (noCell) noCell.textContent = i + 1;
+        });
+      }
+    }
+
+    let currentFolderId = null;
+
+    async function loadFolders() {
+      try {
+        const [fr, cr] = await Promise.all([
+          fetch('/api/bookmarks/folders'),
+          fetch('/api/bookmarks/folder-counts')
+        ]);
+        const fj = await fr.json();
+        const cj = await cr.json();
+        window.folders = fj.data || [];
+        window.folderCounts = cj.data || { all: 0, unfiled: 0, folders: {} };
+        renderFolderList();
+      } catch (e) {
+        window.folders = [];
+        window.folderCounts = { all: 0, unfiled: 0, folders: {} };
+        renderFolderList();
+      }
+    }
+
+    function renderFolderList() {
+      const list = document.getElementById('folderList');
+      const folders = window.folders || [];
+      const counts = window.folderCounts || { all: 0, unfiled: 0, folders: {} };
+      const roots = folders.filter(f => !f.parent_id);
+      const children = folders.filter(f => f.parent_id);
+      const active = currentFolderId === null ? 'all' : currentFolderId;
+      const n = (v) => v ?? 0;
+      let html = `
+        <div class="folder-virtual folder-all ${active === 'all' ? 'active' : ''}" data-id="all">
+          <span>전체</span>
+          <span class="folder-count">${n(counts.all)}</span>
+        </div>
+        <div class="folder-virtual folder-unfiled ${active === 'unfiled' ? 'active' : ''}" data-id="unfiled">
+          <span>미분류</span>
+          <span class="folder-count">${n(counts.unfiled)}</span>
+        </div>
+        ${roots.length > 0 ? '<div class="folder-divider"></div>' : ''}
+      `;
+      roots.forEach(r => {
+        const subs = children.filter(c => c.parent_id === r.id);
+        const canAddChild = subs.length < 10;
+        const cnt = counts.folders[r.id] || 0;
+        html += `<div class="folder-group">`;
+        html += `
+          <div class="folder-item level-1 ${active === r.id ? 'active' : ''}" data-id="${r.id}">
+            <span class="folder-left">
+              <span class="folder-icon"></span>
+              <span class="folder-name">${escapeHtml(r.name)}</span>
+            </span>
+            <span class="folder-right">
+              <span class="folder-count">${n(cnt)}</span>
+              <span class="folder-actions">
+                ${canAddChild ? `<button type="button" data-action="add-child" data-parent="${r.id}">+</button>` : ''}
+                <button type="button" data-action="rename" data-id="${r.id}">수정</button>
+                <button type="button" data-action="delete" data-id="${r.id}">삭제</button>
+              </span>
+            </span>
+          </div>
+        `;
+        subs.forEach((c) => {
+          const cnt2 = counts.folders[c.id] || 0;
+          html += `
+            <div class="folder-item level-2 ${active === c.id ? 'active' : ''}" data-id="${c.id}">
+              <span class="folder-left">
+                <span class="folder-name">${escapeHtml(c.name)}</span>
+              </span>
+              <span class="folder-right">
+                <span class="folder-count">${n(cnt2)}</span>
+                <span class="folder-actions">
+                  <button type="button" data-action="rename" data-id="${c.id}">수정</button>
+                  <button type="button" data-action="delete" data-id="${c.id}">삭제</button>
+                </span>
+              </span>
+            </div>
+          `;
+        });
+        html += `</div>`;
+      });
+      list.innerHTML = html;
+    }
+
+    async function loadBookmarks() {
+      if (typeof window.showLoading === 'function') window.showLoading();
+      tableBody.innerHTML = '<tr><td colspan="8" class="loading">로딩 중</td></tr>';
+      try {
+        let url = '/api/bookmarks/contests';
+        if (currentFolderId === 'unfiled') url += '?folder_id=unfiled';
+        else if (currentFolderId && currentFolderId !== 'all') url += '?folder_id=' + encodeURIComponent(currentFolderId);
+        const r = await fetch(url);
+        const j = await r.json();
+        if (j.success && j.data) {
+          renderTable(j.data);
+        } else {
+          renderTable([]);
+        }
+      } catch (e) {
+        tableBody.innerHTML = '<tr><td colspan="8" class="empty-state">데이터를 불러올 수 없습니다.</td></tr>';
+      } finally {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+      }
+    }
+
+    tableBody.addEventListener('click', async (e) => {
+      const star = e.target.closest('.bookmark-star');
+      if (!star) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const source = star.dataset.source || '요즘것들';
+      const contestId = star.dataset.contestId || '';
+      if (!contestId) return;
+      const tr = star.closest('tr');
+      try {
+        const r = await fetch('/api/bookmarks/toggle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source, contest_id: contestId })
+        });
+        const j = await r.json();
+        if (j.success && !j.bookmarked) {
+          removeRow(tr);
+          loadFolders();
+          showToast('북마크에서 제거했습니다');
+        } else {
+          showToast('오류가 발생했습니다', 'error');
+        }
+      } catch (err) {
+        showToast('오류가 발생했습니다', 'error');
+      }
+    });
+
+    tableBody.addEventListener('change', async (e) => {
+      const sel = e.target.closest('.folder-select');
+      if (!sel) return;
+      const source = sel.dataset.source || '';
+      const contestId = sel.dataset.contestId || '';
+      const folderId = sel.value || null;
+      try {
+        const r = await fetch('/api/bookmarks/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ source, contest_id: contestId, folder_id: folderId })
+        });
+        const j = await r.json();
+        if (j.success) {
+          loadFolders();
+          showToast('폴더에 추가했습니다');
+          if (currentFolderId && currentFolderId !== 'all' && currentFolderId !== folderId) {
+            const tr = sel.closest('tr');
+            if (tr) tr.remove();
+            const rows = tableBody.querySelectorAll('tr[data-id]');
+            if (rows.length === 0) renderTable([]);
+          }
+        } else showToast('오류가 발생했습니다', 'error');
+      } catch (err) {
+        showToast('오류가 발생했습니다', 'error');
+      }
+    });
+
+    document.getElementById('folderList').addEventListener('click', async (e) => {
+      const folder = e.target.closest('.folder-item, .folder-virtual');
+      const btn = e.target.closest('button[data-action]');
+      if (btn) {
+        e.stopPropagation();
+        const action = btn.dataset.action;
+        const id = btn.dataset.id || btn.dataset.parent;
+        if (action === 'add-child') {
+          openModal('새 하위 폴더', '', id, async (name) => {
+            const r = await fetch('/api/bookmarks/folders', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, parent_id: id })
+            });
+            const j = await r.json();
+            if (j.success) {
+              await loadFolders();
+              showToast('폴더를 추가했습니다');
+            } else showToast(j.error || '오류', 'error');
+          });
+        } else if (action === 'rename') {
+          const f = (window.folders || []).find(x => x.id === id);
+          openModal('폴더 이름 변경', f ? f.name : '', null, async (name) => {
+            const r = await fetch('/api/bookmarks/folders/' + id, {
+              method: 'PATCH',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name })
+            });
+            const j = await r.json();
+            if (j.success) {
+              await loadFolders();
+              loadBookmarks();
+              showToast('이름을 변경했습니다');
+            } else showToast(j.error || '오류', 'error');
+          });
+        } else if (action === 'delete') {
+          if (!confirm('이 폴더를 삭제할까요? 폴더 안 북마크는 미분류로 이동합니다.')) return;
+          const r = await fetch('/api/bookmarks/folders/' + id, { method: 'DELETE' });
+          const j = await r.json();
+          if (j.success) {
+            await loadFolders();
+            loadBookmarks();
+            showToast('폴더를 삭제했습니다');
+          } else showToast(j.error || '오류', 'error');
+        }
+        return;
+      }
+      if (folder) {
+        const id = folder.dataset.id;
+        currentFolderId = (id === 'all' || id === 'unfiled') ? id : folder.dataset.id;
+        renderFolderList();
+        loadBookmarks();
+      }
+    });
+
+    document.getElementById('btnAddFolder').addEventListener('click', () => {
+      openModal('새 폴더', '', null, async (name) => {
+        const r = await fetch('/api/bookmarks/folders', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name })
+        });
+        const j = await r.json();
+        if (j.success) {
+          await loadFolders();
+          showToast('폴더를 추가했습니다');
+        } else showToast(j.error || '오류', 'error');
+      });
+    });
+
+    function openModal(title, value, parentId, onConfirm) {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal">
+          <h3>${escapeHtml(title)}</h3>
+          <input type="text" placeholder="폴더 이름" value="${escapeHtml(value)}" id="modalFolderName" />
+          <div class="modal-btns">
+            <button type="button" class="btn-secondary" data-action="cancel">취소</button>
+            <button type="button" class="btn-primary" data-action="ok">확인</button>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+      const input = overlay.querySelector('#modalFolderName');
+      input.focus();
+      const close = () => overlay.remove();
+      overlay.querySelector('[data-action=cancel]').addEventListener('click', close);
+      overlay.querySelector('[data-action=ok]').addEventListener('click', () => {
+        const name = (input.value || '').trim();
+        if (!name) return;
+        close();
+        onConfirm(name);
+      });
+      overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    }
+
+    loadFolders().then(() => loadBookmarks());
+  </script>
+</body>
+</html>

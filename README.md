@@ -73,6 +73,6 @@ allyoung/
 ├── requirements.txt
 ├── templates/
 │   └── index.html  # 테이블 UI
-└── data/           # SQLite DB (자동 생성)
+# data/ 제거됨 (Supabase contests 사용)
 ```
 # allround

@@ -1,21 +1,18 @@
 """
 allforyoung 웹 테이블 뷰어
 - Supabase Auth 로그인
-- 크롤링 데이터를 테이블로 표시
+- 크롤링 데이터를 Supabase contests 테이블에서 조회 (Realtime 구독)
 """
 
 import logging
-import sqlite3
 import traceback
 from datetime import datetime, timezone
-from pathlib import Path
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
-
 import re
 
 from config import get_supabase_client, get_supabase_admin_client, get_supabase_storage_client, get_supabase_client_with_auth
-from crawler import crawl_contest_page, crawl_post_detail
+from crawler import crawl_post_detail
 
 
 def _validate_password(password: str) -> bool:
@@ -36,77 +33,6 @@ logger = logging.getLogger("allyoung")
 
 app = Flask(__name__)
 app.secret_key = "allyoung-dev-secret-change-in-production"
-DB_PATH = Path(__file__).parent / "data" / "contests.db"
-
-
-def get_db():
-    """DB 연결 및 테이블 초기화"""
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
-
-
-def init_db(conn):
-    conn.executescript("""
-        CREATE TABLE IF NOT EXISTS contests (
-            id TEXT PRIMARY KEY,
-            title TEXT,
-            d_day TEXT,
-            host TEXT,
-            url TEXT,
-            category TEXT,
-            source TEXT DEFAULT '요즘것들',
-            created_at TEXT,
-            first_seen_at TEXT
-        );
-        CREATE INDEX IF NOT EXISTS idx_created ON contests(created_at DESC);
-    """)
-    # 기존 DB에 source 컬럼 추가 (마이그레이션)
-    try:
-        conn.execute("ALTER TABLE contests ADD COLUMN source TEXT DEFAULT '요즘것들'")
-        conn.commit()
-    except sqlite3.OperationalError:
-        pass  # 이미 존재
-    conn.commit()
-
-
-def save_contests(conn, contests: list[dict]) -> tuple[int, int]:
-    """크롤링 결과 저장, (전체 수, 새로 추가된 수) 반환"""
-    now = datetime.now().isoformat()
-    new_count = 0
-    for c in contests:
-        if "error" in c:
-            continue
-        cur = conn.execute("SELECT 1 FROM contests WHERE id = ?", (c["id"],))
-        is_new = cur.fetchone() is None
-        if is_new:
-            new_count += 1
-        conn.execute(
-            """INSERT INTO contests (id, title, d_day, host, url, category, source, created_at, first_seen_at)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-               ON CONFLICT(id) DO UPDATE SET
-                 title=excluded.title, d_day=excluded.d_day, host=excluded.host,
-                 url=excluded.url, category=excluded.category, source=excluded.source, created_at=excluded.created_at
-            """,
-            (
-                c["id"],
-                c.get("title", ""),
-                c.get("d_day", ""),
-                c.get("host", ""),
-                c.get("url", ""),
-                c.get("category", "공모전"),
-                c.get("source", "요즘것들"),
-                now,
-                now if is_new else None,
-            ),
-        )
-    # ON CONFLICT 시 first_seen_at 유지 (기존값 사용)
-    conn.execute(
-        "UPDATE contests SET first_seen_at = COALESCE(first_seen_at, created_at) WHERE first_seen_at IS NULL"
-    )
-    conn.commit()
-    return len([x for x in contests if "error" not in x]), new_count
 
 
 def _presence_insert(user_id: str):
@@ -157,16 +83,6 @@ def _ensure_session_in_presence():
                 pass
     if user_id:
         _presence_insert(user_id)
-
-
-def get_all_contests(conn) -> tuple[list[dict], str | None]:
-    """저장된 공고 목록 조회 (최신순), 마지막 업데이트 시간"""
-    rows = conn.execute(
-        "SELECT id, title, d_day, host, url, category, COALESCE(source, '요즘것들') as source, created_at FROM contests "
-        "ORDER BY created_at DESC"
-    ).fetchall()
-    last = conn.execute("SELECT MAX(created_at) FROM contests").fetchone()[0]
-    return [dict(r) for r in rows], last
 
 
 @app.route("/")
@@ -408,7 +324,20 @@ def home():
     if not session.get("logged_in"):
         return redirect(url_for("login_page"))
     _ensure_session_in_presence()
-    return render_template("index.html")
+    from config import SUPABASE_ANON_KEY, SUPABASE_URL
+    return render_template(
+        "index.html",
+        supabase_url=SUPABASE_URL or "",
+        supabase_anon_key=SUPABASE_ANON_KEY or "",
+    )
+
+
+@app.route("/bookmarks")
+def bookmarks_page():
+    """즐겨찾기 페이지"""
+    if not session.get("logged_in"):
+        return redirect(url_for("login_page"))
+    return render_template("bookmarks.html")
 
 
 @app.route("/mypage")
@@ -547,26 +476,23 @@ def api_update_status_message():
 
 @app.route("/api/contests/by-ids")
 def api_contests_by_ids():
-    """ID 목록으로 공고 조회 (최근 본 공고용)"""
+    """ID 목록으로 공고 조회 (최근 본 공고용) - source=요즘것들 기준"""
     ids_param = request.args.get("ids", "")
+    source = request.args.get("source", "요즘것들")
     if not ids_param:
         return jsonify({"success": True, "data": []})
     ids = [x.strip() for x in ids_param.split(",") if x.strip()][:10]
     if not ids:
         return jsonify({"success": True, "data": []})
-    conn = get_db()
-    init_db(conn)
     try:
-        placeholders = ",".join("?" * len(ids))
-        rows = conn.execute(
-            f"SELECT id, title, d_day, url FROM contests WHERE id IN ({placeholders})",
-            ids,
-        ).fetchall()
-        by_id = {r["id"]: dict(r) for r in rows}
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contests").select("id, title, d_day, url").eq("source", source).in_("id", ids).execute()
+        by_id = {str(row["id"]): dict(row) for row in (r.data or [])}
         ordered = [by_id[i] for i in ids if i in by_id]
         return jsonify({"success": True, "data": ordered})
-    finally:
-        conn.close()
+    except Exception as e:
+        logger.error("contests/by-ids 오류: %s", e)
+        return jsonify({"success": True, "data": []})
 
 
 @app.route("/api/users")
@@ -615,14 +541,279 @@ def api_users():
 
 @app.route("/api/contests")
 def api_contests():
-    """저장된 공고 목록 API"""
-    conn = get_db()
-    init_db(conn)
+    """Supabase contests 테이블에서 공고 목록 조회"""
     try:
-        contests, last_updated = get_all_contests(conn)
-        return jsonify({"success": True, "data": contests, "last_updated": last_updated})
-    finally:
-        conn.close()
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contests").select("id, title, d_day, host, url, category, source, created_at").order("created_at", desc=True).execute()
+        rows = r.data or []
+        # Supabase 컬럼명 그대로 (id, source 등)
+        return jsonify({"success": True, "data": rows})
+    except Exception as e:
+        logger.error("api/contests 오류: %s", e)
+        return jsonify({"success": False, "error": str(e), "data": []}), 500
+
+
+@app.route("/api/bookmarks/contests")
+def api_bookmarks_contests():
+    """북마크한 공고 전체 데이터 (folder_id 필터 지원, 컬럼 없으면 fallback)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": []})
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": []})
+    folder_id = request.args.get("folder_id", "").strip() or None
+    if folder_id == "null" or folder_id == "unfiled":
+        folder_id = "__unfiled__"
+    try:
+        supabase = get_supabase_admin_client()
+        # folder_id 컬럼 존재 시에만 사용 (없으면 기본 select로 fallback)
+        try:
+            q = supabase.table("contest_bookmarks").select("source, contest_id, folder_id").eq("user_id", user_id).order("created_at", desc=True)
+            if folder_id == "__unfiled__":
+                q = q.is_("folder_id", "null")
+            elif folder_id and folder_id not in ("all", "null", "unfiled"):
+                q = q.eq("folder_id", folder_id)
+            bookmarks = q.execute()
+            has_folder = True
+        except Exception:
+            q = supabase.table("contest_bookmarks").select("source, contest_id").eq("user_id", user_id).order("created_at", desc=True)
+            bookmarks = q.execute()
+            has_folder = False
+        if not bookmarks.data or len(bookmarks.data) == 0:
+            return jsonify({"success": True, "data": []})
+        result = []
+        for b in bookmarks.data:
+            s, cid = b.get("source"), b.get("contest_id")
+            if not s or not cid:
+                continue
+            r = supabase.table("contests").select("id, title, d_day, host, url, category, source, created_at").eq("source", s).eq("id", cid).limit(1).execute()
+            if r.data and len(r.data) > 0:
+                row = r.data[0].copy()
+                row["folder_id"] = b.get("folder_id") if has_folder else None
+                result.append(row)
+        return jsonify({"success": True, "data": result})
+    except Exception as e:
+        logger.error("api/bookmarks/contests 오류: %s", e)
+        return jsonify({"success": True, "data": []})
+
+
+@app.route("/api/bookmarks")
+def api_bookmarks():
+    """현재 사용자 북마크 목록 (source, contest_id)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": []})
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": []})
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contest_bookmarks").select("source, contest_id").eq("user_id", user_id).execute()
+        rows = r.data or []
+        return jsonify({"success": True, "data": [{"source": x["source"], "contest_id": x["contest_id"]} for x in rows]})
+    except Exception as e:
+        logger.error("api/bookmarks 오류: %s", e)
+        return jsonify({"success": True, "data": []})
+
+
+@app.route("/api/bookmarks/toggle", methods=["POST"])
+def api_bookmarks_toggle():
+    """북마크 추가/제거 토글"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    source = (data.get("source") or "").strip()
+    contest_id = (data.get("contest_id") or str(data.get("id")) or "").strip()
+    if not source or not contest_id:
+        return jsonify({"success": False, "error": "source, contest_id 필요"}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        existing = supabase.table("contest_bookmarks").select("user_id").eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).execute()
+        if existing.data and len(existing.data) > 0:
+            supabase.table("contest_bookmarks").delete().eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).execute()
+            return jsonify({"success": True, "bookmarked": False})
+        else:
+            supabase.table("contest_bookmarks").insert({
+                "user_id": user_id,
+                "source": source,
+                "contest_id": contest_id,
+            }).execute()
+            return jsonify({"success": True, "bookmarked": True})
+    except Exception as e:
+        logger.error("api/bookmarks/toggle 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/bookmarks/folders")
+def api_bookmarks_folders():
+    """북마크 폴더 목록 (1단계 + 2단계)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": []})
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": []})
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("bookmark_folders").select("id, parent_id, name, sort_order").eq("user_id", user_id).order("sort_order").order("created_at").execute()
+        rows = r.data or []
+        return jsonify({"success": True, "data": rows})
+    except Exception as e:
+        logger.error("api/bookmarks/folders 오류: %s", e)
+        return jsonify({"success": True, "data": []})
+
+
+@app.route("/api/bookmarks/folder-counts")
+def api_bookmarks_folder_counts():
+    """폴더별 북마크 개수 (전체, 미분류, 폴더별)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": {"all": 0, "unfiled": 0, "folders": {}}})
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": {"all": 0, "unfiled": 0, "folders": {}}})
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contest_bookmarks").select("folder_id").eq("user_id", user_id).execute()
+        rows = r.data or []
+        total = len(rows)
+        unfiled = sum(1 for x in rows if x.get("folder_id") is None)
+        folders = {}
+        for x in rows:
+            fid = x.get("folder_id")
+            if fid:
+                folders[fid] = folders.get(fid, 0) + 1
+        return jsonify({"success": True, "data": {"all": total, "unfiled": unfiled, "folders": folders}})
+    except Exception as e:
+        err_msg = str(e)
+        if "folder_id" in err_msg:
+            try:
+                supabase = get_supabase_admin_client()
+                r = supabase.table("contest_bookmarks").select("source, contest_id").eq("user_id", user_id).execute()
+                total = len(r.data or [])
+                return jsonify({"success": True, "data": {"all": total, "unfiled": total, "folders": {}}})
+            except Exception:
+                pass
+        logger.error("api/bookmarks/folder-counts 오류: %s", e)
+        return jsonify({"success": True, "data": {"all": 0, "unfiled": 0, "folders": {}}})
+
+
+@app.route("/api/bookmarks/folders", methods=["POST"])
+def api_bookmarks_folders_create():
+    """폴더 생성 (parent_id=null: 1단계, parent_id=uuid: 2단계)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    name = (data.get("name") or "").strip()
+    parent_id = data.get("parent_id")  # null 허용
+    if not name:
+        return jsonify({"success": False, "error": "name 필요"}), 400
+    if parent_id is not None and str(parent_id).strip() == "":
+        parent_id = None
+    try:
+        supabase = get_supabase_admin_client()
+        if parent_id:
+            p = supabase.table("bookmark_folders").select("id, parent_id").eq("id", parent_id).eq("user_id", user_id).execute()
+            if not p.data or len(p.data) == 0:
+                return jsonify({"success": False, "error": "부모 폴더 없음"}), 400
+            if p.data[0].get("parent_id") is not None:
+                return jsonify({"success": False, "error": "2단계까지만 허용됩니다 (하위 폴더에는 새 폴더를 만들 수 없음)"}), 400
+        max_order = 0
+        q = supabase.table("bookmark_folders").select("sort_order").eq("user_id", user_id)
+        if parent_id:
+            q = q.eq("parent_id", parent_id)
+        else:
+            q = q.is_("parent_id", "null")
+        r = q.order("sort_order", desc=True).limit(1).execute()
+        if r.data and len(r.data) > 0:
+            max_order = (r.data[0].get("sort_order") or 0) + 1
+        row = supabase.table("bookmark_folders").insert({
+            "user_id": user_id,
+            "parent_id": parent_id,
+            "name": name,
+            "sort_order": max_order,
+        }).execute()
+        created = row.data[0] if row.data else {}
+        return jsonify({"success": True, "data": created})
+    except Exception as e:
+        logger.error("api/bookmarks/folders POST 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/bookmarks/folders/<folder_id>", methods=["PATCH"])
+def api_bookmarks_folders_update(folder_id):
+    """폴더 이름/정렬 변경"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    updates = {}
+    if "name" in data:
+        name = (data.get("name") or "").strip()
+        if name:
+            updates["name"] = name
+    if "sort_order" in data:
+        updates["sort_order"] = int(data.get("sort_order", 0))
+    if not updates:
+        return jsonify({"success": False, "error": "수정할 항목 없음"}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        supabase.table("bookmark_folders").update(updates).eq("id", folder_id).eq("user_id", user_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/bookmarks/folders PATCH 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/bookmarks/folders/<folder_id>", methods=["DELETE"])
+def api_bookmarks_folders_delete(folder_id):
+    """폴더 삭제 (내부 북마크는 미분류로)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        supabase.table("bookmark_folders").delete().eq("id", folder_id).eq("user_id", user_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/bookmarks/folders DELETE 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/bookmarks/assign", methods=["POST"])
+def api_bookmarks_assign():
+    """북마크를 폴더에 배치 (folder_id=null: 미분류)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    data = request.get_json(silent=True) or {}
+    source = (data.get("source") or "").strip()
+    contest_id = (data.get("contest_id") or str(data.get("id")) or "").strip()
+    folder_id = data.get("folder_id")
+    if not source or not contest_id:
+        return jsonify({"success": False, "error": "source, contest_id 필요"}), 400
+    if folder_id is not None and str(folder_id).strip() == "":
+        folder_id = None
+    try:
+        supabase = get_supabase_admin_client()
+        supabase.table("contest_bookmarks").update({"folder_id": folder_id}).eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        err_msg = str(e)
+        if "folder_id" in err_msg and "schema" in err_msg.lower():
+            # folder_id 컬럼이 없으면 무시 (폴더 기능 미설치 시)
+            return jsonify({"success": True})
+        logger.error("api/bookmarks/assign 오류: %s", e)
+        return jsonify({"success": False, "error": err_msg}), 500
 
 
 @app.route("/api/post/<post_id>")
@@ -633,26 +824,6 @@ def api_post(post_id):
         if detail:
             return jsonify({"success": True, "data": detail})
         return jsonify({"success": False, "error": "상세 내용을 가져올 수 없습니다."}), 404
-    except Exception as e:
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/refresh", methods=["POST"])
-def api_refresh():
-    """크롤링 실행 및 DB 갱신"""
-    pages = request.json.get("pages", 3) if request.is_json else 3
-    try:
-        contests = crawl_contest_page(page=1, max_pages=min(int(pages), 10))
-        conn = get_db()
-        init_db(conn)
-        total, new_count = save_contests(conn, contests)
-        conn.close()
-        return jsonify({
-            "success": True,
-            "total": total,
-            "new": new_count,
-            "message": f"총 {total}건 수집 (신규 {new_count}건)",
-        })
     except Exception as e:
         return jsonify({"success": False, "error": str(e)}), 500
 
