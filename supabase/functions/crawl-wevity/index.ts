@@ -3,6 +3,8 @@
 //
 // GitHub Actions에서 crawl-contests와 함께 호출
 
+// npx supabase functions deploy crawl-wevity
+
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";

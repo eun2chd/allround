@@ -1,0 +1,177 @@
+<!-- 왼쪽 팀 사이드바: 상단(팀목표) / 중간(멤버랭킹) / 하단(기타) -->
+<aside class="sidebar-team">
+  <!-- 상단: 팀 목표 -->
+  <section class="sidebar-section sidebar-top">
+    <h3 class="sidebar-section-title">팀 목표</h3>
+    <div class="sidebar-team-name">Ntpercent 팀</div>
+    <div class="sidebar-team-profile">
+      <div class="sidebar-team-avatar">N</div>
+      <p class="sidebar-team-desc">공모전 수상 목표 달성 팀</p>
+    </div>
+    <div class="sidebar-stat-row">
+      <span class="sidebar-stat-label">팀 총 상금</span>
+      <span class="sidebar-stat-value">1,250만원</span>
+    </div>
+    <div class="sidebar-stat-row">
+      <span class="sidebar-stat-label">올해 목표</span>
+      <span class="sidebar-stat-value">2,000만원</span>
+    </div>
+    <div class="sidebar-goal-bar">
+      <div class="sidebar-goal-fill" style="width: 62%"></div>
+    </div>
+    <p class="sidebar-goal-hint">목표 달성률 62%</p>
+  </section>
+
+  <!-- 중간: 멤버 랭킹 -->
+  <section class="sidebar-section sidebar-mid">
+    <h3 class="sidebar-section-title">멤버 랭킹</h3>
+    <ul class="sidebar-ranking-list">
+      <li class="sidebar-ranking-item">
+        <span class="sidebar-rank">1</span>
+        <span class="sidebar-rank-name">김공모</span>
+        <span class="sidebar-rank-value">500만원</span>
+      </li>
+      <li class="sidebar-ranking-item">
+        <span class="sidebar-rank">2</span>
+        <span class="sidebar-rank-name">이수상</span>
+        <span class="sidebar-rank-value">380만원</span>
+      </li>
+      <li class="sidebar-ranking-item">
+        <span class="sidebar-rank">3</span>
+        <span class="sidebar-rank-name">박참가</span>
+        <span class="sidebar-rank-value">220만원</span>
+      </li>
+      <li class="sidebar-ranking-item">
+        <span class="sidebar-rank">4</span>
+        <span class="sidebar-rank-name">최도전</span>
+        <span class="sidebar-rank-value">150만원</span>
+      </li>
+    </ul>
+  </section>
+
+  <!-- 하단: 팀 활동 -->
+  <section class="sidebar-section sidebar-bottom">
+    <h3 class="sidebar-section-title">팀 활동</h3>
+  </section>
+</aside>
+
+<style>
+  .sidebar-team {
+    position: fixed;
+    left: 0;
+    top: 68px;
+    width: 260px;
+    height: calc(100vh - 68px);
+    background: linear-gradient(180deg, #faf8ff 0%, #f5f3ff 100%);
+    border-right: 1px solid var(--border-gray);
+    box-shadow: 2px 0 12px rgba(0,0,0,0.04);
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .sidebar-team .sidebar-section {
+    padding: 16px;
+    border-bottom: 1px solid var(--border-gray);
+  }
+  .sidebar-team .sidebar-section:last-child { border-bottom: none; }
+  .sidebar-team .sidebar-section-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: var(--main-purple);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid rgba(109,40,217,0.2);
+  }
+  .sidebar-team-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+  }
+  .sidebar-team-profile {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+  .sidebar-team-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--main-purple), #8b5cf6);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+  .sidebar-team-desc {
+    font-size: 0.8rem;
+    color: var(--gray-muted);
+    line-height: 1.4;
+  }
+  .sidebar-stat-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    margin-bottom: 6px;
+  }
+  .sidebar-stat-label { color: var(--gray-muted); }
+  .sidebar-stat-value { font-weight: 700; color: var(--main-purple); }
+  .sidebar-goal-bar {
+    height: 8px;
+    background: rgba(109,40,217,0.15);
+    border-radius: 4px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .sidebar-goal-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--main-purple), #8b5cf6);
+    border-radius: 4px;
+    transition: width 0.3s;
+  }
+  .sidebar-goal-hint {
+    font-size: 0.75rem;
+    color: var(--gray-muted);
+    margin-top: 6px;
+    text-align: right;
+  }
+  .sidebar-ranking-list { list-style: none; }
+  .sidebar-ranking-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    margin-bottom: 4px;
+    background: rgba(255,255,255,0.8);
+    border-radius: 8px;
+    font-size: 0.88rem;
+  }
+  .sidebar-ranking-item:hover { background: var(--soft-purple); }
+  .sidebar-rank {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+    background: var(--main-purple);
+    color: #fff;
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .sidebar-ranking-item:nth-child(2) .sidebar-rank { background: #6b7280; }
+  .sidebar-ranking-item:nth-child(3) .sidebar-rank { background: #b45309; }
+  .sidebar-ranking-item:nth-child(4) .sidebar-rank { background: var(--gray-muted); }
+  .sidebar-rank-name { flex: 1; font-weight: 600; color: var(--text-dark); }
+  .sidebar-rank-value { font-size: 0.8rem; font-weight: 600; color: var(--main-purple); }
+  .sidebar-mid { flex: 1; overflow-y: auto; }
+  .sidebar-bottom { flex-shrink: 0; }
+</style>

@@ -171,3 +171,105 @@ def crawl_post_detail(post_id: str) -> dict | None:
 
     except requests.RequestException:
         return None
+
+
+WEVITY_BASE = "https://www.wevity.com"
+WEVITY_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+    "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+}
+
+
+def crawl_wevity_detail(contest_id: str) -> dict | None:
+    """
+    위비티 상세 페이지 크롤링
+    ?c=find&s=1&gbn=view&ix={contest_id}
+    """
+    url = f"{WEVITY_BASE}/?c=find&s=1&gbn=view&ix={contest_id}"
+    try:
+        session = requests.Session()
+        session.headers.update(WEVITY_HEADERS)
+        resp = session.get(url, timeout=15)
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+
+        result = {
+            "id": contest_id,
+            "url": url,
+            "title": "",
+            "host": "",
+            "category": "",
+            "apply_period": "",
+            "body": "",
+            "apply_url": "",
+            "images": [],
+        }
+
+        # 제목 (div.tit 또는 h2)
+        tit = soup.select_one("div.tit, div.view-tit h2, h2.tit")
+        if tit:
+            result["title"] = re.sub(r"\s+SPECIAL\s*$", "", tit.get_text(strip=True), flags=re.I)
+            result["title"] = re.sub(r"\s+IDEA\s*$", "", result["title"], flags=re.I)
+
+        # 테이블 기반 메타 (주최, 분야, 접수기간 등)
+        for row in soup.select("table td, div.view-info div, dl dd"):
+            txt = row.get_text(strip=True)
+            prev = row.find_previous(["th", "dt", "div"])
+            label = (prev.get_text(strip=True) if prev else "").lower()
+            if "주최" in label or "주관" in label:
+                result["host"] = txt[:200] if txt else ""
+            elif "분야" in label or "카테고리" in label:
+                result["category"] = txt[:200] if txt else ""
+            elif "접수" in label or "일정" in label:
+                result["apply_period"] = txt[:300] if txt else ""
+
+        # sub-tit 등에서 분야 추출
+        if not result["category"]:
+            sub = soup.select_one("div.sub-tit, .view-cate")
+            if sub:
+                m = re.search(r"분야\s*:\s*(.+)", sub.get_text())
+                result["category"] = m.group(1).strip()[:200] if m else sub.get_text(strip=True)[:200]
+
+        # 본문 - div.ct, div.view-cont, #viewContents 등
+        body_el = (
+            soup.select_one("div.ct, div.view-cont, #viewContents, div.detail-cont, .board-cont")
+            or soup.find("div", class_=re.compile(r"view|content|body", re.I))
+        )
+        if body_el:
+            # 스크립트/스타일 제거
+            for tag in body_el.select("script, style"):
+                tag.decompose()
+            body_text = body_el.get_text(separator="\n\n", strip=True)
+            result["body"] = re.sub(r"\n{3,}", "\n\n", body_text)[:8000]
+        else:
+            blocks = []
+            for tag in soup.find_all(["p", "div"], class_=re.compile(r"ct|cont|body|text", re.I)):
+                t = tag.get_text(strip=True)
+                if t and 30 < len(t) < 3000 and "AD" not in t and "©" not in t:
+                    blocks.append(t)
+            result["body"] = "\n\n".join(blocks[:40]) if blocks else ""
+
+        # 이미지
+        seen = set()
+        for img in soup.select("div.ct img, div.view-cont img, #viewContents img, .board-cont img"):
+            src = img.get("src", "").strip()
+            if not src:
+                continue
+            full = urljoin(WEVITY_BASE, src) if src.startswith("/") else src
+            if full not in seen and ("wevity" in full or full.startswith("https://")):
+                seen.add(full)
+                result["images"].append(full)
+
+        # 지원/신청 링크
+        for a in soup.select('a[href]'):
+            t = a.get_text(strip=True)
+            if "지원" in t or "신청" in t or "참가" in t:
+                href = a.get("href", "")
+                result["apply_url"] = urljoin(WEVITY_BASE, href) if href.startswith("/") or href.startswith("?") else href
+                break
+
+        return result
+
+    except requests.RequestException:
+        return None

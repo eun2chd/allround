@@ -36,6 +36,7 @@
       min-height: 100vh;
       line-height: 1.5;
     }
+    .main-wrap { margin-left: 260px; }
     .container { max-width: 960px; margin: 0 auto; padding: 24px; }
     .page-header {
       margin-bottom: 32px;
@@ -570,6 +571,51 @@
     .timeline-dot.win { background: var(--main-purple); }
     .timeline-dot.lose { background: var(--gray-muted); }
     .timeline-content { flex: 1; min-width: 0; }
+    /* 참가/패스 공모전 */
+    .participation-section {
+      background: var(--bg-white);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+      margin-bottom: 24px;
+    }
+    .participation-section h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-gray);
+    }
+    .participation-list { display: flex; flex-direction: column; gap: 12px; }
+    .participation-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: #faf9fc;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-gray);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .participation-item:hover {
+      background: var(--soft-purple);
+      border-color: rgba(109,40,217,0.3);
+    }
+    .participation-badge {
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .participation-badge.participate { background: #d1fae5; color: #059669; }
+    .participation-badge.pass { background: #e5e7eb; color: #6b7280; }
+    .participation-info { flex: 1; min-width: 0; }
+    .participation-title { font-size: 0.95rem; font-weight: 600; color: var(--text-dark); margin-bottom: 4px; }
+    .participation-meta { font-size: 0.8rem; color: var(--gray-muted); }
     .timeline-title { font-size: 0.95rem; font-weight: 600; color: var(--text-dark); margin-bottom: 4px; }
     .timeline-meta { font-size: 0.82rem; color: var(--gray-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .timeline-badge {
@@ -721,11 +767,17 @@
     }
     .modal-body .info-item:last-child { margin-bottom: 0; padding-bottom: 0; border-bottom: none; }
     .modal-body .info-item strong { color: var(--main-purple); }
+    @media (max-width: 1200px) {
+      .sidebar-team { display: none; }
+      .main-wrap { margin-left: 0; }
+    }
   </style>
 </head>
 <body>
   {% include 'partials/_navbar.html' %}
+  {% include 'partials/_sidebar_team.html' %}
 
+  <div class="main-wrap">
   <div class="container">
     <header class="page-header">
       <h1>{{ '마이페이지' if is_own_profile else '프로필' }}</h1>
@@ -913,6 +965,15 @@
         </div>
       </div>
     </section>
+
+    <!-- 참가/패스 공모전 (본인·타인 프로필 모두 표시) -->
+    <section class="participation-section" id="participationSection" data-user-id="{{ profile.get('id', '') }}">
+      <h3>참가 / 패스 공모전</h3>
+      <div class="participation-list" id="participationList">
+        <div class="participation-loading" id="participationLoading" style="color:var(--gray-muted);padding:24px;text-align:center;">불러오는 중...</div>
+      </div>
+    </section>
+  </div>
   </div>
 
   <!-- 안내 모달: 티어 시스템 -->
@@ -1068,6 +1129,43 @@
           saveStatusMessage(true);
         });
       }
+    }
+
+    // 참가/패스 공모전 목록 로드 (프로필 주인 기준)
+    const participationSection = document.getElementById('participationSection');
+    const participationList = document.getElementById('participationList');
+    const participationLoading = document.getElementById('participationLoading');
+    if (participationList) {
+      (async function() {
+        try {
+          const profileUserId = participationSection ? (participationSection.dataset.userId || '') : '';
+          const url = profileUserId ? '/api/user/participation?user_id=' + encodeURIComponent(profileUserId) : '/api/user/participation';
+          const r = await fetch(url);
+          const j = await r.json();
+          if (participationLoading) participationLoading.remove();
+          const data = (j.data || []);
+          if (data.length === 0) {
+            participationList.innerHTML = '<div style="color:var(--gray-muted);padding:24px;text-align:center;">참가 또는 패스한 공모전이 없습니다.</div>';
+          } else {
+            participationList.innerHTML = data.map(function(item) {
+              const badgeClass = item.status === 'participate' ? 'participate' : 'pass';
+              const badgeText = item.status === 'participate' ? '참가' : '패스';
+              const url = item.url || '#';
+              const meta = [item.d_day && item.d_day !== '-' ? item.d_day : '', item.host && item.host !== '-' ? item.host : ''].filter(Boolean).join(' · ');
+              return '<a href="' + url + '" target="_blank" rel="noopener" class="participation-item">' +
+                '<span class="participation-badge ' + badgeClass + '">' + badgeText + '</span>' +
+                '<div class="participation-info">' +
+                '<div class="participation-title">' + (item.title || '(제목 없음)').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+                (meta ? '<div class="participation-meta">' + meta.replace(/</g, '&lt;') + '</div>' : '') +
+                '</div>' +
+                '</a>';
+            }).join('');
+          }
+        } catch (e) {
+          if (participationLoading) participationLoading.remove();
+          participationList.innerHTML = '<div style="color:#dc2626;padding:24px;text-align:center;">목록을 불러올 수 없습니다.</div>';
+        }
+      })();
     }
 
     // 최근 본 공모전 로드 (내 프로필일 때만 - 타임라인 연동 예정)

@@ -37,7 +37,7 @@
       line-height: 1.5;
     }
     .page-placeholder { padding: 80px 24px; text-align: center; font-size: 0.95rem; color: var(--gray-muted); }
-    .container { max-width: 1400px; margin: 0 auto; padding: 24px 48px; }
+    .container { max-width: 1400px; margin: 0 auto; margin-left: 260px; padding: 24px 48px; }
     .page-header {
       display: flex;
       align-items: center;
@@ -507,6 +507,10 @@
       gap: 6px;
     }
     .filter-bar .filter-group select { min-width: 100px; }
+    @media (max-width: 1200px) {
+      .sidebar-team { display: none; }
+      .container { margin-left: 0; }
+    }
     @media (max-width: 768px) {
       .container { padding: 24px 20px; }
     }
@@ -514,11 +518,12 @@
 </head>
 <body>
   {% include 'partials/_navbar.html' %}
+  {% include 'partials/_sidebar_team.html' %}
 
   <div class="container">
     <div id="pageAllyoung">
     <header class="page-header">
-      <h1><span>{{ session.get('nickname', '') or '회원' }}</span>님, <span>요즘것들</span> 공고 모음을 확인해보세요</h1>
+      <h1><span>{{ session.get('nickname', '') or '회원' }}</span>님, <span>공모전</span> 모음을 확인해보세요</h1>
       <div class="page-meta">
         <div class="page-meta-info">
   
@@ -994,7 +999,7 @@
       loadComments();
 
       try {
-        const r = await fetch('/api/post/' + postId);
+        const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(postId) + '/content');
         const j = await r.json();
         if (j.success && j.data) {
           const d = j.data;

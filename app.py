@@ -12,7 +12,7 @@ from flask import Flask, flash, jsonify, redirect, render_template, request, ses
 import re
 
 from config import get_supabase_client, get_supabase_admin_client, get_supabase_storage_client, get_supabase_client_with_auth
-from crawler import crawl_post_detail
+from crawler import crawl_post_detail, crawl_wevity_detail
 
 
 def _validate_password(password: str) -> bool:
@@ -852,6 +852,42 @@ def api_user_contest_status():
         return jsonify({"success": True, "data": {"content_checks": [], "participation": {}, "commented": []}})
 
 
+@app.route("/api/user/participation")
+def api_user_participation():
+    """참가/패스한 공모전 목록 (contest 정보 포함). user_id 없으면 현재 로그인 유저"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": []})
+    user_id = request.args.get("user_id", "").strip() or session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": []})
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contest_participation").select("source, contest_id, status, updated_at").eq("user_id", user_id).order("updated_at", desc=True).execute()
+        rows = r.data or []
+        result = []
+        for p in rows:
+            src = p.get("source") or ""
+            cid = p.get("contest_id") or ""
+            status = p.get("status") or ""
+            c = supabase.table("contests").select("source, id, title, url, d_day, host, category").eq("source", src).eq("id", cid).limit(1).execute()
+            contest = (c.data or [{}])[0] if c.data else {}
+            result.append({
+                "source": src,
+                "contest_id": cid,
+                "status": status,
+                "updated_at": p.get("updated_at"),
+                "title": contest.get("title", "(제목 없음)"),
+                "url": contest.get("url", ""),
+                "d_day": contest.get("d_day", "-"),
+                "host": contest.get("host", "-"),
+                "category": contest.get("category", "공모전"),
+            })
+        return jsonify({"success": True, "data": result})
+    except Exception as e:
+        logger.error("api/user/participation 오류: %s", e)
+        return jsonify({"success": True, "data": []})
+
+
 def _post_comment(supabase, user_id, source, contest_id, body):
     """댓글 자동 등록 (내부용)"""
     try:
@@ -1022,9 +1058,23 @@ def api_contest_comments_create(source, contest_id):
 
 @app.route("/api/post/<post_id>")
 def api_post(post_id):
-    """상세 페이지 내용 크롤링"""
+    """상세 페이지 내용 크롤링 (요즘것들, 하위 호환)"""
+    return _api_contest_content("요즘것들", post_id)
+
+
+@app.route("/api/contests/<source>/<contest_id>/content")
+def api_contest_content(source, contest_id):
+    """상세 페이지 내용 크롤링 (소스별 크롤러)"""
+    return _api_contest_content(source, contest_id)
+
+
+def _api_contest_content(source: str, contest_id: str):
     try:
-        detail = crawl_post_detail(post_id)
+        source_clean = (source or "").strip()
+        if source_clean == "위비티":
+            detail = crawl_wevity_detail(contest_id)
+        else:
+            detail = crawl_post_detail(contest_id)
         if detail:
             return jsonify({"success": True, "data": detail})
         return jsonify({"success": False, "error": "상세 내용을 가져올 수 없습니다."}), 404
