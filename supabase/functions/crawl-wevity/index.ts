@@ -11,7 +11,9 @@ const BASE_URL = "https://www.wevity.com";
 const SOURCE = "위비티";
 const PAGES_INCREMENTAL = 3;
 const PAGES_MAX_CAP = 100;  // 절대 상한
+const PAGES_PER_FULL = 2;  // full 실행당 크롤 페이지 수 (4시간마다 2페이지)
 const DELAY_MS_INCREMENTAL = 1200;  // 증분 시 페이지 간 딜레이
+const DELAY_MS_FULL = 400;  // full 시 페이지 간 딜레이 (2페이지만, ~1초)
 
 interface ContestRow {
   source: string;
@@ -147,15 +149,18 @@ Deno.serve(async (req) => {
     let nextPage: number | null = null;
 
     if (forceFull) {
-      // full: 1페이지만 크롤, crawl_state로 다음 페이지 추적 (타임아웃 회피)
+      // full: 2페이지만 크롤 (4시간마다), crawl_state로 다음 페이지 추적
       const { data: state } = await supabase
         .from("crawl_state")
         .select("next_page")
         .eq("source", SOURCE)
         .single();
 
-      const page = Math.min(Math.max(1, state?.next_page ?? 1), PAGES_MAX_CAP);
-      const rows = await crawlWevityPage(page);
+      const startPage = Math.min(Math.max(1, state?.next_page ?? 1), PAGES_MAX_CAP);
+      const endPage = Math.min(startPage + PAGES_PER_FULL - 1, PAGES_MAX_CAP);
+      const { rows, pagesCrawled: n } = await crawlWevityPages(
+        startPage, endPage, DELAY_MS_FULL
+      );
 
       if (rows.length > 0) {
         const { error: upsertErr } = await supabase.from("contests").upsert(rows, {
@@ -165,11 +170,12 @@ Deno.serve(async (req) => {
         if (upsertErr) throw upsertErr;
       }
 
-      nextPage = rows.length === 0 && page > 1
+      const lastHadData = rows.length > 0;
+      nextPage = !lastHadData && startPage > 1
         ? 1  // 빈 페이지 도달 → 처음으로 리셋
-        : page >= PAGES_MAX_CAP
+        : endPage >= PAGES_MAX_CAP
           ? 1  // 100페이지 도달 → 처음으로 순환
-          : page + 1;
+          : endPage + 1;
 
       await supabase.from("crawl_state").upsert(
         { source: SOURCE, next_page: nextPage, updated_at: new Date().toISOString() },
@@ -177,7 +183,7 @@ Deno.serve(async (req) => {
       );
 
       contests = rows;
-      pagesCrawled = 1;
+      pagesCrawled = n;
       isFull = true;
     } else {
       // 증분: 최근 3페이지만 (30분마다)

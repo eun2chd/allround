@@ -1,15 +1,15 @@
-name: Crawl 위비티 (Full Daily)
+name: Crawl 위비티 (Full)
 
 on:
   schedule:
-    - cron: '0 3 * * *'  # 매일 새벽 3시 UTC (KST 12시), 1페이지만 크롤 후 다음 페이지로
+    - cron: '0 */4 * * *'  # 4시간마다 2페이지씩 (하루 12페이지 → ~8일이면 100페이지)
   workflow_dispatch:  # 수동 실행 가능
 
 jobs:
   crawl-wevity-full:
     runs-on: ubuntu-latest
     steps:
-      - name: Crawl 1 page (crawl_state 순차)
+      - name: Crawl 2 pages (crawl_state 순차)
         run: |
           curl -sS -X POST \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \

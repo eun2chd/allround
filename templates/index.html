@@ -799,11 +799,11 @@
             <td><span class="${starClass}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}" title="북마크">${starChar}</span></td>
             <td>${statusHtml}${no}</td>
             <td><span class="d-day ${dClass}">${escapeHtml(row.d_day || '-')}</span></td>
-            <td class="title-cell cell-tooltip" data-tooltip="${escapeHtml(row.title || '')}">
+            <td class="title-cell" title="${escapeHtml(row.title || '')}">
               <a href="${escapeHtml(row.url)}" target="_blank" rel="noopener" data-id="${escapeHtml(row.id)}" data-url="${escapeHtml(row.url)}" class="title-link">${escapeHtml(row.title)}</a>
             </td>
-            <td class="host-cell cell-tooltip" data-tooltip="${escapeHtml(row.host || '-')}">${escapeHtml(row.host || '-')}</td>
-            <td>${escapeHtml(row.category || '공모전')}</td>
+            <td class="host-cell" title="${escapeHtml(row.host || '-')}">${escapeHtml(row.host || '-')}</td>
+            <td class="category-cell" title="${escapeHtml(row.category || '공모전')}">${escapeHtml(truncateWithEllipsis(row.category, 20))}</td>
             <td>${escapeHtml(row.source || '요즘것들')}</td>
             <td>${formatFetchTime(row.created_at)}</td>
             <td class="action-cell">
@@ -846,6 +846,11 @@
       const d = document.createElement('div');
       d.textContent = s ?? '';
       return d.innerHTML;
+    }
+
+    function truncateWithEllipsis(s, maxLen = 20) {
+      const str = (s || '').trim() || '공모전';
+      return str.length > maxLen ? str.slice(0, maxLen) + '...' : str;
     }
 
     function formatFetchTime(iso) {
