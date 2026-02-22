@@ -183,6 +183,23 @@ CREATE INDEX IF NOT EXISTS idx_contest_participation_contest ON contest_particip
 
 ---
 
+### 9. crawl_state (크롤 페이지 추적)
+
+위비티 full 크롤 시 "다음에 크롤할 페이지" 저장. 1페이지만 크롤 후 순차 진행.
+
+```sql
+CREATE TABLE IF NOT EXISTS crawl_state (
+  source TEXT PRIMARY KEY,
+  next_page INTEGER NOT NULL DEFAULT 1,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+```
+
+- `next_page`: 다음 크롤할 페이지 (1~100, 초과 시 1로 리셋)
+- Edge Function이 SERVICE_ROLE_KEY로 읽기/쓰기 (RLS 없음)
+
+---
+
 ## ER 관계
 
 ```

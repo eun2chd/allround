@@ -10,8 +10,8 @@ import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";
 const BASE_URL = "https://www.wevity.com";
 const SOURCE = "위비티";
 const PAGES_INCREMENTAL = 3;
-const PAGES_FULL_DEFAULT = 10;
-const PAGES_MAX_CAP = 100;  // 절대 상한 (과도한 크롤링 방지)
+const PAGES_MAX_CAP = 100;  // 절대 상한
+const DELAY_MS_INCREMENTAL = 1200;  // 증분 시 페이지 간 딜레이
 
 interface ContestRow {
   source: string;
@@ -79,44 +79,41 @@ function parseWevityPage(html: string): ContestRow[] {
   return results;
 }
 
-async function crawlWevityPages(
-  maxPagesOrUntilEmpty: number,
-  stopWhenEmpty: boolean
-): Promise<{ rows: ContestRow[]; pagesCrawled: number }> {
-  const all: ContestRow[] = [];
-  const seenIds = new Set<string>();
+async function crawlWevityPage(page: number): Promise<ContestRow[]> {
   const headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
     Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     "Accept-Language": "ko-KR,ko;q=0.9",
   };
+  const url = `${BASE_URL}/?c=find&s=1&gbn=list&gp=${page}`;
+  const res = await fetch(url, { headers });
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseWevityPage(await res.text());
+}
 
-  for (let p = 1; p <= maxPagesOrUntilEmpty; p++) {
-    const url = `${BASE_URL}/?c=find&s=1&gbn=list&gp=${p}`;
+async function crawlWevityPages(
+  startPage: number,
+  endPage: number,
+  delayMs: number
+): Promise<{ rows: ContestRow[]; pagesCrawled: number }> {
+  const all: ContestRow[] = [];
+  const seenIds = new Set<string>();
+
+  for (let p = startPage; p <= endPage; p++) {
     try {
-      const res = await fetch(url, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const html = await res.text();
-      const rows = parseWevityPage(html);
-      let newCount = 0;
+      const rows = await crawlWevityPage(p);
       for (const r of rows) {
         if (!seenIds.has(r.id)) {
           seenIds.add(r.id);
           all.push(r);
-          newCount++;
         }
       }
-      // 빈 페이지에서 중단 (단, 이미 수집된 데이터가 있을 때만 — 첫 페이지만 비어있으면 파싱/서버 오류 가능성)
-      if (stopWhenEmpty && newCount === 0 && all.length > 0) {
-        return { rows: all, pagesCrawled: p };
-      }
-      await new Promise((r) => setTimeout(r, 1200));
+      if (p < endPage) await new Promise((r) => setTimeout(r, delayMs));
     } catch (e) {
       console.error(`Wevity page ${p} error:`, e);
-      if (stopWhenEmpty) return { rows: all, pagesCrawled: p - 1 };
     }
   }
-  return { rows: all, pagesCrawled: maxPagesOrUntilEmpty };
+  return { rows: all, pagesCrawled: endPage - startPage + 1 };
 }
 
 Deno.serve(async (req) => {
@@ -137,68 +134,80 @@ Deno.serve(async (req) => {
   try {
     const url = new URL(req.url);
     let forceFull = url.searchParams.get("full") === "1" || url.searchParams.get("full") === "true";
-    if (!forceFull && req.method === "POST") {
+    if (req.method === "POST") {
       try {
         const body = await req.json().catch(() => ({}));
-        forceFull = body?.full === true || body?.full === 1;
-      } catch {
-        /* ignore */
-      }
+        if (body?.full === true || body?.full === 1) forceFull = true;
+      } catch { /* ignore */ }
     }
 
-    let maxPages: number;
+    let contests: ContestRow[];
+    let pagesCrawled: number;
     let isFull: boolean;
-    let stopWhenEmpty: boolean;
+    let nextPage: number | null = null;
+
     if (forceFull) {
-      maxPages = PAGES_MAX_CAP;
-      stopWhenEmpty = true;
+      // full: 1페이지만 크롤, crawl_state로 다음 페이지 추적 (타임아웃 회피)
+      const { data: state } = await supabase
+        .from("crawl_state")
+        .select("next_page")
+        .eq("source", SOURCE)
+        .single();
+
+      const page = Math.min(Math.max(1, state?.next_page ?? 1), PAGES_MAX_CAP);
+      const rows = await crawlWevityPage(page);
+
+      if (rows.length > 0) {
+        const { error: upsertErr } = await supabase.from("contests").upsert(rows, {
+          onConflict: "source,id",
+          ignoreDuplicates: false,
+        });
+        if (upsertErr) throw upsertErr;
+      }
+
+      nextPage = rows.length === 0 && page > 1
+        ? 1  // 빈 페이지 도달 → 처음으로 리셋
+        : page >= PAGES_MAX_CAP
+          ? 1  // 100페이지 도달 → 처음으로 순환
+          : page + 1;
+
+      await supabase.from("crawl_state").upsert(
+        { source: SOURCE, next_page: nextPage, updated_at: new Date().toISOString() },
+        { onConflict: "source" }
+      );
+
+      contests = rows;
+      pagesCrawled = 1;
       isFull = true;
     } else {
-      const { count } = await supabase
-        .from("contests")
-        .select("*", { count: "exact", head: true })
-        .eq("source", SOURCE);
-      const isInitial = (count ?? 0) === 0;
-      if (isInitial) {
-        maxPages = PAGES_MAX_CAP;
-        stopWhenEmpty = true;
-      } else {
-        maxPages = PAGES_INCREMENTAL;
-        stopWhenEmpty = false;
+      // 증분: 최근 3페이지만 (30분마다)
+      const { rows, pagesCrawled: n } = await crawlWevityPages(
+        1, PAGES_INCREMENTAL, DELAY_MS_INCREMENTAL
+      );
+      contests = rows;
+      pagesCrawled = n;
+      isFull = false;
+
+      if (contests.length > 0) {
+        const { error: upsertErr } = await supabase.from("contests").upsert(contests, {
+          onConflict: "source,id",
+          ignoreDuplicates: false,
+        });
+        if (upsertErr) throw upsertErr;
       }
-      isFull = isInitial;
     }
-
-    const { rows: contests, pagesCrawled } = await crawlWevityPages(maxPages, stopWhenEmpty);
-    if (contests.length === 0) {
-      return new Response(
-        JSON.stringify({ success: true, total: 0, source: SOURCE, message: "No data" }),
-        { status: 200, headers: { "Content-Type": "application/json" } }
-      );
-    }
-
-    const { error } = await supabase.from("contests").upsert(contests, {
-      onConflict: "source,id",
-      ignoreDuplicates: false,
-    });
-
-    if (error) {
-      console.error("Wevity upsert error:", error);
-      return new Response(
-        JSON.stringify({ success: false, error: error.message }),
-        { status: 500, headers: { "Content-Type": "application/json" } }
-      );
-    }
+    const resBody: Record<string, unknown> = {
+      success: true,
+      total: contests.length,
+      source: SOURCE,
+      mode: isFull ? "full" : "incremental",
+      pages: pagesCrawled,
+      message: `위비티 ${contests.length}건 upsert 완료 (${pagesCrawled}페이지)`,
+    };
+    if (nextPage != null) resBody.nextPage = nextPage;
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        total: contests.length,
-        source: SOURCE,
-        mode: isFull ? "full" : "incremental",
-        pages: pagesCrawled,
-        message: `위비티 ${contests.length}건 upsert 완료 (${pagesCrawled}페이지)`,
-      }),
+      JSON.stringify(resBody),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (e) {
