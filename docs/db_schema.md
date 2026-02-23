@@ -68,7 +68,9 @@ CREATE TABLE IF NOT EXISTS contests (
     category TEXT DEFAULT 'NULL',
     created_at TIMESTAMPTZ,
     first_seen_at TIMESTAMPTZ,
+    updated_at TIMESTAMPTZ,
     PRIMARY KEY (source, id)
+
 );
 
 CREATE INDEX IF NOT EXISTS idx_contests_created ON contests(created_at DESC);
@@ -200,6 +202,73 @@ CREATE TABLE IF NOT EXISTS crawl_state (
 
 ---
 
+### 10. notifications (알람 테이블)
+
+공고 insert/update 시 크롤 함수에서 생성. "어떤 공모전의 N개 데이터가 새로 추가/업데이트" 메시지.
+`id`는 순번(자동 증가), INSERT 시 넣지 않음.
+
+```sql
+CREATE TABLE IF NOT EXISTS notifications (
+    id BIGSERIAL PRIMARY KEY,
+    type TEXT NOT NULL CHECK (type IN ('insert', 'update', 'status')),
+    source TEXT NOT NULL,
+    count INTEGER NOT NULL,
+    message TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_created ON notifications(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_source ON notifications(source);
+```
+
+- `id`: BIGSERIAL 순번 (INSERT 시 생략, 자동 할당)
+- `type`: 'insert' (신규 추가) | 'update' (업데이트) | 'status' (상태메시지 변경)
+
+**기존 DB에 status 타입 추가**:
+```sql
+ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN ('insert', 'update', 'status'));
+```
+- `source`: 출처 ('요즘것들', '위비티' 등)
+- `count`: 해당 건수
+- `message`: "요즘것들 공모전의 5개의 데이터가 새로 추가되었어요" 등
+
+---
+
+### 11. notification_user_state (알람 읽음/삭제 상태)
+
+유저별 알람 읽음·삭제 상태. 삭제는 soft delete (deleted=true).
+`user_id`는 `profiles.id`(PK)와 동일한 UUID로 연결. (profiles.id = auth.users.id)
+
+```sql
+CREATE TABLE IF NOT EXISTS notification_user_state (
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+    notification_id BIGINT NOT NULL REFERENCES notifications(id) ON DELETE CASCADE,
+    read BOOLEAN NOT NULL DEFAULT false,
+    deleted BOOLEAN NOT NULL DEFAULT false,
+    PRIMARY KEY (user_id, notification_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_notification_user_state_user ON notification_user_state(user_id);
+CREATE INDEX IF NOT EXISTS idx_notification_user_state_read ON notification_user_state(user_id, read) WHERE deleted = false;
+```
+
+- `read`: 읽음 여부 (true = 읽음)
+- `deleted`: 삭제 여부 (true = 삭제됨, 목록에서 제외)
+
+**기존 테이블이 auth.users 참조인 경우**:
+```sql
+ALTER TABLE notification_user_state DROP CONSTRAINT IF EXISTS notification_user_state_user_id_fkey;
+ALTER TABLE notification_user_state ADD CONSTRAINT notification_user_state_user_id_fkey
+  FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE CASCADE;
+```
+
+**알람 전달**: 크롤 함수가 notification 생성 시, `profiles`에서 `role='member'`인 유저의 `profiles.id`를 `user_id`로 사용하여 `notification_user_state` 행 생성
+
+**Realtime**: 알람 목록 실시간 갱신 시 `ALTER PUBLICATION supabase_realtime ADD TABLE notifications;` 실행
+
+---
+
 ## ER 관계
 
 ```
@@ -208,6 +277,9 @@ contests (source, id)
     ├── contest_comments (1:N)
     ├── contest_bookmarks (N:M) ── folder_id ──> bookmark_folders (1단계/2단계)
     └── contest_participation (N:M)
+
+notifications (id)
+    └── notification_user_state (N:M) ── user_id ──> auth.users
 ```
 
 ---
@@ -221,6 +293,8 @@ contests (source, id)
 | bookmark_folders | 본인만 | 본인 | 본인 | 본인 |
 | contest_bookmarks | 본인만 | 본인 | 본인 | 본인 |
 | contest_participation | 본인만 | 본인 | 본인 | 본인 |
+| notifications | 모두 | 서비스(크롤) | - | - |
+| notification_user_state | 본인만 | 본인 | 본인 | 본인 |
 
 ---
 
@@ -233,6 +307,7 @@ contests (source, id)
 ## 크롤링 (GitHub Actions + Edge Function)
 
 - 30분마다 `crawl-contests` Edge Function 호출 → contests 테이블 upsert
+- 크롤 후 insert/update 건수에 따라 `notifications` 테이블에 알람 생성
 - 상세: [docs/크롤링_설정.md](크롤링_설정.md)
 
 ---

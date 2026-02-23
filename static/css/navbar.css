@@ -97,6 +97,20 @@
   font-weight: 600;
   color: var(--main-purple);
 }
+.navbar-user .nav-notification-wrap {
+  position: relative;
+  display: inline-flex;
+}
+.navbar-user .nav-notification-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 10px;
+  height: 10px;
+  background: #dc2626;
+  border-radius: 50%;
+  border: 2px solid var(--bg-white);
+}
 .navbar-user .nav-btn-icon {
   padding: 4px;
   display: flex;

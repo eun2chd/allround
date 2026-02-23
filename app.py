@@ -370,11 +370,11 @@ def mypage_user(user_id):
         role = profile.get("role", "member")
         role_label = "관리자" if role == "admin" else "팀원"
         # Tier/Level mock (실제 데이터 연동 시 profiles 테이블 또는 별도 통계 활용)
-        awards_count = profile.get("awards_count", 5)
-        level = profile.get("level", 12)
-        exp_percent = profile.get("exp_percent", 62)
-        exp_current = profile.get("exp_current", 620)
-        exp_next = profile.get("exp_next", 1000)
+        awards_count = profile.get("awards_count", 20)
+        level = profile.get("level", 1)
+        exp_percent = profile.get("exp_percent", 0)
+        exp_current = profile.get("exp_current", 10)
+        exp_next = profile.get("exp_next", 0)
         expertise_tags = profile.get("expertise_tags") or ["빅데이터", "AI 디자인", "로고 디자인", "UX/UI"]
         pinned_portfolio = profile.get("pinned_portfolio") or [
             {"title": "OO브랜드 로고 공모전", "thumbnail": "", "award": "최우수상", "url": "#"},
@@ -467,7 +467,34 @@ def api_update_status_message():
         return jsonify({"success": False, "error": "사용자 정보가 없습니다."}), 401
     try:
         supabase = get_supabase_admin_client()
+        nickname = session.get("nickname") or "회원"
         r = supabase.table("profiles").update({"status_message": status_message or None}).eq("email", email).execute()
+        # 전체 유저에게 상태메시지 변경 알림
+        try:
+            notif = (
+                supabase.table("notifications")
+                .insert({
+                    "type": "status",
+                    "source": "상태메시지",
+                    "count": 1,
+                    "message": f"{nickname}님이 상태 메시지를 변경했습니다",
+                })
+                .execute()
+            )
+            if notif.data and len(notif.data) > 0:
+                notif_id = notif.data[0].get("id")
+                if notif_id:
+                    members = supabase.table("profiles").select("id").eq("role", "member").execute()
+                    user_id = str(session.get("user_id") or "")
+                    states = [
+                        {"user_id": m["id"], "notification_id": notif_id, "read": False, "deleted": False}
+                        for m in (members.data or [])
+                        if str(m.get("id") or "") != user_id  # 본인 제외
+                    ]
+                    if states:
+                        supabase.table("notification_user_state").insert(states).execute()
+        except Exception as notif_err:
+            logger.warning("상태메시지 알림 생성 실패: %s", notif_err)
         return jsonify({"success": True, "status_message": status_message or ""})
     except Exception as e:
         logger.error("상태 메시지 업데이트 실패: %s", e)
@@ -539,18 +566,133 @@ def api_users():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/contests")
-def api_contests():
-    """Supabase contests 테이블에서 공고 목록 조회"""
+@app.route("/api/team/members")
+def api_team_members():
+    """멤버 랭킹: role='member' 프로필 조회, 참가 건수로 정렬"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": []})
     try:
         supabase = get_supabase_admin_client()
-        r = supabase.table("contests").select("id, title, d_day, host, url, category, source, created_at").order("created_at", desc=True).execute()
+        r = supabase.table("profiles").select("id, nickname, profile_url").eq("role", "member").order("nickname").execute()
+        members = [{"id": str(u["id"]), "nickname": u.get("nickname") or "회원", "profile_url": u.get("profile_url") or ""} for u in (r.data or [])]
+        if not members:
+            return jsonify({"success": True, "data": []})
+        user_ids = [m["id"] for m in members]
+        part_r = supabase.table("contest_participation").select("user_id").eq("status", "participate").execute()
+        part_counts = {}
+        for p in (part_r.data or []):
+            uid = str(p.get("user_id") or "")
+            if uid in user_ids:
+                part_counts[uid] = part_counts.get(uid, 0) + 1
+        for m in members:
+            m["participate_count"] = part_counts.get(m["id"], 0)
+        members.sort(key=lambda x: (-x["participate_count"], x["nickname"]))
+        return jsonify({"success": True, "data": members})
+    except Exception as e:
+        logger.error("api/team/members 오류: %s", e)
+        return jsonify({"success": True, "data": []})
+
+
+@app.route("/api/team/activity")
+def api_team_activity():
+    """참가 최근 5건: contest_participation(참가) + profiles(nickname) + contests(title, url)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": []})
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contest_participation").select("user_id, source, contest_id, updated_at").eq("status", "participate").order("updated_at", desc=True).limit(5).execute()
         rows = r.data or []
-        # Supabase 컬럼명 그대로 (id, source 등)
-        return jsonify({"success": True, "data": rows})
+        if not rows:
+            return jsonify({"success": True, "data": []})
+        user_ids = list({str(p.get("user_id") or "") for p in rows if p.get("user_id")})
+        contest_keys = [(p.get("source") or "", p.get("contest_id") or "") for p in rows]
+        profiles_map = {}
+        if user_ids:
+            pr = supabase.table("profiles").select("id, nickname").in_("id", user_ids).execute()
+            for u in (pr.data or []):
+                profiles_map[str(u.get("id") or "")] = u.get("nickname") or "회원"
+        contests_map = {}
+        for src, cid in contest_keys:
+            if not src or not cid:
+                continue
+            c = supabase.table("contests").select("id, title, url").eq("source", src).eq("id", cid).limit(1).execute()
+            if c.data:
+                contests_map[(src, cid)] = c.data[0]
+        result = []
+        for p in rows:
+            uid = str(p.get("user_id") or "")
+            src = p.get("source") or ""
+            cid = p.get("contest_id") or ""
+            nickname = profiles_map.get(uid, "회원")
+            contest = contests_map.get((src, cid)) or {}
+            result.append({
+                "user_id": uid,
+                "nickname": nickname,
+                "title": contest.get("title", "(제목 없음)"),
+                "url": contest.get("url", "#"),
+            })
+        return jsonify({"success": True, "data": result})
+    except Exception as e:
+        logger.error("api/team/activity 오류: %s", e)
+        return jsonify({"success": True, "data": []})
+
+
+@app.route("/api/contests")
+def api_contests():
+    """Supabase contests 테이블에서 공고 목록 조회 (페이지당 10개)"""
+    try:
+        page = max(1, int(request.args.get("page", 1)))
+        limit_arg = int(request.args.get("limit", 10))
+        all_mode = request.args.get("all") in ("1", "true")
+        limit = 2000 if all_mode else max(1, min(100, limit_arg))
+        category = request.args.get("category", "").strip() or None
+        source = request.args.get("source", "").strip() or None
+        q = request.args.get("q", "").strip() or None
+
+        supabase = get_supabase_admin_client()
+        query = (
+            supabase.table("contests")
+            .select("id, title, d_day, host, url, category, source, created_at, updated_at", count="exact")
+            .order("created_at", desc=True)
+        )
+        if category:
+            query = query.eq("category", category)
+        if source:
+            query = query.eq("source", source)
+        if q:
+            safe_q = q.replace(",", " ").replace("%", "")  # avoid breaking or_ syntax
+            pattern = f"%{safe_q}%"
+            query = query.or_(f"title.ilike.{pattern},host.ilike.{pattern},category.ilike.{pattern}")
+
+        offset = (page - 1) * limit
+        r = query.range(offset, offset + limit - 1).execute()
+        rows = r.data or []
+        total = getattr(r, "count", None) or len(rows)
+        return jsonify({
+            "success": True,
+            "data": rows,
+            "total": total,
+            "page": page,
+            "limit": limit,
+        })
     except Exception as e:
         logger.error("api/contests 오류: %s", e)
         return jsonify({"success": False, "error": str(e), "data": []}), 500
+
+
+@app.route("/api/contests/filters")
+def api_contests_filters():
+    """필터용 카테고리/출처 목록 (distinct)"""
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contests").select("category, source").limit(500).execute()
+        rows = r.data or []
+        categories = sorted({str(row.get("category") or "공모전") for row in rows if row.get("category")})
+        sources = sorted({str(row.get("source") or "요즘것들") for row in rows if row.get("source")})
+        return jsonify({"success": True, "categories": categories, "sources": sources})
+    except Exception as e:
+        logger.error("api/contests/filters 오류: %s", e)
+        return jsonify({"success": True, "categories": [], "sources": []})
 
 
 @app.route("/api/bookmarks/contests")
@@ -816,6 +958,118 @@ def api_bookmarks_assign():
         return jsonify({"success": False, "error": err_msg}), 500
 
 
+@app.route("/api/notifications")
+def api_notifications():
+    """현재 사용자 알림 목록 (notification_user_state 기반, deleted 제외)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": [], "unread_count": 0})
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": [], "unread_count": 0})
+    try:
+        supabase = get_supabase_admin_client()
+        r = (
+            supabase.table("notification_user_state")
+            .select("notification_id, read, deleted")
+            .eq("user_id", user_id)
+            .eq("deleted", False)
+            .execute()
+        )
+        state_rows = r.data or []
+        if not state_rows:
+            return jsonify({"success": True, "data": [], "unread_count": 0})
+        notif_ids = [s["notification_id"] for s in state_rows]
+        state_by_id = {s["notification_id"]: s for s in state_rows}
+        n_r = supabase.table("notifications").select("id, type, source, count, message, created_at").in_("id", notif_ids).order("created_at", desc=True).execute()
+        notifs = n_r.data or []
+        result = []
+        for n in notifs:
+            sid = n.get("id")
+            st = state_by_id.get(sid) or {}
+            result.append({
+                "id": sid,
+                "type": n.get("type"),
+                "source": n.get("source"),
+                "count": n.get("count"),
+                "message": n.get("message"),
+                "created_at": n.get("created_at"),
+                "read": st.get("read", False),
+            })
+        unread = sum(1 for r in result if not r.get("read"))
+        return jsonify({"success": True, "data": result, "unread_count": unread})
+    except Exception as e:
+        logger.error("api/notifications 오류: %s", e)
+        return jsonify({"success": True, "data": [], "unread_count": 0})
+
+
+@app.route("/api/notifications/<notification_id>/read", methods=["POST"])
+def api_notification_read(notification_id):
+    """알림 읽음 처리"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        supabase.table("notification_user_state").update({"read": True}).eq("user_id", user_id).eq("notification_id", notification_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/notifications read 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/notifications/<notification_id>/delete", methods=["POST"])
+def api_notification_delete(notification_id):
+    """알림 삭제 처리 (soft delete)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        supabase.table("notification_user_state").update({"deleted": True}).eq("user_id", user_id).eq("notification_id", notification_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/notifications delete 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/notifications/read-all", methods=["POST"])
+def api_notifications_read_all():
+    """전체 읽음 처리"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        supabase.table("notification_user_state").update({"read": True}).eq("user_id", user_id).eq("deleted", False).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/notifications read-all 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/notifications/delete-all", methods=["POST"])
+def api_notifications_delete_all():
+    """전체 삭제 처리 (soft delete)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        supabase.table("notification_user_state").update({"deleted": True}).eq("user_id", user_id).eq("deleted", False).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/notifications delete-all 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/user/contest-status")
 def api_user_contest_status():
     """현재 사용자의 내용확인/참가/패스 상태 + 댓글 작성한 공모전 (내용 봤음)"""
@@ -946,14 +1200,26 @@ def api_contest_content_check(source, contest_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-@app.route("/api/contests/<source>/<contest_id>/participation", methods=["POST"])
+@app.route("/api/contests/<source>/<contest_id>/participation", methods=["POST", "DELETE"])
 def api_contest_participation(source, contest_id):
-    """참가/패스 클릭: contest_participation 업데이트 + 댓글 작성. 내용확인 후에만 가능."""
+    """참가/패스: POST=업데이트+댓글, DELETE=삭제"""
     if not session.get("logged_in"):
         return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    if request.method == "DELETE":
+        try:
+            supabase = get_supabase_admin_client()
+            supabase.table("contest_participation").delete().eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).execute()
+            try:
+                supabase.table("contest_comments").delete().eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).in_("body", ["공모전 참가", "공모전 패스"]).execute()
+            except Exception:
+                pass
+            return jsonify({"success": True})
+        except Exception as e:
+            logger.error("participation DELETE 오류: %s", e)
+            return jsonify({"success": False, "error": str(e)}), 500
     data = request.get_json(silent=True) or {}
     status = (data.get("status") or "").strip()
     if status not in ("participate", "pass"):

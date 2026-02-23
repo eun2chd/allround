@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
   <style>
     @font-face {
       font-family: 'Pretendard Variable';
@@ -53,358 +54,6 @@
       font-weight: 700;
       color: var(--text-dark);
       margin: 0;
-    }
-    /* 프로필 영역 */
-    .profile-section {
-      background: linear-gradient(135deg, #ede9fe 0%, #6d28d9 100%);
-      border-radius: var(--radius-lg);
-      padding: 32px;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-      margin-bottom: 24px;
-    }
-    .profile-section .profile-top {
-      display: flex;
-      align-items: center;
-      gap: 24px;
-      position: relative;
-      z-index: 1;
-    }
-    .profile-section .profile-status-row,
-    .profile-section .level-exp-block {
-      position: relative;
-      z-index: 1;
-    }
-    .profile-section .profile-status-row {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(0,0,0,0.06);
-      width: 100%;
-    }
-    .profile-section .profile-status-row .status-input {
-      width: 100%;
-      padding: 10px 14px;
-      border: 1px solid var(--border-gray);
-      border-radius: var(--radius);
-      font-family: var(--font);
-      font-size: 0.9rem;
-    }
-    .profile-section .profile-status-row .status-input:focus {
-      outline: none;
-      border-color: var(--main-purple);
-      box-shadow: 0 0 0 2px rgba(109,40,217,0.15);
-    }
-    .profile-section .profile-status-row .status-row-inner {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .profile-section .profile-status-row .status-row-inner .status-input { flex: 1; }
-    .profile-section .profile-status-row .btn-clear-status {
-      flex-shrink: 0;
-      padding: 8px 14px;
-      font-family: var(--font);
-      font-size: 0.85rem;
-      color: var(--gray-muted);
-      background: var(--bg-white);
-      border: 1px solid var(--border-gray);
-      border-radius: var(--radius);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .profile-section .profile-status-row .btn-clear-status:hover {
-      color: #dc2626;
-      border-color: #dc2626;
-      background: #fef2f2;
-    }
-    .profile-section .profile-status-row .btn-save-status {
-      flex-shrink: 0;
-      padding: 8px 16px;
-      font-family: var(--font);
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: #fff;
-      background: var(--main-purple);
-      border: none;
-      border-radius: var(--radius);
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .profile-section .profile-status-row .btn-save-status:hover {
-      background: var(--main-purple-hover);
-    }
-    .profile-section .avatar-wrap { position: relative; }
-    .profile-section .avatar {
-      width: 96px;
-      height: 96px;
-      border-radius: 50%;
-      background: var(--bg-white);
-      background-size: cover;
-      background-position: center;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 2.25rem;
-      font-weight: 600;
-      color: var(--main-purple);
-    }
-    .profile-section .avatar.legend-border {
-      border: 3px solid #e8b923;
-      box-shadow: 0 0 12px rgba(229, 185, 35, 0.5), inset 0 0 0 1px rgba(255,255,255,0.3);
-    }
-    /* Tier 스타일 */
-    .profile-section.tier-0 {
-      background: var(--bg-white);
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-      border: 1px solid var(--border-gray);
-    }
-    .profile-section.tier-1 {
-      background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
-      border: 2px solid #94a3b8;
-      box-shadow: 0 0 20px rgba(148, 163, 184, 0.4), inset 0 0 40px rgba(255,255,255,0.5);
-    }
-    .profile-section.tier-1 .avatar { box-shadow: 0 0 16px rgba(148, 163, 184, 0.6); border: 2px solid #94a3b8; }
-    .profile-section.tier-2 {
-      background: linear-gradient(135deg, #fef9c3 0%, #fde68a 50%, #fcd34d 100%);
-      border: 2px solid #e8b923;
-      position: relative;
-      overflow: visible;
-    }
-    .profile-section.tier-2::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
-      animation: shimmer 3s ease-in-out infinite;
-    }
-    @keyframes shimmer { 0% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
-    /* Tier 2: 프로필 영역 Border Animation (테두리 바깥쪽 따라 빛 이동) */
-    .profile-section.tier-2 .profile-border-svg {
-      position: absolute;
-      inset: -4px;
-      width: calc(100% + 8px);
-      height: calc(100% + 8px);
-      border-radius: calc(var(--radius-lg) + 4px);
-      pointer-events: none;
-      z-index: 2;
-    }
-    .profile-section.tier-2 .profile-border-svg rect {
-      fill: none;
-      stroke: url(#goldSectionGradient);
-      stroke-width: 3;
-      stroke-linecap: round;
-      stroke-dasharray: 280 1320;
-      animation: profile-border-travel 5s linear infinite;
-    }
-    @keyframes profile-border-travel { to { stroke-dashoffset: 1600; } }
-    .profile-section.tier-3 {
-      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4c1d95 100%);
-      border: 2px solid rgba(255,255,255,0.15);
-      position: relative;
-      overflow: visible;
-    }
-    /* Tier 3: 테두리 바깥쪽 따라 이동하는 무지개 빛 (회전 없음) */
-    .profile-section.tier-3 .profile-border-svg {
-      position: absolute;
-      inset: -4px;
-      width: calc(100% + 8px);
-      height: calc(100% + 8px);
-      border-radius: calc(var(--radius-lg) + 4px);
-      pointer-events: none;
-      z-index: 2;
-    }
-    .profile-section.tier-3 .profile-border-svg rect {
-      fill: none;
-      stroke: url(#rainbowSectionGradient);
-      stroke-width: 3;
-      stroke-linecap: round;
-      stroke-dasharray: 280 1320;
-      animation: profile-border-travel 5s linear infinite;
-    }
-    .profile-section.tier-3 .info h2,
-    .profile-section.tier-3 .profile-tagline,
-    .profile-section.tier-3 .info p { color: rgba(255,255,255,0.95); }
-    .profile-section.tier-3 .profile-tagline { color: #fde68a; }
-    .profile-section.tier-3 .summary-label,
-    .profile-section.tier-3 .profile-status-row { border-color: rgba(255,255,255,0.15); }
-    /* Tier 3 파티클 */
-    .profile-section.tier-3 .tier-particles {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      overflow: hidden;
-    }
-    .tier-particle {
-      position: absolute;
-      width: 4px;
-      height: 4px;
-      background: rgba(255,255,255,0.5);
-      border-radius: 50%;
-      animation: particle-float 8s ease-in-out infinite;
-    }
-    .tier-particle:nth-child(1) { left: 10%; top: 20%; animation-delay: 0s; }
-    .tier-particle:nth-child(2) { left: 25%; top: 60%; animation-delay: 1s; }
-    .tier-particle:nth-child(3) { left: 60%; top: 15%; animation-delay: 2s; }
-    .tier-particle:nth-child(4) { left: 80%; top: 70%; animation-delay: 0.5s; }
-    .tier-particle:nth-child(5) { left: 45%; top: 85%; animation-delay: 1.5s; }
-    .tier-particle:nth-child(6) { left: 90%; top: 40%; animation-delay: 2.5s; }
-    @keyframes particle-float {
-      0%, 100% { transform: translate(0,0) scale(1); opacity: 0.5; }
-      50% { transform: translate(10px,-15px) scale(1.2); opacity: 0.9; }
-    }
-    .legend-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 10px;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #b45309;
-      background: linear-gradient(180deg, #fef3c7 0%, #fde68a 100%);
-      border: 1px solid #e8b923;
-      border-radius: 20px;
-    }
-    .profile-section.tier-3 .legend-badge {
-      color: #fff;
-      background: linear-gradient(135deg, #8b5cf6, #ec4899);
-      border-color: rgba(255,255,255,0.5);
-    }
-    .profile-tagline {
-      font-size: 0.9rem;
-      color: var(--main-purple);
-      font-weight: 600;
-      margin-top: 4px;
-    }
-    .profile-section .btn-avatar-upload {
-      position: absolute;
-      bottom: 0;
-      right: 0;
-      width: 32px;
-      height: 32px;
-      border-radius: 50%;
-      background: var(--main-purple);
-      color: #fff;
-      border: 2px solid var(--bg-white);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      padding: 0;
-      transition: background 0.2s;
-    }
-    .profile-section .btn-avatar-upload:hover { background: var(--main-purple-hover); }
-    .profile-section .btn-avatar-upload input { display: none; }
-    .profile-section .info { flex: 1; }
-    .profile-section .info h2 {
-      font-size: 1.35rem;
-      font-weight: 600;
-      color: var(--text-dark);
-      margin-bottom: 8px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-    .role-badge {
-      display: inline-block;
-      padding: 4px 10px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      color: var(--main-purple);
-      background: var(--bg-white);
-      border-radius: 20px;
-    }
-    .profile-section.tier-3 .role-badge {
-      background: rgba(255,255,255,0.2);
-      color: #e9d5ff;
-    }
-    .profile-section .info p { font-size: 0.9rem; color: var(--gray-muted); }
-    .profile-section .profile-top .profile-logout { flex-shrink: 0; margin-left: auto; }
-    /* 레벨/EXP 바 */
-    .level-exp-block {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid rgba(0,0,0,0.06);
-      width: 100%;
-    }
-    .profile-section.tier-3 .level-exp-block { border-color: rgba(255,255,255,0.2); }
-    .level-exp-row {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      flex-wrap: wrap;
-      margin-bottom: 8px;
-    }
-    .level-exp-info {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--text-dark);
-    }
-    .profile-section.tier-3 .level-exp-info { color: #fff; }
-    .level-exp-info .tier-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 6px;
-      font-size: 0.75rem;
-      margin-left: 6px;
-      font-weight: 700;
-    }
-    .tier-badge.bronze { background: #f5e6d3; color: #92400e; }
-    .tier-badge.silver { background: #e5e7eb; color: #4b5563; }
-    .tier-badge.gold { background: linear-gradient(180deg, #fef3c7, #fde68a); color: #b45309; }
-    .tier-badge.legend { background: linear-gradient(135deg, #8b5cf6, #ec4899); color: #fff; }
-    .exp-bar-wrap {
-      height: 12px;
-      background: rgba(0,0,0,0.1);
-      border-radius: 999px;
-      overflow: hidden;
-      flex: 1;
-      min-width: 120px;
-    }
-    .profile-section.tier-3 .exp-bar-wrap { background: rgba(255,255,255,0.2); }
-    .exp-bar-fill {
-      height: 100%;
-      background: linear-gradient(90deg, var(--main-purple), #a78bfa);
-      border-radius: 999px;
-      transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .exp-bar-fill.gold { background: linear-gradient(90deg, #e8b923, #fcd34d); }
-    .exp-bar-fill.legend { background: linear-gradient(90deg, #8b5cf6, #ec4899); }
-    .exp-next-hint {
-      font-size: 0.8rem;
-      color: var(--gray-muted);
-      margin-top: 6px;
-    }
-    .profile-section.tier-3 .exp-next-hint { color: rgba(255,255,255,0.7); }
-    /* 분야 전문성 태그 */
-    .expertise-tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 12px;
-    }
-    .expertise-tag {
-      display: inline-block;
-      padding: 6px 12px;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--main-purple);
-      background: rgba(255,255,255,0.9);
-      border: 1px solid rgba(109,40,217,0.3);
-      border-radius: 20px;
-      text-decoration: none;
-      transition: all 0.2s;
-    }
-    .expertise-tag:hover { background: var(--soft-purple); border-color: var(--main-purple); }
-    .profile-section.tier-3 .expertise-tag {
-      background: rgba(255,255,255,0.15);
-      border-color: rgba(255,255,255,0.4);
-      color: #fde68a;
-    }
-    .profile-section.tier-3 .expertise-tag:hover {
-      background: rgba(255,255,255,0.25);
-      border-color: rgba(255,255,255,0.6);
     }
     /* 대표 작품 (Pinned Portfolio) */
     .pinned-portfolio-section {
@@ -537,40 +186,6 @@
     .summary-card .summary-icon.rocket { background: linear-gradient(135deg, #e0e7ff, #c7d2fe); }
     .summary-card .summary-value { font-size: 1.25rem; font-weight: 700; color: var(--text-dark); }
     .summary-card .summary-label { font-size: 0.85rem; color: var(--gray-muted); margin-top: 2px; }
-    /* 공모전 타임라인 */
-    .timeline-section {
-      background: var(--bg-white);
-      border-radius: var(--radius-lg);
-      padding: 24px;
-      box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-      margin-bottom: 24px;
-    }
-    .timeline-section h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text-dark);
-      margin-bottom: 20px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid var(--border-gray);
-    }
-    .timeline-item {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 14px 0;
-      border-bottom: 1px solid var(--border-gray);
-    }
-    .timeline-item:last-child { border-bottom: none; }
-    .timeline-dot {
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-top: 6px;
-      flex-shrink: 0;
-    }
-    .timeline-dot.win { background: var(--main-purple); }
-    .timeline-dot.lose { background: var(--gray-muted); }
-    .timeline-content { flex: 1; min-width: 0; }
     /* 참가/패스 공모전 */
     .participation-section {
       background: var(--bg-white);
@@ -588,7 +203,7 @@
       border-bottom: 1px solid var(--border-gray);
     }
     .participation-list { display: flex; flex-direction: column; gap: 12px; }
-    .participation-item {
+    .participation-item-wrap {
       display: flex;
       align-items: center;
       gap: 12px;
@@ -596,13 +211,72 @@
       background: #faf9fc;
       border-radius: var(--radius);
       border: 1px solid var(--border-gray);
-      text-decoration: none;
-      color: inherit;
       transition: background 0.2s, border-color 0.2s;
     }
-    .participation-item:hover {
+    .participation-item-wrap:hover { border-color: rgba(109,40,217,0.3); }
+    .participation-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex: 1;
+      min-width: 0;
+      text-decoration: none;
+      color: inherit;
+    }
+    .participation-item-wrap:hover .participation-item { background: transparent; }
+    .participation-item-wrap:hover { background: var(--soft-purple); }
+    .participation-delete-btn {
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border: 1px solid #dc2626;
+      background: transparent;
+      color: #dc2626;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .participation-delete-btn:hover { background: rgba(220, 38, 38, 0.1); }
+    .participation-pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-gray);
+    }
+    .participation-pagination button {
+      padding: 6px 12px;
+      border: 1px solid var(--border-gray);
+      background: var(--bg-white);
+      color: var(--text-dark);
+      font-size: 0.85rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .participation-pagination button:hover:not(:disabled) {
+      border-color: var(--main-purple);
+      color: var(--main-purple);
+    }
+    .participation-pagination button:disabled { opacity: 0.5; cursor: default; }
+    .participation-pagination .participation-pages { display: flex; gap: 4px; }
+    .participation-pagination .participation-page-btn {
+      min-width: 32px;
+      padding: 6px 10px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--text-dark);
+      font-size: 0.85rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .participation-pagination .participation-page-btn:hover { background: var(--soft-purple); }
+    .participation-pagination .participation-page-btn.active {
+      border-color: var(--main-purple);
       background: var(--soft-purple);
-      border-color: rgba(109,40,217,0.3);
+      color: var(--main-purple);
+      font-weight: 600;
     }
     .participation-badge {
       flex-shrink: 0;
@@ -616,19 +290,6 @@
     .participation-info { flex: 1; min-width: 0; }
     .participation-title { font-size: 0.95rem; font-weight: 600; color: var(--text-dark); margin-bottom: 4px; }
     .participation-meta { font-size: 0.8rem; color: var(--gray-muted); }
-    .timeline-title { font-size: 0.95rem; font-weight: 600; color: var(--text-dark); margin-bottom: 4px; }
-    .timeline-meta { font-size: 0.82rem; color: var(--gray-muted); display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-    .timeline-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .timeline-badge.award { background: var(--soft-purple); color: var(--main-purple); }
-    .timeline-badge.eliminated { background: #fef2f2; color: #dc2626; }
-    .timeline-link { font-size: 0.8rem; color: var(--main-purple); text-decoration: none; }
-    .timeline-link:hover { text-decoration: underline; }
     .actions-section {
       display: flex;
       gap: 12px;
@@ -783,6 +444,7 @@
       <h1>{{ '마이페이지' if is_own_profile else '프로필' }}</h1>
       <div class="info-buttons">
         {% if is_own_profile %}
+        <button type="button" class="btn-profile-apply" onclick="openModal('modalProfileTheme')" title="프로필 테마 선택">프로필 적용</button>
         <button type="button" class="btn-info" onclick="openModal('modalTier')" title="티어 시스템 안내">🏆</button>
         <button type="button" class="btn-info" onclick="openModal('modalTags')" title="분야 태그 안내">#</button>
         <button type="button" class="btn-info" onclick="openModal('modalHeadline')" title="헤드라인 안내">✨</button>
@@ -806,8 +468,8 @@
     </div>
     {% endif %}
 
-    <!-- 프로필 영역 (Tier에 따라 tier-0~3 클래스 적용) -->
-    <section class="profile-section tier-{{ tier_level }}">
+    <!-- 프로필 영역 (Tier tier-0~3, 테마 profile-theme-* 적용) -->
+    <section class="profile-section tier-{{ tier_level }}" id="profileSection" data-own-profile="{{ '1' if is_own_profile else '0' }}">
       {% if tier_level >= 2 %}
       <svg class="profile-border-svg" viewBox="0 0 500 300" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -838,6 +500,9 @@
           <div class="avatar {% if tier_level >= 2 %}legend-border{% endif %}" id="profileAvatar" style="background-image: url('{{ profile.get('profile_url') or '' }}')">
             {% if not profile.get('profile_url') %}<span>{{ (profile.get('nickname') or '?')[:1] }}</span>{% endif %}
           </div>
+          {% if tier_level >= 3 %}
+          <span class="symbol-badge-medal" aria-hidden="true"></span>
+          {% endif %}
           {% if is_own_profile %}
           <label class="btn-avatar-upload" title="프로필 이미지 변경">
             <input type="file" id="avatarInput" accept="image/jpeg,image/png,image/gif,image/webp">
@@ -848,7 +513,7 @@
         <div class="info">
           <h2>
             {{ profile.get('nickname', '') or '회원' }}
-            {% if tier_level >= 3 %}<span class="legend-badge">LEGEND</span>{% endif %}
+            <span class="tier-name-badge tier-name-badge-{{ tier_name|lower }}">{{ tier_name }}</span>
             <span class="role-badge">{{ role_label }}</span>
           </h2>
           <p class="profile-tagline">
@@ -867,15 +532,23 @@
         <a href="{{ url_for('mypage_password') }}" class="btn-outline profile-logout">비밀번호 변경</a>
         {% endif %}
       </div>
-      <!-- 레벨/EXP 바 -->
+      <!-- 레벨/EXP 바: 좌측 엠블럼 + 우측 성장 정보 -->
       <div class="level-exp-block">
         <div class="level-exp-row">
-          <span class="level-exp-info">Lv.{{ level }} · <span class="tier-badge {{ tier_name|lower }}">{{ tier_name }} Tier</span></span>
-          <div class="exp-bar-wrap">
-            <div class="exp-bar-fill {% if tier_level >= 3 %}legend{% elif tier_level >= 2 %}gold{% endif %}" style="width: {{ exp_percent }}%"></div>
+          <div class="level-exp-emblem">
+            <span class="tier-sprite tier-sprite-profile tier-sprite-{{ 5 if tier_level >= 3 else tier_level + 1 }}" aria-hidden="true"></span>
+          </div>
+          <div class="level-exp-info-col">
+            <div class="level-tier-line">
+              <span class="level-text">Lv.{{ level }}</span>
+              <span class="tier-badge-pill tier-badge-pill-{{ tier_name|lower }}">{{ tier_name }}</span>
+            </div>
+            <div class="exp-bar-wrap">
+              <div class="exp-bar-fill {% if tier_level >= 3 %}legend{% elif tier_level >= 2 %}gold{% endif %}" style="width: {{ exp_percent }}%"></div>
+            </div>
+            <p class="exp-next-hint">다음 레벨까지 {{ exp_next - exp_current }} EXP 필요 ({{ exp_percent }}% 완료)</p>
           </div>
         </div>
-        <p class="exp-next-hint">다음 레벨까지 {{ exp_next - exp_current }} EXP 필요 ({{ exp_percent }}% 완료)</p>
       </div>
       {% if is_own_profile %}
       <div class="profile-status-row">
@@ -928,49 +601,16 @@
       </div>
     </section>
 
-    <!-- 공모전 타임라인 -->
-    <section class="timeline-section">
-      <h3>공모전 타임라인</h3>
-      <div class="timeline-item">
-        <div class="timeline-dot win"></div>
-        <div class="timeline-content">
-          <div class="timeline-title">OO브랜드 로고 공모전</div>
-          <div class="timeline-meta">
-            <span>2026.02</span>
-            <span class="timeline-badge award">최우수상</span>
-            <span>₩2,000,000</span>
-          </div>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-dot lose"></div>
-        <div class="timeline-content">
-          <div class="timeline-title">XX앱 UI/UX 공모전</div>
-          <div class="timeline-meta">
-            <span>2026.01</span>
-            <span class="timeline-badge eliminated">심사탈락</span>
-            <a href="#" class="timeline-link">피드백 보기</a>
-          </div>
-        </div>
-      </div>
-      <div class="timeline-item">
-        <div class="timeline-dot win"></div>
-        <div class="timeline-content">
-          <div class="timeline-title">△△데이터 시각화 대회</div>
-          <div class="timeline-meta">
-            <span>2025.12</span>
-            <span class="timeline-badge award">대상</span>
-            <span>₩5,000,000</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- 참가/패스 공모전 (본인·타인 프로필 모두 표시) -->
-    <section class="participation-section" id="participationSection" data-user-id="{{ profile.get('id', '') }}">
+    <!-- 참가/패스 공모전 (본인·타인 프로필 모두 표시, 5개씩 최대 10페이지) -->
+    <section class="participation-section" id="participationSection" data-user-id="{{ profile.get('id', '') }}" data-own-profile="{{ '1' if is_own_profile else '0' }}">
       <h3>참가 / 패스 공모전</h3>
       <div class="participation-list" id="participationList">
         <div class="participation-loading" id="participationLoading" style="color:var(--gray-muted);padding:24px;text-align:center;">불러오는 중...</div>
+      </div>
+      <div class="participation-pagination" id="participationPagination" style="display:none">
+        <button type="button" class="participation-prev" id="participationPrev" title="이전">이전</button>
+        <span class="participation-pages" id="participationPages"></span>
+        <button type="button" class="participation-next" id="participationNext" title="다음">다음</button>
       </div>
     </section>
   </div>
@@ -1057,6 +697,71 @@
     </div>
   </div>
 
+  <!-- 프로필 테마 상점 모달 -->
+  <div class="modal-overlay" id="modalProfileTheme">
+    <div class="modal-box modal-profile-theme">
+      <div class="modal-header">
+        <h4>프로필 테마 상점</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalProfileTheme')" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="profile-theme-desc">보유한 레벨에 따라 특별한 아우라를 선택할 수 있습니다.</p>
+        <div class="profile-theme-grid">
+          <div class="profile-theme-card" data-theme="basic">
+            <div class="theme-preview theme-basic">
+              <div class="theme-preview-avatar"></div>
+              <div class="theme-preview-bar"></div>
+            </div>
+            <div class="theme-info">
+              <span class="theme-level">Lv.1 BASIC</span>
+              <span class="theme-name">스타터 팩</span>
+              <p class="theme-desc">깔끔하고 군더더기 없는 기본 화이트 스타일</p>
+              <button type="button" class="theme-apply-btn">적용하기</button>
+            </div>
+          </div>
+          <div class="profile-theme-card" data-theme="rare">
+            <div class="theme-preview theme-rare">
+              <div class="theme-preview-avatar"></div>
+              <div class="theme-preview-bar"></div>
+            </div>
+            <div class="theme-info">
+              <span class="theme-level">Lv.5 RARE</span>
+              <span class="theme-name">퍼플 네온</span>
+              <p class="theme-desc">은은한 보랏빛 그라데이션과 네온 라인</p>
+              <button type="button" class="theme-apply-btn">적용하기</button>
+            </div>
+          </div>
+          <div class="profile-theme-card" data-theme="epic">
+            <div class="theme-preview theme-epic">
+              <div class="theme-mini-particle"></div>
+              <div class="theme-preview-avatar"></div>
+              <div class="theme-preview-bar"></div>
+            </div>
+            <div class="theme-info">
+              <span class="theme-level">Lv.10 EPIC</span>
+              <span class="theme-name">일루전 마스터</span>
+              <p class="theme-desc">움직이는 파티클과 흐르는 에너지 바</p>
+              <button type="button" class="theme-apply-btn">적용하기</button>
+            </div>
+          </div>
+          <div class="profile-theme-card" data-theme="default">
+            <div class="theme-preview theme-default-tier">
+              <div class="tier-crown">👑</div>
+              <div class="theme-preview-avatar legendary"></div>
+              <div class="theme-preview-bar legendary"></div>
+            </div>
+            <div class="theme-info">
+              <span class="theme-level">SPECIAL</span>
+              <span class="theme-name">티어 동기화</span>
+              <p class="theme-desc">현재 나의 성취도(Tier)에 따라 자동 변화</p>
+              <button type="button" class="theme-apply-btn active">사용 중</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   {% include 'partials/_sidebar_users.html' %}
   {% include 'partials/_toast.html' %}
 
@@ -1076,6 +781,51 @@
     });
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(function(m) { closeModal(m.id); });
+    });
+
+    // 프로필 테마 적용 (localStorage)
+    const PROFILE_THEME_KEY = 'allyoung_profile_theme';
+    const profileSection = document.getElementById('profileSection');
+    function applyProfileTheme(theme) {
+      if (!profileSection) return;
+      profileSection.classList.remove('profile-theme-basic', 'profile-theme-rare', 'profile-theme-epic');
+      if (theme && theme !== 'default') {
+        profileSection.classList.add('profile-theme-' + theme);
+      }
+      try { localStorage.setItem(PROFILE_THEME_KEY, theme || 'default'); } catch (e) {}
+      syncThemeButtons();
+    }
+    function syncThemeButtons() {
+      try {
+        const current = localStorage.getItem(PROFILE_THEME_KEY) || 'default';
+        document.querySelectorAll('.profile-theme-card').forEach(function(card) {
+          const btn = card.querySelector('.theme-apply-btn');
+          if (!btn) return;
+          const isActive = (card.dataset.theme || 'default') === current;
+          btn.classList.toggle('active', isActive);
+          btn.textContent = isActive ? '사용 중' : '적용하기';
+        });
+      } catch (e) {}
+    }
+    (function initProfileTheme() {
+      if (!profileSection || profileSection.dataset.ownProfile !== '1') return;
+      try {
+        const saved = localStorage.getItem(PROFILE_THEME_KEY) || 'default';
+        if (saved && saved !== 'default') applyProfileTheme(saved);
+        else syncThemeButtons();
+      } catch (e) {}
+    })();
+    document.querySelectorAll('.profile-theme-card').forEach(function(card) {
+      const btn = card.querySelector('.theme-apply-btn');
+      const theme = card.dataset.theme;
+      if (btn && theme) {
+        btn.addEventListener('click', function() {
+          if (btn.classList.contains('active')) return;
+          applyProfileTheme(theme);
+          closeModal('modalProfileTheme');
+          var t = document.getElementById('toast'); if (t) { t.textContent = '프로필 테마가 적용되었습니다.'; t.className = 'toast success'; t.style.display = 'block'; setTimeout(function() { t.style.display = 'none'; }, 2000); }
+        });
+      }
     });
 
     const avatarInput = document.getElementById('avatarInput');
@@ -1111,7 +861,7 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status_message: val })
         }).then(r => r.json()).then(j => {
-          if (j.success) showToast(isDelete || !val ? '삭제되었습니다.' : '저장되었습니다.', 'success');
+          if (j.success) showToast(isDelete === true || !val ? '삭제되었습니다.' : '저장되었습니다.', 'success');
           else showToast(j.error || '저장에 실패했습니다.', 'error');
         });
       }
@@ -1121,7 +871,7 @@
         saveTimeout = setTimeout(saveStatusMessage, 800);
       });
       const btnSave = document.getElementById('btnSaveStatus');
-      if (btnSave) btnSave.addEventListener('click', saveStatusMessage);
+      if (btnSave) btnSave.addEventListener('click', function() { saveStatusMessage(false); });
       const btnClear = document.getElementById('btnClearStatus');
       if (btnClear) {
         btnClear.addEventListener('click', function() {
@@ -1131,10 +881,94 @@
       }
     }
 
-    // 참가/패스 공모전 목록 로드 (프로필 주인 기준)
+    // 참가/패스 공모전 목록 로드 (5개씩, 최대 10페이지)
     const participationSection = document.getElementById('participationSection');
     const participationList = document.getElementById('participationList');
     const participationLoading = document.getElementById('participationLoading');
+    const participationPagination = document.getElementById('participationPagination');
+    const participationPrev = document.getElementById('participationPrev');
+    const participationNext = document.getElementById('participationNext');
+    const participationPages = document.getElementById('participationPages');
+    const isOwnProfile = participationSection && participationSection.dataset.ownProfile === '1';
+    const PARTICIPATION_PAGE_SIZE = 5;
+    const PARTICIPATION_MAX_PAGES = 10;
+    let participationAllData = [];
+    let participationCurrentPage = 1;
+    function renderParticipationList(data, page) {
+      if (!participationList) return;
+      participationAllData = data || [];
+      participationCurrentPage = Math.max(1, Math.min(page || 1, PARTICIPATION_MAX_PAGES));
+      const totalItems = Math.min(participationAllData.length, PARTICIPATION_PAGE_SIZE * PARTICIPATION_MAX_PAGES);
+      const totalPages = Math.max(1, Math.ceil(totalItems / PARTICIPATION_PAGE_SIZE));
+      const start = (participationCurrentPage - 1) * PARTICIPATION_PAGE_SIZE;
+      const pageData = participationAllData.slice(start, start + PARTICIPATION_PAGE_SIZE);
+      if (participationAllData.length === 0) {
+        participationList.innerHTML = '<div style="color:var(--gray-muted);padding:24px;text-align:center;">참가 또는 패스한 공모전이 없습니다.</div>';
+        if (participationPagination) participationPagination.style.display = 'none';
+        return;
+      }
+      participationList.innerHTML = pageData.map(function(item) {
+        const badgeClass = item.status === 'participate' ? 'participate' : 'pass';
+        const badgeText = item.status === 'participate' ? '참가' : '패스';
+        const linkUrl = item.url || '#';
+        const meta = [item.d_day && item.d_day !== '-' ? item.d_day : '', item.host && item.host !== '-' ? item.host : ''].filter(Boolean).join(' · ');
+        const src = String(item.source || '').replace(/"/g, '&quot;');
+        const cid = String(item.contest_id || '').replace(/"/g, '&quot;');
+        const linkPart = '<a href="' + linkUrl + '" target="_blank" rel="noopener" class="participation-item">' +
+          '<span class="participation-badge ' + badgeClass + '">' + badgeText + '</span>' +
+          '<div class="participation-info">' +
+          '<div class="participation-title">' + (item.title || '(제목 없음)').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+          (meta ? '<div class="participation-meta">' + meta.replace(/</g, '&lt;') + '</div>' : '') +
+          '</div>' +
+          '</a>';
+        const delBtn = isOwnProfile ? '<button type="button" class="participation-delete-btn" data-source="' + src + '" data-contest-id="' + cid + '">삭제</button>' : '';
+        return '<div class="participation-item-wrap">' + linkPart + delBtn + '</div>';
+      }).join('');
+      if (participationPagination) {
+        participationPagination.style.display = totalPages > 1 ? 'flex' : 'none';
+        if (participationPrev) {
+          participationPrev.disabled = participationCurrentPage <= 1;
+          participationPrev.onclick = function() { if (participationCurrentPage > 1) renderParticipationList(participationAllData, participationCurrentPage - 1); };
+        }
+        if (participationNext) {
+          participationNext.disabled = participationCurrentPage >= totalPages;
+          participationNext.onclick = function() { if (participationCurrentPage < totalPages) renderParticipationList(participationAllData, participationCurrentPage + 1); };
+        }
+        if (participationPages) {
+          var maxShow = Math.min(totalPages, PARTICIPATION_MAX_PAGES);
+          var html = [];
+          for (var i = 1; i <= maxShow; i++) {
+            var active = i === participationCurrentPage ? ' active' : '';
+            html.push('<button type="button" class="participation-page-btn' + active + '" data-page="' + i + '">' + i + '</button>');
+          }
+          participationPages.innerHTML = html.join('');
+          participationPages.querySelectorAll('.participation-page-btn').forEach(function(btn) {
+            btn.addEventListener('click', function() { renderParticipationList(participationAllData, parseInt(btn.dataset.page, 10)); });
+          });
+        }
+      }
+      participationList.querySelectorAll('.participation-delete-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          const src = btn.dataset.source || '';
+          const cid = btn.dataset.contestId || '';
+          if (!src || !cid) return;
+          if (!confirm('이 공모전을 참가/패스 목록에서 삭제할까요?')) return;
+          fetch('/api/contests/' + encodeURIComponent(src) + '/' + encodeURIComponent(cid) + '/participation', { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(j) {
+              if (j.success) {
+                const idx = participationAllData.findIndex(function(x) { return x.source === src && x.contest_id === cid; });
+                if (idx >= 0) participationAllData.splice(idx, 1);
+                renderParticipationList(participationAllData, participationCurrentPage);
+                var t = document.getElementById('toast'); if (t) { t.textContent = '삭제되었습니다.'; t.className = 'toast success'; t.style.display = 'block'; setTimeout(function() { t.style.display = 'none'; }, 2000); }
+              } else { alert(j.error || '삭제 실패'); }
+            })
+            .catch(function() { alert('삭제에 실패했습니다.'); });
+        });
+      });
+    }
     if (participationList) {
       (async function() {
         try {
@@ -1143,24 +977,7 @@
           const r = await fetch(url);
           const j = await r.json();
           if (participationLoading) participationLoading.remove();
-          const data = (j.data || []);
-          if (data.length === 0) {
-            participationList.innerHTML = '<div style="color:var(--gray-muted);padding:24px;text-align:center;">참가 또는 패스한 공모전이 없습니다.</div>';
-          } else {
-            participationList.innerHTML = data.map(function(item) {
-              const badgeClass = item.status === 'participate' ? 'participate' : 'pass';
-              const badgeText = item.status === 'participate' ? '참가' : '패스';
-              const url = item.url || '#';
-              const meta = [item.d_day && item.d_day !== '-' ? item.d_day : '', item.host && item.host !== '-' ? item.host : ''].filter(Boolean).join(' · ');
-              return '<a href="' + url + '" target="_blank" rel="noopener" class="participation-item">' +
-                '<span class="participation-badge ' + badgeClass + '">' + badgeText + '</span>' +
-                '<div class="participation-info">' +
-                '<div class="participation-title">' + (item.title || '(제목 없음)').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
-                (meta ? '<div class="participation-meta">' + meta.replace(/</g, '&lt;') + '</div>' : '') +
-                '</div>' +
-                '</a>';
-            }).join('');
-          }
+          renderParticipationList(j.data || [], 1);
         } catch (e) {
           if (participationLoading) participationLoading.remove();
           participationList.innerHTML = '<div style="color:#dc2626;padding:24px;text-align:center;">목록을 불러올 수 없습니다.</div>';
@@ -1168,7 +985,7 @@
       })();
     }
 
-    // 최근 본 공모전 로드 (내 프로필일 때만 - 타임라인 연동 예정)
+    // 최근 본 공모전 로드 (내 프로필일 때만)
     (async function() {
       const ul = document.getElementById('recentContests');
       if (!ul) return;

@@ -52,6 +52,31 @@
     font-weight: 700;
     color: var(--main-purple);
   }
+  .notification-panel .panel-actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 12px;
+  }
+  .notification-panel .panel-action-btn {
+    padding: 6px 12px;
+    border: 1px solid var(--border-gray);
+    background: var(--bg-white);
+    color: var(--text-dark);
+    cursor: pointer;
+    font-size: 0.8rem;
+    border-radius: 6px;
+    font-weight: 500;
+  }
+  .notification-panel .panel-action-btn:hover {
+    background: var(--soft-purple);
+    border-color: var(--main-purple);
+    color: var(--main-purple);
+  }
+  .notification-panel .panel-action-btn.delete-all:hover {
+    background: rgba(220, 38, 38, 0.1);
+    border-color: #dc2626;
+    color: #dc2626;
+  }
   .notification-panel .panel-close {
     position: absolute;
     top: 20px;
@@ -80,6 +105,45 @@
     border-bottom: 1px solid var(--border-gray);
     cursor: pointer;
     transition: background 0.2s;
+    align-items: flex-start;
+    position: relative;
+  }
+  .notification-panel .noti-delete-btn {
+    flex-shrink: 0;
+    padding: 4px 8px;
+    border: 1px solid #dc2626;
+    background: transparent;
+    color: #dc2626;
+    cursor: pointer;
+    font-size: 0.9rem;
+    line-height: 1;
+    border-radius: 4px;
+  }
+  .notification-panel .noti-delete-btn:hover {
+    background: rgba(220, 38, 38, 0.1);
+  }
+  .notification-panel .noti-actions {
+    display: flex;
+    gap: 6px;
+    flex-shrink: 0;
+    align-items: center;
+  }
+  .notification-panel .noti-read-btn {
+    padding: 4px 10px;
+    border: 1px solid var(--main-purple);
+    background: transparent;
+    color: var(--main-purple);
+    cursor: pointer;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    font-weight: 500;
+  }
+  .notification-panel .noti-read-btn:hover {
+    background: var(--soft-purple);
+  }
+  .notification-panel .noti-read-btn:disabled {
+    opacity: 0.5;
+    cursor: default;
   }
   .notification-panel .notification-item:hover {
     background: var(--soft-purple);
@@ -92,12 +156,15 @@
     height: 36px;
     min-width: 36px;
     border-radius: 50%;
-    background: var(--soft-purple);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1rem;
-    color: var(--main-purple);
+    overflow: hidden;
+  }
+  .notification-panel .notification-item .noti-icon img {
+    width: 24px;
+    height: 24px;
+    object-fit: contain;
   }
   .notification-panel .notification-item .noti-content {
     flex: 1;
@@ -141,6 +208,10 @@
       <span>안읽음 <span class="count" id="notiUnreadCount">0</span>건</span>
       <span>총 <span class="count" id="notiTotalCount">0</span>건</span>
     </div>
+    <div class="panel-actions">
+      <button type="button" class="panel-action-btn" id="notiReadAllBtn" title="전체 읽음 처리">전체읽음</button>
+      <button type="button" class="panel-action-btn delete-all" id="notiDeleteAllBtn" title="전체 삭제">전체 삭제</button>
+    </div>
   </div>
   <div class="panel-body" id="notificationList">
     <div class="empty-state">새 알림이 없습니다.</div>
@@ -149,76 +220,145 @@
 
 <script>
 (function() {
+  var NOTI_ICON_INSERT = "{{ url_for('static', filename='images/upload.png') }}";
+  var NOTI_ICON_UPDATE = "{{ url_for('static', filename='images/update.png') }}";
+  var NOTI_ICON_STATUS = "{{ url_for('static', filename='images/reload.png') }}";
   const panel = document.getElementById('notificationPanel');
   const closeBtn = document.getElementById('notificationPanelClose');
   const listEl = document.getElementById('notificationList');
   const readCountEl = document.getElementById('notiReadCount');
   const unreadCountEl = document.getElementById('notiUnreadCount');
   const totalCountEl = document.getElementById('notiTotalCount');
+  const navDot = document.getElementById('navNotificationDot');
 
   if (!panel) return;
 
-  function openPanel() {
-    panel.classList.add('open');
-  }
-  function closePanel() {
-    panel.classList.remove('open');
-  }
-  function togglePanel() {
-    panel.classList.toggle('open');
-  }
+  function togglePanel() { panel.classList.toggle('open'); }
+  function closePanel() { panel.classList.remove('open'); }
 
-  // 알림 버튼 클릭
   document.querySelectorAll('.nav-btn-icon[title="알림"], #navNotificationBtn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
       togglePanel();
+      if (panel.classList.contains('open')) loadNotifications();
     });
   });
-
-  // 닫기 버튼
   if (closeBtn) closeBtn.addEventListener('click', closePanel);
 
-  // 바깥 클릭 시 닫기 (옵션)
+  function showNotiToast(msg) {
+    var t = document.getElementById('toast');
+    if (t) { t.textContent = msg; t.className = 'toast success'; t.style.display = 'block'; setTimeout(function() { t.style.display = 'none'; }, 2000); }
+  }
+  var readAllBtn = document.getElementById('notiReadAllBtn');
+  if (readAllBtn) {
+    readAllBtn.addEventListener('click', function() {
+      fetch('/api/notifications/read-all', { method: 'POST' }).then(function(r) { return r.json(); }).then(function(j) {
+        if (j.success) { showNotiToast('전체 읽음 처리하였습니다'); loadNotifications(); }
+      });
+    });
+  }
+  var deleteAllBtn = document.getElementById('notiDeleteAllBtn');
+  if (deleteAllBtn) {
+    deleteAllBtn.addEventListener('click', function() {
+      if (!confirm('모든 알림을 삭제하시겠습니까?')) return;
+      fetch('/api/notifications/delete-all', { method: 'POST' }).then(function(r) { return r.json(); }).then(function(j) {
+        if (j.success) { showNotiToast('전체 삭제하였습니다'); loadNotifications(); }
+      });
+    });
+  }
+
   document.addEventListener('click', function(e) {
     if (panel.classList.contains('open') && !panel.contains(e.target) && !e.target.closest('.nav-btn-icon') && !e.target.closest('#navNotificationBtn')) {
       closePanel();
     }
   });
 
-  function renderNotifications(items) {
+  function escapeHtml(s) { return String(s || '').replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function formatTimeAgo(isoStr) {
+    if (!isoStr) return '';
+    var d = new Date(isoStr.replace('Z', '+00:00'));
+    var now = new Date();
+    var diff = Math.floor((now - d) / 1000);
+    if (diff < 60) return '방금 전';
+    if (diff < 3600) return Math.floor(diff / 60) + '분 전';
+    if (diff < 86400) return Math.floor(diff / 3600) + '시간 전';
+    if (diff < 2592000) return Math.floor(diff / 86400) + '일 전';
+    return d.toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' });
+  }
+
+  function updateNavDot(unread) {
+    if (navDot) navDot.style.display = unread > 0 ? 'block' : 'none';
+  }
+
+  function renderNotifications(items, unreadCount) {
     if (!items || items.length === 0) {
       listEl.innerHTML = '<div class="empty-state">새 알림이 없습니다.</div>';
       if (readCountEl) readCountEl.textContent = '0';
       if (unreadCountEl) unreadCountEl.textContent = '0';
       if (totalCountEl) totalCountEl.textContent = '0';
+      updateNavDot(0);
       return;
     }
-    const readCount = items.filter(function(i) { return i.read; }).length;
-    const unreadCount = items.length - readCount;
+    var readCount = items.filter(function(i) { return i.read; }).length;
     if (readCountEl) readCountEl.textContent = String(readCount);
     if (unreadCountEl) unreadCountEl.textContent = String(unreadCount);
     if (totalCountEl) totalCountEl.textContent = String(items.length);
+    updateNavDot(unreadCount);
     listEl.innerHTML = items.map(function(n) {
-      const cls = n.read ? '' : ' unread';
-      const icon = n.icon || '🔔';
-      return '<div class="notification-item' + cls + '" data-id="' + (n.id || '') + '">' +
-        '<div class="noti-icon">' + icon + '</div>' +
+      var cls = n.read ? '' : ' unread';
+      var iconSrc = n.type === 'insert' ? NOTI_ICON_INSERT : (n.type === 'status' ? NOTI_ICON_STATUS : NOTI_ICON_UPDATE);
+      var timeStr = formatTimeAgo(n.created_at);
+      var readDisabled = n.read ? ' disabled' : '';
+      var readBtn = '<button type="button" class="noti-read-btn" data-id="' + escapeHtml(n.id) + '" title="읽음"' + readDisabled + '>읽음</button>';
+      var deleteBtn = '<button type="button" class="noti-delete-btn" data-id="' + escapeHtml(n.id) + '" title="삭제">삭제</button>';
+      var actions = '<div class="noti-actions">' + readBtn + deleteBtn + '</div>';
+      return '<div class="notification-item' + cls + '" data-id="' + escapeHtml(n.id) + '">' +
+        '<div class="noti-icon"><img src="' + escapeHtml(iconSrc) + '" alt=""></div>' +
         '<div class="noti-content">' +
-          '<div class="noti-title">' + (n.title || '알림') + '</div>' +
-          (n.desc ? '<div class="noti-desc">' + n.desc + '</div>' : '') +
-          (n.time ? '<div class="noti-time">' + n.time + '</div>' : '') +
-        '</div>' +
-      '</div>';
+          '<div class="noti-title">' + escapeHtml(n.message || '알림') + '</div>' +
+          (timeStr ? '<div class="noti-time">' + escapeHtml(timeStr) + '</div>' : '') +
+        '</div>' + actions + '</div>';
     }).join('');
+    listEl.querySelectorAll('.noti-read-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        var id = btn.dataset.id;
+        if (!id || btn.disabled) return;
+        fetch('/api/notifications/' + encodeURIComponent(id) + '/read', { method: 'POST' }).then(function(r) { return r.json(); }).then(function(j) {
+          if (j.success) { showNotiToast('알림을 읽음 처리하였습니다'); loadNotifications(); }
+        });
+      });
+    });
+    listEl.querySelectorAll('.noti-delete-btn').forEach(function(btn) {
+      btn.addEventListener('click', function(ev) {
+        ev.stopPropagation();
+        var id = btn.dataset.id;
+        if (!id) return;
+        fetch('/api/notifications/' + encodeURIComponent(id) + '/delete', { method: 'POST' }).then(function(r) { return r.json(); }).then(function(j) {
+          if (j.success) { showNotiToast('알림을 삭제하였습니다'); loadNotifications(); }
+        });
+      });
+    });
   }
 
-  // 샘플 데이터 (추후 /api/notifications 로 교체)
-  var sampleItems = [
-    { id: '1', title: '새 공모전이 등록되었습니다', desc: '[2025 대학생 광고 공모전] 마감이 7일 남았습니다.', time: '방금 전', read: false },
-    { id: '2', title: '팀원이 상태를 업데이트했습니다', desc: '홍길동님이 상태 메시지를 변경했습니다.', time: '1시간 전', read: false },
-    { id: '3', title: '마감 알림', desc: 'OO 공모전 접수 마감이 내일입니다.', time: '어제', read: true }
-  ];
-  renderNotifications(sampleItems);
+  var lastUnreadCount = null;
+  function loadNotifications() {
+    fetch('/api/notifications').then(function(r) { return r.json(); }).then(function(j) {
+      var unread = (j.success ? (j.unread_count || 0) : 0);
+      if (j.success) {
+        if (lastUnreadCount !== null && unread > lastUnreadCount) {
+          var t = document.getElementById('toast');
+          if (t) { t.textContent = '새 알림이 도착했습니다'; t.className = 'toast success'; t.style.display = 'block'; setTimeout(function() { t.style.display = 'none'; }, 2500); }
+        }
+        lastUnreadCount = unread;
+        renderNotifications(j.data || [], unread);
+      } else {
+        renderNotifications([], 0);
+      }
+    }).catch(function() { renderNotifications([], 0); });
+  }
+
+  loadNotifications();
+  setInterval(loadNotifications, 60000);
 })();
 </script>

@@ -4,12 +4,22 @@
 // - DB 비어있을 때: 전체 페이지(1~10) 한 번 크롤링
 // - DB에 데이터 있으면: 1~3페이지만 (신규/최근 공고 + d-day 갱신)
 
+// npx supabase functions deploy crawl-contests
+
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";
 
 const BASE_URL = "https://www.allforyoung.com";
 const SOURCE = "요즘것들";
+
+async function dispatchNotificationToMembers(supabase: ReturnType<typeof createClient>, notificationId: string) {
+  const { data: members } = await supabase.from("profiles").select("id").eq("role", "member");
+  if (!members?.length) return;
+  await supabase.from("notification_user_state").insert(
+    members.map((m) => ({ user_id: m.id, notification_id: notificationId, read: false, deleted: false }))
+  );
+}
 const PAGES_INCREMENTAL = 3;   // 30분마다: 신규/최근 위주
 const PAGES_FULL = 10;          // 초기 또는 full 모드
 
@@ -21,11 +31,12 @@ interface ContestRow {
   host: string;
   url: string;
   category: string;
-  created_at: string;
-  first_seen_at: string | null;
+  created_at?: string;
+  first_seen_at?: string | null;
+  updated_at: string;
 }
 
-function parseContestPage(html: string, page: number): ContestRow[] {
+function parseContestPage(html: string, _page: number): ContestRow[] {
   const $ = load(html);
   const results: ContestRow[] = [];
   const seenIds = new Set<string>();
@@ -68,8 +79,7 @@ function parseContestPage(html: string, page: number): ContestRow[] {
       host,
       url: fullUrl,
       category,
-      created_at: now,
-      first_seen_at: now,
+      updated_at: now,
     });
   });
 
@@ -159,7 +169,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    const { data, error } = await supabase.from("contests").upsert(contests, {
+    // 기존 레코드 조회 → created_at, first_seen_at 유지 (신규만 생성 시점 설정)
+    const ids = [...new Set(contests.map((c) => c.id))];
+    const { data: existing } = await supabase
+      .from("contests")
+      .select("id, created_at, first_seen_at")
+      .eq("source", SOURCE)
+      .in("id", ids);
+    const existingMap = new Map(
+      (existing ?? []).map((r) => [r.id, { created_at: r.created_at, first_seen_at: r.first_seen_at }])
+    );
+
+    const now = new Date().toISOString();
+    const rowsToUpsert = contests.map((c) => {
+      const ex = existingMap.get(c.id);
+      return {
+        ...c,
+        created_at: ex?.created_at ?? now,
+        first_seen_at: ex?.first_seen_at ?? now,
+      };
+    });
+
+    const { error } = await supabase.from("contests").upsert(rowsToUpsert, {
       onConflict: "source,id",
       ignoreDuplicates: false,
     });
@@ -172,13 +203,42 @@ Deno.serve(async (req) => {
       );
     }
 
+    const insertedCount = rowsToUpsert.filter((c) => !existingMap.has(c.id)).length;
+    const updatedCount = rowsToUpsert.filter((c) => existingMap.has(c.id)).length;
+    if (insertedCount > 0) {
+      const { data: notif } = await supabase
+        .from("notifications")
+        .insert({
+          type: "insert",
+          source: SOURCE,
+          count: insertedCount,
+          message: `${SOURCE} 공모전의 ${insertedCount}개의 데이터가 새로 추가되었어요`,
+        })
+        .select("id")
+        .single();
+      if (notif?.id) await dispatchNotificationToMembers(supabase, notif.id);
+    }
+    if (updatedCount > 0) {
+      const { data: notif } = await supabase
+        .from("notifications")
+        .insert({
+          type: "update",
+          source: SOURCE,
+          count: updatedCount,
+          message: `${SOURCE} 공모전의 ${updatedCount}개의 데이터가 새로 업데이트 했어요`,
+        })
+        .select("id")
+        .single();
+      if (notif?.id) await dispatchNotificationToMembers(supabase, notif.id);
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
-        total: contests.length,
+        total: rowsToUpsert.length,
         mode: isFull ? "full" : "incremental",
         pages: maxPages,
-        message: `${contests.length}건 upsert 완료 (${isFull ? "전체" : "1~3페이지만"})`,
+        message: `${rowsToUpsert.length}건 upsert 완료 (${isFull ? "전체" : "1~3페이지만"})`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );

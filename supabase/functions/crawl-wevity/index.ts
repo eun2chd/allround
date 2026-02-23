@@ -11,6 +11,14 @@ import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";
 
 const BASE_URL = "https://www.wevity.com";
 const SOURCE = "위비티";
+
+async function dispatchNotificationToMembers(supabase: ReturnType<typeof createClient>, notificationId: string) {
+  const { data: members } = await supabase.from("profiles").select("id").eq("role", "member");
+  if (!members?.length) return;
+  await supabase.from("notification_user_state").insert(
+    members.map((m) => ({ user_id: m.id, notification_id: notificationId, read: false, deleted: false }))
+  );
+}
 const PAGES_INCREMENTAL = 3;
 const PAGES_MAX_CAP = 100;  // 절대 상한
 const PAGES_PER_FULL = 2;  // full 실행당 크롤 페이지 수 (4시간마다 2페이지)
@@ -25,8 +33,9 @@ interface ContestRow {
   host: string;
   url: string;
   category: string;
-  created_at: string;
-  first_seen_at: string | null;
+  created_at?: string;
+  first_seen_at?: string | null;
+  updated_at: string;
 }
 
 function parseWevityPage(html: string): ContestRow[] {
@@ -75,8 +84,7 @@ function parseWevityPage(html: string): ContestRow[] {
       host,
       url: fullUrl,
       category,
-      created_at: now,
-      first_seen_at: now,
+      updated_at: now,
     });
   });
 
@@ -165,11 +173,57 @@ Deno.serve(async (req) => {
       );
 
       if (rows.length > 0) {
-        const { error: upsertErr } = await supabase.from("contests").upsert(rows, {
+        const ids = [...new Set(rows.map((c) => c.id))];
+        const { data: existing } = await supabase
+          .from("contests")
+          .select("id, created_at, first_seen_at")
+          .eq("source", SOURCE)
+          .in("id", ids);
+        const existingMap = new Map(
+          (existing ?? []).map((r) => [r.id, { created_at: r.created_at, first_seen_at: r.first_seen_at }])
+        );
+        const now = new Date().toISOString();
+        const rowsToUpsert = rows.map((c) => {
+          const ex = existingMap.get(c.id);
+          return {
+            ...c,
+            created_at: ex?.created_at ?? now,
+            first_seen_at: ex?.first_seen_at ?? now,
+          };
+        });
+        const { error: upsertErr } = await supabase.from("contests").upsert(rowsToUpsert, {
           onConflict: "source,id",
           ignoreDuplicates: false,
         });
         if (upsertErr) throw upsertErr;
+        const insertedCount = rowsToUpsert.filter((c) => !existingMap.has(c.id)).length;
+        const updatedCount = rowsToUpsert.filter((c) => existingMap.has(c.id)).length;
+        if (insertedCount > 0) {
+          const { data: notif } = await supabase
+            .from("notifications")
+            .insert({
+              type: "insert",
+              source: SOURCE,
+              count: insertedCount,
+              message: `${SOURCE} 공모전의 ${insertedCount}개의 데이터가 새로 추가되었어요`,
+            })
+            .select("id")
+            .single();
+          if (notif?.id) await dispatchNotificationToMembers(supabase, notif.id);
+        }
+        if (updatedCount > 0) {
+          const { data: notif } = await supabase
+            .from("notifications")
+            .insert({
+              type: "update",
+              source: SOURCE,
+              count: updatedCount,
+              message: `${SOURCE} 공모전의 ${updatedCount}개의 데이터가 새로 업데이트 했어요`,
+            })
+            .select("id")
+            .single();
+          if (notif?.id) await dispatchNotificationToMembers(supabase, notif.id);
+        }
       }
 
       const lastHadData = rows.length > 0;
@@ -197,11 +251,57 @@ Deno.serve(async (req) => {
       isFull = false;
 
       if (contests.length > 0) {
-        const { error: upsertErr } = await supabase.from("contests").upsert(contests, {
+        const ids = [...new Set(contests.map((c) => c.id))];
+        const { data: existing } = await supabase
+          .from("contests")
+          .select("id, created_at, first_seen_at")
+          .eq("source", SOURCE)
+          .in("id", ids);
+        const existingMap = new Map(
+          (existing ?? []).map((r) => [r.id, { created_at: r.created_at, first_seen_at: r.first_seen_at }])
+        );
+        const now = new Date().toISOString();
+        const rowsToUpsert = contests.map((c) => {
+          const ex = existingMap.get(c.id);
+          return {
+            ...c,
+            created_at: ex?.created_at ?? now,
+            first_seen_at: ex?.first_seen_at ?? now,
+          };
+        });
+        const { error: upsertErr } = await supabase.from("contests").upsert(rowsToUpsert, {
           onConflict: "source,id",
           ignoreDuplicates: false,
         });
         if (upsertErr) throw upsertErr;
+        const insertedCount = rowsToUpsert.filter((c) => !existingMap.has(c.id)).length;
+        const updatedCount = rowsToUpsert.filter((c) => existingMap.has(c.id)).length;
+        if (insertedCount > 0) {
+          const { data: notif } = await supabase
+            .from("notifications")
+            .insert({
+              type: "insert",
+              source: SOURCE,
+              count: insertedCount,
+              message: `${SOURCE} 공모전의 ${insertedCount}개의 데이터가 새로 추가되었어요`,
+            })
+            .select("id")
+            .single();
+          if (notif?.id) await dispatchNotificationToMembers(supabase, notif.id);
+        }
+        if (updatedCount > 0) {
+          const { data: notif } = await supabase
+            .from("notifications")
+            .insert({
+              type: "update",
+              source: SOURCE,
+              count: updatedCount,
+              message: `${SOURCE} 공모전의 ${updatedCount}개의 데이터가 새로 업데이트 했어요`,
+            })
+            .select("id")
+            .single();
+          if (notif?.id) await dispatchNotificationToMembers(supabase, notif.id);
+        }
       }
     }
     const resBody: Record<string, unknown> = {

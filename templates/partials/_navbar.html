@@ -15,7 +15,10 @@
         </div>
         <span class="user-nickname">{{ session.get('nickname', '') or '회원' }}</span>
       </div>
-      <a href="#" class="nav-btn-icon" id="navNotificationBtn" title="알림" role="button"><img src="{{ url_for('static', filename='images/notification.png') }}" alt="알림"></a>
+      <span class="nav-notification-wrap" id="navNotificationWrap">
+        <a href="#" class="nav-btn-icon" id="navNotificationBtn" title="알림" role="button"><img src="{{ url_for('static', filename='images/notification.png') }}" alt="알림"></a>
+        <span class="nav-notification-dot" id="navNotificationDot" style="display:none;"></span>
+      </span>
       <a href="{{ url_for('mypage') }}" class="nav-btn-mypage">마이페이지</a>
       <a href="{{ url_for('bookmarks_page') }}" class="nav-btn-bookmarks">즐겨찾기</a>
       <a href="{{ url_for('logout') }}" class="nav-btn-logout">로그아웃</a>
