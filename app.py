@@ -351,6 +351,119 @@ def mypage():
     return redirect(url_for("mypage_user", user_id=user_id))
 
 
+# 티어별 자동 헤드라인 (하드코딩)
+HEADLINE_BY_TIER = {
+    0: [  # BRONZE Lv.1~20
+        "새로운 도전을 시작하는 크리에이터",
+    ],
+    1: [  # SILVER Lv.21~70
+        "꾸준히 도전하며 성장 중인 크리에이터",
+        "경험을 쌓아가는 실전형 도전자",
+    ],
+    2: [  # GOLD Lv.71~120
+        "성과를 만들어내는 전략형 크리에이터",
+        "경험을 실력으로 증명하는 도전자",
+        "경쟁 속에서 결과를 남기는 크리에이터",
+    ],
+    3: [  # PLATINUM Lv.121~140
+        "검증된 성과를 보유한 상위권 크리에이터",
+        "전략과 실행을 겸비한 프로젝트 리더형",
+        "꾸준한 수상과 결과로 증명하는 전문가",
+        "경쟁을 즐기는 실전 최적화형 인재",
+    ],
+    4: [  # LEGEND Lv.141+
+        "최고 등급의 성취를 보유한 레전드 크리에이터",
+        "영향력을 만드는 최상위 성과자",
+        "결과로 증명된 최고 수준의 도전자",
+        "기준이 되는 퍼포먼스 크리에이터",
+        "도전을 넘어 성취를 설계하는 상위 1%",
+    ],
+}
+
+
+def _get_auto_headline(level: int, tier_level: int) -> str:
+    """티어·레벨에 맞는 자동 헤드라인 1종 반환"""
+    headlines = HEADLINE_BY_TIER.get(tier_level, HEADLINE_BY_TIER[0])
+    idx = (level - 1) % len(headlines) if headlines else 0
+    return headlines[idx] if headlines else "새로운 도전을 시작하는 크리에이터"
+
+
+def _get_tier_from_level(level):
+    """레벨 → tier_id (1~5), tier_name, tier_level(0~4, CSS용)"""
+    if level <= 20:
+        return 1, "BRONZE", 0
+    if level <= 70:
+        return 2, "SILVER", 1
+    if level <= 120:
+        return 3, "GOLD", 2
+    if level <= 140:
+        return 4, "PLATINUM", 3
+    return 5, "LEGEND", 4
+
+
+def _compute_level_from_exp(supabase, total_exp_val: int) -> int:
+    """total_exp → 현재 레벨 산출 (level_config 기준, 조회 시 계산)"""
+    if total_exp_val <= 0:
+        return 1
+    try:
+        cfg = supabase.table("level_config").select("level, exp_to_next").order("level").execute()
+        rows = cfg.data or []
+        cumulative = 0
+        level = 1
+        for r in rows:
+            lv = r.get("level", 0)
+            exp_to = r.get("exp_to_next", 0)
+            if total_exp_val >= cumulative:
+                level = lv
+            cumulative += exp_to
+        return max(1, level)
+    except Exception:
+        return 1
+
+
+def _get_tier_exp_milestones(supabase):
+    """티어별 도달 누적 경험치 (level_config 기준) - 전체 레벨 구간 + 각 티어 도달 총 경험치"""
+    milestones = [
+        {"tier": "BRONZE", "level": 1, "exp": 0, "level_range": "Lv.1 ~ Lv.20"},
+        {"tier": "SILVER", "level": 21, "exp": 0, "level_range": "Lv.21 ~ Lv.70"},
+        {"tier": "GOLD", "level": 71, "exp": 0, "level_range": "Lv.71 ~ Lv.120"},
+        {"tier": "PLATINUM", "level": 121, "exp": 0, "level_range": "Lv.121 ~ Lv.140"},
+        {"tier": "LEGEND", "level": 141, "exp": 0, "level_range": "Lv.141 ~ Lv.200"},
+    ]
+    try:
+        cfg = supabase.table("level_config").select("level, exp_to_next").order("level").execute()
+        rows = cfg.data or []
+        cumulative = 0
+        exp_by_level = {}
+        for r in rows:
+            lv = r.get("level", 0)
+            exp_to = r.get("exp_to_next", 0)
+            exp_by_level[lv] = cumulative
+            cumulative += exp_to
+        for m in milestones:
+            m["exp"] = exp_by_level.get(m["level"], m["exp"])
+    except Exception:
+        pass
+    return milestones
+
+
+def _compute_level_exp(supabase, level_val, total_exp_val):
+    """level_config에서 exp_current, exp_next, exp_percent 산출"""
+    exp_current = 0
+    exp_next = 100
+    exp_percent = 0
+    try:
+        cfg = supabase.table("level_config").select("level, exp_to_next").lte("level", level_val).order("level").execute()
+        rows = cfg.data or []
+        exp_cumulative = sum(r.get("exp_to_next", 0) for r in rows[:-1])
+        exp_current = max(0, total_exp_val - exp_cumulative)
+        exp_next = rows[-1].get("exp_to_next", 100) if rows else 100
+        exp_percent = round((exp_current / exp_next) * 100) if exp_next else 0
+    except Exception:
+        pass
+    return exp_current, exp_next, exp_percent
+
+
 @app.route("/mypage/<user_id>")
 def mypage_user(user_id):
     """사용자 프로필 페이지 (본인: 편집 가능, 타인: 읽기 전용)"""
@@ -360,7 +473,9 @@ def mypage_user(user_id):
         return redirect(url_for("mypage"))
     try:
         supabase = get_supabase_admin_client()
-        r = supabase.table("profiles").select("id, nickname, profile_url, role, email, status_message").eq("id", user_id).limit(1).execute()
+        r = supabase.table("profiles").select(
+            "id, nickname, profile_url, role, email, status_message, level, total_exp"
+        ).eq("id", user_id).limit(1).execute()
         if not r.data or len(r.data) == 0:
             return "사용자를 찾을 수 없습니다.", 404
         profile = r.data[0]
@@ -369,36 +484,80 @@ def mypage_user(user_id):
         is_own = profile["id"] == current_id
         role = profile.get("role", "member")
         role_label = "관리자" if role == "admin" else "팀원"
-        # Tier/Level mock (실제 데이터 연동 시 profiles 테이블 또는 별도 통계 활용)
-        awards_count = profile.get("awards_count", 20)
-        level = profile.get("level", 1)
-        exp_percent = profile.get("exp_percent", 0)
-        exp_current = profile.get("exp_current", 10)
-        exp_next = profile.get("exp_next", 0)
-        expertise_tags = profile.get("expertise_tags") or ["빅데이터", "AI 디자인", "로고 디자인", "UX/UI"]
-        pinned_portfolio = profile.get("pinned_portfolio") or [
-            {"title": "OO브랜드 로고 공모전", "thumbnail": "", "award": "최우수상", "url": "#"},
-            {"title": "△△데이터 시각화 대회", "thumbnail": "", "award": "대상", "url": "#"},
-            {"title": "YY앱 아이콘 공모전", "thumbnail": "", "award": "우수상", "url": "#"},
-        ]
-        # Tier: 0=0회, 1=1~2회, 2=3~4회, 3=5회 이상
-        tier_level = 0 if awards_count == 0 else (1 if awards_count <= 2 else (2 if awards_count <= 4 else 3))
-        tier_names = ["BRONZE", "SILVER", "GOLD", "LEGEND"]
-        tier_name = tier_names[tier_level]
+
+        total_exp = int(profile.get("total_exp") or 0)
+        level = _compute_level_from_exp(supabase, total_exp)
+        exp_current, exp_next, exp_percent = _compute_level_exp(supabase, level, total_exp)
+        # 100% 초과 시 다음 레벨로 보정 (100%마다 1씩 올라가야 함)
+        for _ in range(199):  # L200 최대
+            if exp_next <= 0 or exp_current < exp_next:
+                break
+            next_level = level + 1
+            ec, en, _ = _compute_level_exp(supabase, next_level, total_exp)
+            if en == 0 or (ec == exp_current and en == exp_next):  # 다음 레벨 없음 또는 같은 결과 반복
+                break
+            level = next_level
+            exp_current, exp_next, exp_percent = ec, en, round((ec / en) * 100) if en else 0
+        _, tier_name, tier_level = _get_tier_from_level(level)
+        tier_sprite = _get_tier_from_level(level)[0]
+        auto_headlines = HEADLINE_BY_TIER.get(tier_level, HEADLINE_BY_TIER[0])
+
+        user_hashtags = []
+        hashtag_master_by_category = {}
+        try:
+            uh = supabase.table("user_hashtags").select("hashtag_id").eq("user_id", user_id).execute()
+            tag_ids = [r["hashtag_id"] for r in (uh.data or [])]
+            if tag_ids:
+                hm = supabase.table("hashtag_master").select("id, tag_name, category").in_("id", tag_ids).order("sort_order").execute()
+                user_hashtags = [{"id": r["id"], "tag_name": r["tag_name"], "category": r["category"]} for r in (hm.data or [])]
+            all_hm = supabase.table("hashtag_master").select("id, tag_name, category, sort_order").order("sort_order").execute()
+            for r in all_hm.data or []:
+                cat = r.get("category", "기타")
+                if cat not in hashtag_master_by_category:
+                    hashtag_master_by_category[cat] = []
+                hashtag_master_by_category[cat].append({"id": r["id"], "tag_name": r["tag_name"]})
+        except Exception:
+            pass
+        pinned_portfolio = profile.get("pinned_portfolio") or []
+        if isinstance(pinned_portfolio, str):
+            try:
+                import json
+                pinned_portfolio = json.loads(pinned_portfolio) if pinned_portfolio else []
+            except Exception:
+                pinned_portfolio = []
+
+        participate_count = 0
+        try:
+            pc = supabase.table("contest_participation").select("user_id").eq("user_id", user_id).eq("status", "participate").execute()
+            participate_count = len(pc.data or [])
+        except Exception:
+            pass
+
+        tier_exp_milestones = _get_tier_exp_milestones(supabase)
         return render_template(
             "mypage.html",
             profile=profile,
             role_label=role_label,
             is_own_profile=is_own,
-            awards_count=awards_count,
             level=level,
-            exp_percent=exp_percent,
+            total_exp=total_exp,
+            exp_percent=min(100, exp_percent),
             exp_current=exp_current,
             exp_next=exp_next,
-            expertise_tags=expertise_tags,
+            user_hashtags=user_hashtags,
+            selected_hashtag_ids=[h["id"] for h in user_hashtags],
+            hashtag_master_by_category=hashtag_master_by_category,
+            hashtag_category_order=["기술·개발력 중심", "문제해결력", "데이터 특화", "창의성", "밈"],
+            hashtag_max_limit=5 if tier_level == 2 else (10 if tier_level == 3 else (15 if tier_level == 4 else 0)),
             pinned_portfolio=pinned_portfolio,
             tier_level=tier_level,
             tier_name=tier_name,
+            tier_sprite=tier_sprite,
+            auto_headlines=auto_headlines,
+            participate_count=participate_count,
+            awards_count=profile.get("awards_count") or 0,
+            prize_total=profile.get("prize_total") or "0",
+            tier_exp_milestones=tier_exp_milestones,
         )
     except Exception as e:
         logger.error("마이페이지 조회 실패: %s", e, exc_info=True)
@@ -498,6 +657,49 @@ def api_update_status_message():
         return jsonify({"success": True, "status_message": status_message or ""})
     except Exception as e:
         logger.error("상태 메시지 업데이트 실패: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/profile/hashtags", methods=["POST"])
+def api_profile_hashtags():
+    """해시태그 저장 (골드 이상만)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = str(session.get("user_id") or "")
+    if not user_id:
+        return jsonify({"success": False, "error": "사용자 정보가 없습니다."}), 401
+    data = request.get_json() or {}
+    hashtag_ids = data.get("hashtag_ids", [])
+    if not isinstance(hashtag_ids, list):
+        hashtag_ids = []
+    hashtag_ids = [int(x) for x in hashtag_ids if isinstance(x, (int, str)) and str(x).isdigit()][:50]
+    try:
+        supabase = get_supabase_admin_client()
+        total_exp = 0
+        try:
+            p = supabase.table("profiles").select("total_exp").eq("id", user_id).limit(1).execute()
+            if p.data and len(p.data) > 0:
+                total_exp = int(p.data[0].get("total_exp") or 0)
+        except Exception:
+            pass
+        level = _compute_level_from_exp(supabase, total_exp)
+        if level < 71:
+            return jsonify({"success": False, "error": "골드 등급(Lv.71) 이상부터 해시태그를 추가할 수 있습니다."}), 403
+        _, tier_name, tier_level = _get_tier_from_level(level)
+        hashtag_limit = 5 if tier_level == 2 else (10 if tier_level == 3 else 15)
+        if len(hashtag_ids) > hashtag_limit:
+            return jsonify({"success": False, "error": f"해시태그는 {hashtag_limit}개까지 추가할 수 있습니다."}), 400
+        existing = supabase.table("user_hashtags").select("hashtag_id").eq("user_id", user_id).execute()
+        existing_ids = {r["hashtag_id"] for r in (existing.data or [])}
+        to_add = [hid for hid in hashtag_ids if hid not in existing_ids]
+        to_remove = existing_ids - set(hashtag_ids)
+        for hid in to_remove:
+            supabase.table("user_hashtags").delete().eq("user_id", user_id).eq("hashtag_id", hid).execute()
+        for hid in to_add:
+            supabase.table("user_hashtags").insert({"user_id": user_id, "hashtag_id": hid}).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("해시태그 저장 실패: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

@@ -183,7 +183,7 @@
     toggleBtn.title = isCollapsed ? '사이드바 펼치기' : '사이드바 접기';
   });
   const CACHE_KEY = 'allyoung_sidebar_users_v3';
-  const CACHE_TTL = 3 * 60 * 1000;  // 3분
+  const CACHE_TTL = 20 * 60 * 1000;  // 20분
 
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
   function formatTimeAgo(isoStr) {

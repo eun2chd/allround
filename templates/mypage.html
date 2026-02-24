@@ -29,6 +29,7 @@
       --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { overflow-x: hidden; scrollbar-gutter: stable; }
     body {
       font-family: var(--font);
       background: #f9fafb;
@@ -36,6 +37,7 @@
       font-weight: 500;
       min-height: 100vh;
       line-height: 1.5;
+      overflow-x: hidden;
     }
     .main-wrap { margin-left: 260px; }
     .container { max-width: 960px; margin: 0 auto; padding: 24px; }
@@ -114,44 +116,16 @@
       font-weight: 600;
       color: var(--text-dark);
     }
+    .pinned-card-placeholder {
+      opacity: 0.85;
+      pointer-events: none;
+    }
     /* 카드 공통 */
     .card {
       background: var(--bg-white);
       border-radius: var(--radius-lg);
       box-shadow: 0 4px 6px rgba(0,0,0,0.05);
       overflow: hidden;
-    }
-    /* 계정 정보 카드 */
-    .account-card {
-      padding: 0;
-      margin-bottom: 24px;
-    }
-    .account-card .card-title {
-      padding: 20px 24px;
-      font-size: 1rem;
-      font-weight: 600;
-      color: var(--text-dark);
-      border-bottom: 1px solid var(--border-gray);
-    }
-    .account-card .card-body {
-      padding: 20px 24px;
-      display: grid;
-      grid-template-columns: 1fr 2fr;
-      gap: 16px 24px;
-    }
-    @media (max-width: 600px) {
-      .account-card .card-body { grid-template-columns: 1fr; }
-    }
-    .account-card .row {
-      display: contents;
-    }
-    .account-card .label {
-      font-size: 0.9rem;
-      color: var(--gray-muted);
-    }
-    .account-card .value {
-      font-size: 0.9rem;
-      color: var(--text-dark);
     }
     /* 요약 대시보드 */
     .dashboard-summary {
@@ -370,6 +344,12 @@
       overflow-y: auto;
       box-shadow: 0 24px 48px rgba(0,0,0,0.15);
     }
+    #modalProfileTheme .modal-box {
+      max-width: min(1200px, 95vw);
+      width: min(1200px, 95vw);
+      max-height: none;
+      overflow: visible;
+    }
     .modal-header {
       padding: 20px 24px;
       border-bottom: 1px solid var(--border-gray);
@@ -446,7 +426,7 @@
         {% if is_own_profile %}
         <button type="button" class="btn-profile-apply" onclick="openModal('modalProfileTheme')" title="프로필 테마 선택">프로필 적용</button>
         <button type="button" class="btn-info" onclick="openModal('modalTier')" title="티어 시스템 안내">🏆</button>
-        <button type="button" class="btn-info" onclick="openModal('modalTags')" title="분야 태그 안내">#</button>
+        <button type="button" class="btn-info" onclick="openModal('modalHashtags')" title="해시태그 선택">#</button>
         <button type="button" class="btn-info" onclick="openModal('modalHeadline')" title="헤드라인 안내">✨</button>
         {% endif %}
         {% if not is_own_profile %}
@@ -455,21 +435,14 @@
       </div>
     </header>
 
-    {% if is_own_profile %}
-    <!-- 계정 정보 카드 -->
-    <div class="card account-card">
-      <div class="card-title">계정 정보</div>
-      <div class="card-body">
-        <span class="label">이메일</span>
-        <span class="value">{{ profile.get('email', '-') }}</span>
-        <span class="label">닉네임</span>
-        <span class="value">{{ profile.get('nickname', '-') }}</span>
-      </div>
-    </div>
-    {% endif %}
-
-    <!-- 프로필 영역 (Tier tier-0~3, 테마 profile-theme-* 적용) -->
+    <!-- 프로필 영역 (Tier tier-0~4, 테마 profile-theme-* 적용) -->
     <section class="profile-section tier-{{ tier_level }}" id="profileSection" data-own-profile="{{ '1' if is_own_profile else '0' }}">
+      {% if tier_level >= 3 %}
+      <div class="platinum-shine-overlay"></div>
+      {% endif %}
+      {% if tier_level >= 4 %}
+      <div class="legend-light-overlay" aria-hidden="true"></div>
+      {% endif %}
       {% if tier_level >= 2 %}
       <svg class="profile-border-svg" viewBox="0 0 500 300" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
         <defs>
@@ -485,6 +458,11 @@
             <stop offset="75%" stop-color="#06b6d4" />
             <stop offset="100%" stop-color="#f59e0b" />
           </linearGradient>
+          <linearGradient id="pinkSectionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#831843" />
+            <stop offset="50%" stop-color="#ec4899" />
+            <stop offset="100%" stop-color="#be185d" />
+          </linearGradient>
         </defs>
         <rect x="1.5" y="1.5" width="497" height="297" rx="12" ry="12" />
       </svg>
@@ -497,10 +475,10 @@
       {% endif %}
       <div class="profile-top">
         <div class="avatar-wrap">
-          <div class="avatar {% if tier_level >= 2 %}legend-border{% endif %}" id="profileAvatar" style="background-image: url('{{ profile.get('profile_url') or '' }}')">
+          <div class="avatar {% if tier_level >= 2 %}legend-border{% endif %}{% if not profile.get('profile_url') %} avatar-no-image{% endif %}" id="profileAvatar" style="background-image: url('{{ profile.get('profile_url') or '' }}')">
             {% if not profile.get('profile_url') %}<span>{{ (profile.get('nickname') or '?')[:1] }}</span>{% endif %}
           </div>
-          {% if tier_level >= 3 %}
+          {% if tier_level >= 4 %}
           <span class="symbol-badge-medal" aria-hidden="true"></span>
           {% endif %}
           {% if is_own_profile %}
@@ -513,16 +491,22 @@
         <div class="info">
           <h2>
             {{ profile.get('nickname', '') or '회원' }}
-            <span class="tier-name-badge tier-name-badge-{{ tier_name|lower }}">{{ tier_name }}</span>
             <span class="role-badge">{{ role_label }}</span>
           </h2>
-          <p class="profile-tagline">
-            {% if tier_level >= 3 %}AI 디자인 분야 누적 상금 1위 · 레전드 크리에이터{% elif tier_level == 2 %}AI 디자인 분야 상위 5% · GOLD 크리에이터{% elif tier_level == 1 %}수상 크리에이터 · SILVER Tier{% else %}새로운 도전을 시작해보세요{% endif %}
-          </p>
-          <div class="expertise-tags">
-            {% for tag in expertise_tags %}
-            <span class="expertise-tag">#{{ tag }}</span>
+          <div class="headline-badges">
+            {% for headline in auto_headlines %}
+            <span class="headline-badge headline-badge-{{ loop.index }}"><span class="headline-badge-dot"></span>{{ headline }}</span>
             {% endfor %}
+          </div>
+          <div class="hashtag-row" id="userHashtagsContainer">
+            {% for h in user_hashtags or [] %}
+            <span class="hashtag-badge">#{{ h.tag_name }}</span>
+            {% endfor %}
+            {% if is_own_profile and level >= 71 %}
+            <button type="button" class="hashtag-add-btn" onclick="openModal('modalHashtags')" title="해시태그 추가">
+              <span class="hashtag-add-icon">+</span> 해시태그를 추가해보세요
+            </button>
+            {% endif %}
           </div>
           {% if is_own_profile %}
           <p style="font-size:0.85rem;color:var(--gray-muted);margin-top:8px;">{{ profile.get('email', '') }}</p>
@@ -536,17 +520,19 @@
       <div class="level-exp-block">
         <div class="level-exp-row">
           <div class="level-exp-emblem">
-            <span class="tier-sprite tier-sprite-profile tier-sprite-{{ 5 if tier_level >= 3 else tier_level + 1 }}" aria-hidden="true"></span>
+            <span class="tier-sprite tier-sprite-profile tier-sprite-{{ tier_sprite }}" aria-hidden="true"></span>
           </div>
           <div class="level-exp-info-col">
             <div class="level-tier-line">
               <span class="level-text">Lv.{{ level }}</span>
               <span class="tier-badge-pill tier-badge-pill-{{ tier_name|lower }}">{{ tier_name }}</span>
+              <button type="button" class="btn-tier-exp" onclick="openModal('modalTierExp')" title="티어별 도달 경험치">EXP</button>
             </div>
+            <p class="level-total-exp">총 {{ total_exp|default(profile.get('total_exp', 0)) }} EXP</p>
             <div class="exp-bar-wrap">
-              <div class="exp-bar-fill {% if tier_level >= 3 %}legend{% elif tier_level >= 2 %}gold{% endif %}" style="width: {{ exp_percent }}%"></div>
+              <div class="exp-bar-fill {% if tier_level >= 3 %}legend{% elif tier_level >= 2 %}gold{% endif %}" style="width: {{ [exp_percent, 100]|min }}%"></div>
             </div>
-            <p class="exp-next-hint">다음 레벨까지 {{ exp_next - exp_current }} EXP 필요 ({{ exp_percent }}% 완료)</p>
+            <p class="exp-next-hint">{% if exp_next <= 0 %}최고 레벨 달성{% elif exp_current >= exp_next or exp_percent >= 100 %}다음 레벨 도달! ({{ exp_percent }}% 완료){% else %}다음 레벨까지 {{ exp_next - exp_current }} EXP 필요 ({{ exp_percent }}% 완료){% endif %}</p>
           </div>
         </div>
       </div>
@@ -565,8 +551,10 @@
     <section class="pinned-portfolio-section">
       <h3>대표 작품</h3>
       <div class="pinned-cards">
-        {% for item in pinned_portfolio %}
-        <a href="{{ item.url or '#' }}" class="pinned-card" target="_blank">
+        {% set filler = [{'title':'대표 작품','award':'수상','url':'#','thumbnail':''}] * 3 %}
+        {% set items = (pinned_portfolio or []) + filler %}
+        {% for item in items[:3] %}
+        <a href="{{ item.url or '#' }}" class="pinned-card{% if not item.thumbnail %} pinned-card-placeholder{% endif %}" target="_blank">
           <div class="pinned-card-thumb" style="{% if item.thumbnail %}background-image: url('{{ item.thumbnail }}');{% endif %}">
             <span class="pinned-card-badge">{{ item.award or '수상' }}</span>
           </div>
@@ -576,26 +564,26 @@
       </div>
     </section>
 
-    <!-- 요약 대시보드 -->
+    <!-- 요약 대시보드 (DB 연동) -->
     <section class="dashboard-summary">
       <div class="summary-card">
         <div class="summary-icon trophy">🏆</div>
         <div>
-          <div class="summary-value">5건</div>
+          <div class="summary-value">{{ awards_count|default(0) }}건</div>
           <div class="summary-label">수상</div>
         </div>
       </div>
       <div class="summary-card">
         <div class="summary-icon money">💰</div>
         <div>
-          <div class="summary-value">1,250만원</div>
+          <div class="summary-value">{{ prize_total|default('0') }}</div>
           <div class="summary-label">상금</div>
         </div>
       </div>
       <div class="summary-card">
         <div class="summary-icon rocket">🚀</div>
         <div>
-          <div class="summary-value">20건</div>
+          <div class="summary-value">{{ participate_count|default(0) }}건</div>
           <div class="summary-label">도전</div>
         </div>
       </div>
@@ -618,80 +606,160 @@
 
   <!-- 안내 모달: 티어 시스템 -->
   <div class="modal-overlay" id="modalTier">
-    <div class="modal-box">
+    <div class="modal-box modal-tier-info">
       <div class="modal-header">
-        <h4>🏆 수상 Tier 시스템</h4>
+        <h4>🏆 레벨·티어 시스템</h4>
         <button type="button" class="modal-close" onclick="closeModal('modalTier')" aria-label="닫기">×</button>
       </div>
       <div class="modal-body">
-        <p>수상 횟수에 따라 프로필 영역의 비주얼이 업그레이드됩니다.</p>
-        <table>
-          <thead><tr><th>Tier</th><th>조건</th><th>효과</th></tr></thead>
+        <p>경험치를 쌓아 레벨업하면 티어가 올라가고, 프로필 비주얼이 업그레이드됩니다.</p>
+        <table class="tier-table">
+          <thead><tr><th>Tier</th><th>레벨 구간</th><th>효과</th></tr></thead>
           <tbody>
-            <tr><td>Tier 0</td><td>수상 0회</td><td>기본 흰 배경</td></tr>
-            <tr><td>Tier 1</td><td>수상 1~2회</td><td>실버 테두리 + 아바타 실버 글로우</td></tr>
-            <tr><td>Tier 2</td><td>수상 3~4회</td><td>골드 배경 + 회전 골드 보더 + shimmer 효과</td></tr>
-            <tr><td>Tier 3</td><td>수상 5회 이상</td><td>다크 배경 + 파티클 + 무지개 보더 + LEGEND 뱃지</td></tr>
+            <tr><td>BRONZE</td><td>Lv.1~20</td><td>기본 흰 배경</td></tr>
+            <tr><td>SILVER</td><td>Lv.21~70</td><td>실버 테두리 + 아바타 실버 글로우</td></tr>
+            <tr><td>GOLD</td><td>Lv.71~120</td><td>골드 배경 + 회전 골드 보더 + shimmer 효과</td></tr>
+            <tr><td>PLATINUM</td><td>Lv.121~140</td><td>다크 배경 + 파티클 + 무지개 보더</td></tr>
+            <tr><td>LEGEND</td><td>Lv.141~</td><td>최고 등급 + 레전드 뱃지</td></tr>
           </tbody>
         </table>
-        <p style="font-size:0.85rem;color:var(--gray-muted);margin-top:12px;">공모전 수상 실적이 쌓일수록 더 화려한 프로필을 갖게 됩니다.</p>
+        <h5 class="tier-desc-title">프로필별 설명</h5>
+        <div class="tier-desc-list">
+          <div class="tier-desc-item tier-desc-bronze">
+            <div class="tier-desc-header"><span class="tier-dot">🟤</span> BRONZE – 뉴비스타트 프로필</div>
+            <div class="tier-desc-tagline">"도전의 시작"</div>
+            <p>기본 공모전 활동을 통해 다양한 경험을 쌓아가는 단계입니다. 시행착오를 통해 배우며, 자신만의 방향성을 탐색합니다. 도전을 시작한 성장형 인재입니다.</p>
+          </div>
+          <div class="tier-desc-item tier-desc-silver">
+            <div class="tier-desc-header"><span class="tier-dot">⚪</span> SILVER – 초심자 스타트 프로필</div>
+            <div class="tier-desc-tagline">"경험의 축적"</div>
+            <p>공모전 참여가 익숙해지고, 흐름을 이해하기 시작하는 단계입니다. 기획과 준비 과정이 체계화되며 실전 감각이 형성됩니다. 도전을 반복하며 내공을 쌓는 성장 단계입니다.</p>
+          </div>
+          <div class="tier-desc-item tier-desc-gold">
+            <div class="tier-desc-header"><span class="tier-dot">🟡</span> GOLD – 도전 확장 프로필</div>
+            <div class="tier-desc-tagline">"성과의 가시화"</div>
+            <p>단순 참여를 넘어 결과를 만들어내기 시작하는 단계입니다. 전략적 접근과 완성도가 눈에 띄며, 경쟁력을 갖추기 시작합니다. 실질적인 성과가 축적되는 구간입니다.</p>
+          </div>
+          <div class="tier-desc-item tier-desc-platinum">
+            <div class="tier-desc-header"><span class="tier-dot">🔵</span> PLATINUM – 성과 전문 프로필</div>
+            <div class="tier-desc-tagline">"검증된 실력"</div>
+            <p>지속적인 도전과 성과를 통해 역량이 검증된 단계입니다. 기획력, 실행력, 완성도에서 안정적인 수준을 보여줍니다. 공모전 활동을 전략적으로 설계하는 수준에 도달합니다.</p>
+          </div>
+          <div class="tier-desc-item tier-desc-legend">
+            <div class="tier-desc-header"><span class="tier-dot">🟣</span> LEGEND – 최고 성취 프로필</div>
+            <div class="tier-desc-tagline">"영향력 있는 성취자"</div>
+            <p>뛰어난 성과와 지속적인 활동을 통해 상위권 역량을 입증한 단계입니다. 단순 참여를 넘어, 결과와 영향력을 만들어냅니다. 커뮤니티 내에서 기준이 되는 성취자입니다.</p>
+          </div>
+        </div>
+        <p style="font-size:0.85rem;color:var(--gray-muted);margin-top:16px;">참가·활동 시 경험치를 얻고, 레벨업 시 더 화려한 프로필을 갖게 됩니다.</p>
       </div>
     </div>
   </div>
 
-  <!-- 안내 모달: 분야 태그 -->
-  <div class="modal-overlay" id="modalTags">
-    <div class="modal-box">
+  <!-- 티어별 도달 경험치 모달 -->
+  <div class="modal-overlay" id="modalTierExp">
+    <div class="modal-box modal-tier-exp">
       <div class="modal-header">
-        <h4># 분야 전문성 태그</h4>
-        <button type="button" class="modal-close" onclick="closeModal('modalTags')" aria-label="닫기">×</button>
+        <h4>전체 레벨 &amp; 티어별 도달 총 경험치</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalTierExp')" aria-label="닫기">×</button>
       </div>
       <div class="modal-body">
-        <p>참여한 공모전·수상 분야 데이터가 쌓이면 자동으로 해당 태그가 프로필에 추가됩니다.</p>
-        <table>
-          <thead><tr><th>태그</th><th>자동 추가 조건</th></tr></thead>
+        <table class="tier-exp-table">
+          <thead>
+            <tr>
+              <th>티어</th>
+              <th>전체 레벨 구간</th>
+              <th>해당 티어 도달 총 경험치</th>
+            </tr>
+          </thead>
           <tbody>
-            <tr><td>#빅데이터</td><td>빅데이터/데이터 시각화 분야 공모전 1회 이상 참여 또는 수상</td></tr>
-            <tr><td>#AI 디자인</td><td>AI·생성형 디자인 분야 공모전 1회 이상 참여 또는 수상</td></tr>
-            <tr><td>#로고 디자인</td><td>로고·브랜딩·CI 분야 공모전 1회 이상 참여 또는 수상</td></tr>
-            <tr><td>#UX/UI</td><td>UX·UI·앱 디자인 분야 공모전 1회 이상 참여 또는 수상</td></tr>
-            <tr><td>#포스터</td><td>포스터·그래픽 디자인 분야 1회 이상 참여 또는 수상</td></tr>
-            <tr><td>#영상</td><td>영상·UCC·광고 분야 1회 이상 참여 또는 수상</td></tr>
-            <tr><td>#캐릭터</td><td>캐릭터·일러스트 분야 1회 이상 참여 또는 수상</td></tr>
+            {% for m in tier_exp_milestones or [] %}
+            <tr class="tier-row tier-row-{{ m.tier|lower }}">
+              <td><span class="tier-badge-pill tier-badge-pill-{{ m.tier|lower }}">{{ m.tier }}</span></td>
+              <td>{{ m.level_range }}</td>
+              <td class="tier-exp-value">{{ (m.exp or 0)|int }} EXP</td>
+            </tr>
+            {% endfor %}
           </tbody>
         </table>
+        <p class="tier-exp-foot">현재 총 경험치: <strong>{{ total_exp|default(profile.get('total_exp', 0)) }}</strong> EXP</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 해시태그 선택 모달 (골드 이상) -->
+  <div class="modal-overlay" id="modalHashtags">
+    <div class="modal-box modal-hashtags">
+      <div class="modal-header">
+        <h4># 해시태그 선택</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalHashtags')" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        {% if level >= 71 %}
+        <p class="hashtag-desc">원하는 해시태그를 선택하세요. <strong>최대 {{ hashtag_max_limit|default(5) }}개</strong>까지 추가할 수 있습니다.</p>
+        <form id="hashtagForm">
+          {% for category in (hashtag_category_order or (hashtag_master_by_category or {})|list) %}
+          {% set tags = (hashtag_master_by_category or {}).get(category, []) %}
+          {% if tags %}
+          <div class="hashtag-category">
+            <h5 class="hashtag-category-title">{{ category }}</h5>
+            <div class="hashtag-chips">
+              {% for t in tags %}
+              <label class="hashtag-chip">
+                <input type="checkbox" name="hashtag_id" value="{{ t.id }}" {% if t.id in (selected_hashtag_ids or []) %}checked{% endif %}>
+                <span>#{{ t.tag_name }}</span>
+              </label>
+              {% endfor %}
+            </div>
+          </div>
+          {% endif %}
+          {% endfor %}
+        </form>
+        <div class="hashtag-actions">
+          <span class="hashtag-count" id="hashtagCount">0 / {{ hashtag_max_limit|default(5) }}</span>
+          <button type="button" class="btn-save-hashtags" id="btnSaveHashtags">저장</button>
+        </div>
+        {% else %}
+        <p class="tags-tier-notice">해시태그는 골드 등급(Lv.71) 이상부터 추가할 수 있습니다.</p>
+        {% endif %}
       </div>
     </div>
   </div>
 
   <!-- 안내 모달: 자동 헤드라인 -->
   <div class="modal-overlay" id="modalHeadline">
-    <div class="modal-box">
+    <div class="modal-box modal-headline-info">
       <div class="modal-header">
-        <h4>✨ 자동 생성 헤드라인</h4>
+        <h4>자동 생성 헤드라인</h4>
         <button type="button" class="modal-close" onclick="closeModal('modalHeadline')" aria-label="닫기">×</button>
       </div>
       <div class="modal-body">
-        <p>역량이 쌓이면 프로필에 노출되는 한 줄 자기소개가 자동으로 업그레이드됩니다. 타인이 프로필 방문 시 즉시 인상적입니다.</p>
-        <div class="info-item">
-          <strong>새로운 도전을 시작해보세요</strong><br>
-          조건: Tier 0 (수상 없음)
-        </div>
-        <div class="info-item">
-          <strong>수상 크리에이터 · SILVER Tier</strong><br>
-          조건: 수상 1~2회 (Tier 1 달성)
-        </div>
-        <div class="info-item">
-          <strong>AI 디자인 분야 상위 5% · GOLD 크리에이터</strong><br>
-          조건: 수상 3~4회 + 해당 분야에서 상위 순위 (Tier 2)
-        </div>
-        <div class="info-item">
-          <strong>AI 디자인 분야 누적 상금 1위 · 레전드 크리에이터</strong><br>
-          조건: 수상 5회 이상 + 분야 내 상금 1위 (Tier 3)
-        </div>
-        <div class="info-item">
-          <strong>[추가 예정] 분야별 문장</strong><br>
-          분야별로 "로고 디자인 수상 3회" 등 데이터에 맞는 문장이 자동 생성됩니다.
+        <p>역량이 쌓이면 프로필에 노출되는 한 줄 자기소개가 자동으로 업그레이드됩니다.</p>
+        <div class="headline-tier-list">
+          <div class="headline-tier-item">
+            <div class="headline-tier-header"><span class="tier-dot">🟤</span> BRONZE (Lv.1~20) — 자동 헤드라인 1종</div>
+        
+            <ul><li>새로운 도전을 시작하는 크리에이터</li></ul>
+          </div>
+          <div class="headline-tier-item">
+            <div class="headline-tier-header"><span class="tier-dot">⚪</span> SILVER (Lv.21~70) — 자동 헤드라인 2종</div>
+    
+            <ul><li>꾸준히 도전하며 성장 중인 크리에이터</li><li>경험을 쌓아가는 실전형 도전자</li></ul>
+          </div>
+          <div class="headline-tier-item">
+            <div class="headline-tier-header"><span class="tier-dot">🟡</span> GOLD (Lv.71~120) — 자동 헤드라인 3종</div>
+       
+            <ul><li>성과를 만들어내는 전략형 크리에이터</li><li>경험을 실력으로 증명하는 도전자</li><li>경쟁 속에서 결과를 남기는 크리에이터</li></ul>
+          </div>
+          <div class="headline-tier-item">
+            <div class="headline-tier-header"><span class="tier-dot">🔵</span> PLATINUM (Lv.121~140) — 자동 헤드라인 4종</div>
+      
+            <ul><li>검증된 성과를 보유한 상위권 크리에이터</li><li>전략과 실행을 겸비한 프로젝트 리더형</li><li>꾸준한 수상과 결과로 증명하는 전문가</li><li>경쟁을 즐기는 실전 최적화형 인재</li></ul>
+          </div>
+          <div class="headline-tier-item">
+            <div class="headline-tier-header"><span class="tier-dot">🟣</span> LEGEND (Lv.141+) — 자동 헤드라인 5종</div>
+            <ul><li>최고 등급의 성취를 보유한 레전드 크리에이터</li><li>영향력을 만드는 최상위 성과자</li><li>결과로 증명된 최고 수준의 도전자</li><li>기준이 되는 퍼포먼스 크리에이터</li><li>도전을 넘어 성취를 설계하는 상위 1%</li></ul>
+          </div>
         </div>
       </div>
     </div>
@@ -705,55 +773,72 @@
         <button type="button" class="modal-close" onclick="closeModal('modalProfileTheme')" aria-label="닫기">×</button>
       </div>
       <div class="modal-body">
-        <p class="profile-theme-desc">보유한 레벨에 따라 특별한 아우라를 선택할 수 있습니다.</p>
-        <div class="profile-theme-grid">
-          <div class="profile-theme-card" data-theme="basic">
+        <p class="profile-theme-desc">현재 티어에 해당하는 특별한 프로필을 적용해 보세요! ✨</p>
+        <div class="profile-theme-grid" data-user-level="{{ level }}">
+          <div class="profile-theme-card" data-theme="basic" data-level-required="1">
             <div class="theme-preview theme-basic">
               <div class="theme-preview-avatar"></div>
               <div class="theme-preview-bar"></div>
+              <div class="theme-lock-overlay" style="display:none"><img src="{{ url_for('static', filename='images/lock.png') }}" alt="잠금" class="theme-lock-img"><span class="theme-lock-msg">레벨 조건이 되지 않습니다</span></div>
             </div>
             <div class="theme-info">
-              <span class="theme-level">Lv.1 BASIC</span>
-              <span class="theme-name">스타터 팩</span>
-              <p class="theme-desc">깔끔하고 군더더기 없는 기본 화이트 스타일</p>
+              <span class="theme-level">Lv.1 BRONZE</span>
+              <span class="theme-name">브론즈 프로필</span>
+              <p class="theme-desc">"도전의 시작" · BRONZE 등급입니다.</p>
               <button type="button" class="theme-apply-btn">적용하기</button>
             </div>
           </div>
-          <div class="profile-theme-card" data-theme="rare">
+          <div class="profile-theme-card" data-theme="rare" data-level-required="21">
             <div class="theme-preview theme-rare">
               <div class="theme-preview-avatar"></div>
               <div class="theme-preview-bar"></div>
+              <div class="theme-lock-overlay" style="display:none"><img src="{{ url_for('static', filename='images/lock.png') }}" alt="잠금" class="theme-lock-img"><span class="theme-lock-msg">레벨 조건이 되지 않습니다</span></div>
             </div>
             <div class="theme-info">
-              <span class="theme-level">Lv.5 RARE</span>
-              <span class="theme-name">퍼플 네온</span>
-              <p class="theme-desc">은은한 보랏빛 그라데이션과 네온 라인</p>
+              <span class="theme-level">Lv.21 SILVER</span>
+              <span class="theme-name">경험축적 프로필</span>
+              <p class="theme-desc">"경험의 축적" · SILVER 등급입니다.</p>
               <button type="button" class="theme-apply-btn">적용하기</button>
             </div>
           </div>
-          <div class="profile-theme-card" data-theme="epic">
+          <div class="profile-theme-card" data-theme="epic" data-level-required="71">
             <div class="theme-preview theme-epic">
               <div class="theme-mini-particle"></div>
               <div class="theme-preview-avatar"></div>
               <div class="theme-preview-bar"></div>
+              <div class="theme-lock-overlay" style="display:none"><img src="{{ url_for('static', filename='images/lock.png') }}" alt="잠금" class="theme-lock-img"><span class="theme-lock-msg">레벨 조건이 되지 않습니다</span></div>
             </div>
             <div class="theme-info">
-              <span class="theme-level">Lv.10 EPIC</span>
-              <span class="theme-name">일루전 마스터</span>
-              <p class="theme-desc">움직이는 파티클과 흐르는 에너지 바</p>
+              <span class="theme-level">Lv.71 GOLD</span>
+              <span class="theme-name">도전확장 프로필</span>
+              <p class="theme-desc">"성과의 가시화" · GOLD 등급입니다.</p>
               <button type="button" class="theme-apply-btn">적용하기</button>
             </div>
           </div>
-          <div class="profile-theme-card" data-theme="default">
+          <div class="profile-theme-card" data-theme="platinum" data-level-required="121">
+            <div class="theme-preview theme-platinum">
+              <div class="theme-preview-avatar"></div>
+              <div class="theme-preview-bar"></div>
+              <div class="theme-lock-overlay" style="display:none"><img src="{{ url_for('static', filename='images/lock.png') }}" alt="잠금" class="theme-lock-img"><span class="theme-lock-msg">레벨 조건이 되지 않습니다</span></div>
+            </div>
+            <div class="theme-info">
+              <span class="theme-level">Lv.121 PLATINUM</span>
+              <span class="theme-name">성과전문 프로필</span>
+              <p class="theme-desc">"검증된 실력" · PLATINUM 등급입니다.</p>
+              <button type="button" class="theme-apply-btn">적용하기</button>
+            </div>
+          </div>
+          <div class="profile-theme-card" data-theme="default" data-level-required="141">
             <div class="theme-preview theme-default-tier">
               <div class="tier-crown">👑</div>
               <div class="theme-preview-avatar legendary"></div>
               <div class="theme-preview-bar legendary"></div>
+              <div class="theme-lock-overlay" style="display:none"><img src="{{ url_for('static', filename='images/lock.png') }}" alt="잠금" class="theme-lock-img"><span class="theme-lock-msg">레벨 조건이 되지 않습니다</span></div>
             </div>
             <div class="theme-info">
-              <span class="theme-level">SPECIAL</span>
-              <span class="theme-name">티어 동기화</span>
-              <p class="theme-desc">현재 나의 성취도(Tier)에 따라 자동 변화</p>
+              <span class="theme-level">Lv.141 LEGEND</span>
+              <span class="theme-name">최고성과 프로필</span>
+              <p class="theme-desc">"영향력 있는 성취자" · Lv.141부터 LEGEND 등급 전용입니다.</p>
               <button type="button" class="theme-apply-btn active">사용 중</button>
             </div>
           </div>
@@ -768,7 +853,12 @@
   <script>
     function openModal(id) {
       const el = document.getElementById(id);
-      if (el) { el.classList.add('active'); document.body.style.overflow = 'hidden'; }
+      if (el) {
+        el.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        if (id === 'modalProfileTheme') syncThemeButtons();
+        if (id === 'modalHashtags' && typeof updateHashtagCount === 'function') updateHashtagCount();
+      }
     }
     function closeModal(id) {
       const el = document.getElementById(id);
@@ -783,12 +873,15 @@
       if (e.key === 'Escape') document.querySelectorAll('.modal-overlay.active').forEach(function(m) { closeModal(m.id); });
     });
 
-    // 프로필 테마 적용 (localStorage)
+    // 프로필 테마 적용 (localStorage) - 적용하기 버튼 클릭 시에만 적용
     const PROFILE_THEME_KEY = 'allyoung_profile_theme';
     const profileSection = document.getElementById('profileSection');
     function applyProfileTheme(theme) {
       if (!profileSection) return;
-      profileSection.classList.remove('profile-theme-basic', 'profile-theme-rare', 'profile-theme-epic');
+      // 모든 테마 클래스 제거 (레전드→다른 테마 전환 시에도 정상 동작)
+      ['basic','rare','epic','platinum','legend','default'].forEach(function(t) {
+        profileSection.classList.remove('profile-theme-' + t);
+      });
       if (theme && theme !== 'default') {
         profileSection.classList.add('profile-theme-' + theme);
       }
@@ -798,21 +891,53 @@
     function syncThemeButtons() {
       try {
         const current = localStorage.getItem(PROFILE_THEME_KEY) || 'default';
+        const grid = document.querySelector('.profile-theme-grid');
+        const userLevel = parseInt(grid?.dataset.userLevel || '1', 10);
         document.querySelectorAll('.profile-theme-card').forEach(function(card) {
           const btn = card.querySelector('.theme-apply-btn');
-          if (!btn) return;
-          const isActive = (card.dataset.theme || 'default') === current;
-          btn.classList.toggle('active', isActive);
-          btn.textContent = isActive ? '사용 중' : '적용하기';
+          const overlay = card.querySelector('.theme-lock-overlay');
+          const required = parseInt(card.dataset.levelRequired || '1', 10);
+          const locked = userLevel < required;
+          if (overlay) overlay.style.display = locked ? 'flex' : 'none';
+          card.classList.toggle('theme-locked', locked);
+          if (btn) {
+            btn.disabled = locked;
+            if (locked) {
+              btn.textContent = 'Lv.' + required + ' 필요';
+              btn.classList.remove('active');
+            } else {
+              const isActive = (card.dataset.theme || 'default') === current;
+              btn.classList.toggle('active', isActive);
+              btn.textContent = isActive ? '사용 중' : '적용하기';
+            }
+          }
         });
       } catch (e) {}
     }
     (function initProfileTheme() {
       if (!profileSection || profileSection.dataset.ownProfile !== '1') return;
       try {
-        const saved = localStorage.getItem(PROFILE_THEME_KEY) || 'default';
-        if (saved && saved !== 'default') applyProfileTheme(saved);
-        else syncThemeButtons();
+        const grid = document.querySelector('.profile-theme-grid');
+        const userLevel = parseInt(grid?.dataset.userLevel || '1', 10);
+        let saved = localStorage.getItem(PROFILE_THEME_KEY);
+        if (saved === '') saved = null;
+        if (saved === 'legend') {
+          if (userLevel >= 141) saved = 'default';
+          else if (userLevel >= 121) saved = 'platinum';
+          else saved = null;
+        }
+        const levelMap = { basic: 1, rare: 21, epic: 71, platinum: 121, default: 141 };
+        const required = levelMap[saved] ?? 141;
+        const canUseSaved = saved && (saved === 'default' || userLevel >= required);
+        if (canUseSaved) {
+          applyProfileTheme(saved);
+        } else {
+          if (saved && userLevel < required) {
+            try { localStorage.removeItem(PROFILE_THEME_KEY); } catch (e) {}
+          }
+          applyProfileTheme('default');
+          syncThemeButtons();
+        }
       } catch (e) {}
     })();
     document.querySelectorAll('.profile-theme-card').forEach(function(card) {
@@ -820,6 +945,7 @@
       const theme = card.dataset.theme;
       if (btn && theme) {
         btn.addEventListener('click', function() {
+          if (btn.disabled || card.classList.contains('theme-locked')) return;
           if (btn.classList.contains('active')) return;
           applyProfileTheme(theme);
           closeModal('modalProfileTheme');
@@ -848,6 +974,60 @@
       }
       e.target.value = '';
     });
+    }
+
+    // 해시태그 저장 및 개수 제한
+    var hashtagMaxLimit = {{ hashtag_max_limit|default(5) }};
+    var hashtagForm = document.getElementById('hashtagForm');
+    function updateHashtagCount() {
+      var checked = hashtagForm ? hashtagForm.querySelectorAll('input[name="hashtag_id"]:checked') : [];
+      var cnt = checked.length;
+      var countEl = document.getElementById('hashtagCount');
+      if (countEl) countEl.textContent = cnt + ' / ' + hashtagMaxLimit;
+      var inputs = hashtagForm ? hashtagForm.querySelectorAll('input[name="hashtag_id"]') : [];
+      inputs.forEach(function(inp) {
+        if (inp.checked) inp.disabled = false;
+        else inp.disabled = cnt >= hashtagMaxLimit;
+      });
+    }
+    if (hashtagForm) {
+      hashtagForm.querySelectorAll('input[name="hashtag_id"]').forEach(function(inp) {
+        inp.addEventListener('change', updateHashtagCount);
+      });
+      if (document.getElementById('modalHashtags')) {
+        document.getElementById('modalHashtags').addEventListener('click', function() {
+          setTimeout(updateHashtagCount, 0);
+        });
+      }
+      updateHashtagCount();
+    }
+    const btnSaveHashtags = document.getElementById('btnSaveHashtags');
+    if (btnSaveHashtags) {
+      btnSaveHashtags.addEventListener('click', function() {
+        const form = document.getElementById('hashtagForm');
+        if (!form) return;
+        const checked = form.querySelectorAll('input[name="hashtag_id"]:checked');
+        const hashtagIds = Array.from(checked).map(function(cb) { return parseInt(cb.value, 10); });
+        if (hashtagIds.length > hashtagMaxLimit) {
+          showToast('해시태그는 최대 ' + hashtagMaxLimit + '개까지 선택할 수 있습니다.', 'error');
+          return;
+        }
+        fetch('/api/profile/hashtags', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hashtag_ids: hashtagIds })
+        }).then(function(r) { return r.json(); }).then(function(j) {
+          if (j.success) {
+            showToast('해시태그가 저장되었습니다.', 'success');
+            closeModal('modalHashtags');
+            location.reload();
+          } else {
+            showToast(j.error || '저장에 실패했습니다.', 'error');
+          }
+        }).catch(function() {
+          showToast('저장에 실패했습니다.', 'error');
+        });
+      });
     }
 
     // 상태 메시지 저장 (blur 시)
