@@ -406,11 +406,39 @@ CREATE TABLE IF NOT EXISTS contest_participation (
     FOREIGN KEY (source, contest_id) REFERENCES contests(source, id) ON DELETE CASCADE
 );
 
+ALTER TABLE contest_participation
+ADD COLUMN participation_type TEXT 
+CHECK (participation_type IN ('individual', 'team'))
+NOT NULL DEFAULT 'individual';
+
+ALTER TABLE contest_participation
+ADD COLUMN team_id UUID REFERENCES contest_team(id) ON DELETE SET NULL;
+
+
 CREATE INDEX IF NOT EXISTS idx_contest_participation_user ON contest_participation(user_id);
 CREATE INDEX IF NOT EXISTS idx_contest_participation_contest ON contest_participation(source, contest_id);
 ```
+```sql 
+CREATE TABLE contest_team (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    
+    source TEXT NOT NULL,
+    contest_id TEXT NOT NULL,
+    
+    team_name TEXT NOT NULL,
+    leader_user_id UUID NOT NULL REFERENCES auth.users(id),
+    
+    created_at TIMESTAMPTZ DEFAULT NOW(),
 
+    FOREIGN KEY (source, contest_id)
+        REFERENCES contests(source, id)
+        ON DELETE CASCADE
+);
+```
+CREATE INDEX idx_contest_team_contest
+ON contest_team (source, contest_id);
 ---
+
 
 ### 13. crawl_state (크롤 페이지 추적)
 

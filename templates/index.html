@@ -312,6 +312,59 @@
       from { opacity: 0; transform: translateY(-10px); }
       to { opacity: 1; transform: translateY(0); }
     }
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    .modal-content {
+      background: var(--bg-white);
+      border-radius: var(--radius);
+      padding: 24px;
+      max-width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-gray);
+    }
+    .modal-header h2 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-dark);
+    }
+    .modal-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--gray-muted);
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-close:hover {
+      color: var(--text-dark);
+    }
+    .modal-body {
+      font-size: 0.9rem;
+    }
     .pagination {
       display: flex;
       align-items: center;
@@ -1080,6 +1133,128 @@
     imgModal.addEventListener('click', closeImgModal);
     imgModalImg.addEventListener('click', (e) => e.stopPropagation());
 
+    async function showParticipationModal(source, contestId, btnPart) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.innerHTML = `
+        <div class="modal-content" style="max-width:500px">
+          <div class="modal-header">
+            <h2>참가 유형 선택</h2>
+            <button class="modal-close">&times;</button>
+          </div>
+          <div class="modal-body">
+            <div style="display:flex;gap:12px;margin-bottom:24px">
+              <button class="btn btn-primary btn-modal-individual">개인 참가</button>
+              <button class="btn btn-primary btn-modal-team">팀 참가</button>
+            </div>
+            <div class="team-options" style="display:none">
+              <div class="existing-teams"></div>
+              <button class="btn btn-primary btn-modal-create-team" style="margin-top:12px">새 팀 생성</button>
+            </div>
+            <div class="team-create-form" style="display:none">
+              <input type="text" class="team-name-input" placeholder="팀 이름 입력" style="width:100%;padding:10px;border:1px solid var(--border-gray);border-radius:var(--radius);margin-bottom:12px">
+              <button class="btn btn-primary btn-modal-submit-team">생성 및 참가</button>
+            </div>
+          </div>
+        </div>
+      `;
+      document.body.appendChild(modal);
+
+      modal.querySelector('.modal-close').onclick = () => modal.remove();
+      modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
+
+      modal.querySelector('.btn-modal-individual').onclick = async () => {
+        await participateContest(source, contestId, 'individual', null, btnPart);
+        modal.remove();
+      };
+
+      modal.querySelector('.btn-modal-team').onclick = async () => {
+        modal.querySelector('.team-options').style.display = 'block';
+        try {
+          const teamsRes = await fetch('/api/contests/teams?source=' + encodeURIComponent(source) + '&contest_id=' + encodeURIComponent(contestId));
+          const teams = await teamsRes.json();
+          const existingTeamsDiv = modal.querySelector('.existing-teams');
+          if (teams.length > 0) {
+            existingTeamsDiv.innerHTML = '<p style="margin-bottom:8px;font-weight:600">기존 팀 선택:</p>' + teams.map(t => 
+              `<button class="btn btn-secondary team-select-btn" data-team-id="${t.id}" style="display:block;width:100%;margin-bottom:8px;text-align:left">${escapeHtml(t.team_name)} (리더: ${escapeHtml(t.leader_nickname)})</button>`
+            ).join('');
+            existingTeamsDiv.querySelectorAll('.team-select-btn').forEach(btn => {
+              btn.onclick = async () => {
+                await participateContest(source, contestId, 'team', btn.dataset.teamId, btnPart);
+                modal.remove();
+              };
+            });
+          } else {
+            existingTeamsDiv.innerHTML = '<p style="color:var(--gray-muted);margin-bottom:8px">기존 팀이 없습니다</p>';
+          }
+        } catch (err) {
+          showToast('팀 조회 실패', 'error');
+        }
+      };
+
+      modal.querySelector('.btn-modal-create-team').onclick = () => {
+        modal.querySelector('.team-create-form').style.display = 'block';
+      };
+
+      modal.querySelector('.btn-modal-submit-team').onclick = async () => {
+        const teamName = modal.querySelector('.team-name-input').value.trim();
+        if (!teamName) { showToast('팀 이름을 입력하세요'); return; }
+        try {
+          const teamRes = await fetch('/api/contests/teams', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source, contest_id: contestId, team_name: teamName })
+          });
+          const team = await teamRes.json();
+          if (teamRes.ok && team.id) {
+            await participateContest(source, contestId, 'team', team.id, btnPart);
+            modal.remove();
+          } else {
+            showToast('팀 생성 실패', 'error');
+          }
+        } catch (err) {
+          showToast('팀 생성 실패', 'error');
+        }
+      };
+    }
+
+    async function participateContest(source, contestId, participationType, teamId, btnPart) {
+      try {
+        const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/participation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            status: 'participate',
+            participation_type: participationType,
+            team_id: teamId
+          })
+        });
+        const j = await r.json();
+        if (j.success) {
+          participation[source + ':' + contestId] = 'participate';
+          commentedSet.add(source + ':' + contestId);
+          const row = btnPart.closest('tr');
+          if (row && !row.classList.contains('detail-row')) {
+            row.querySelector('.btn-participate')?.classList.add('action-btn-active');
+            row.querySelector('.btn-pass')?.classList.remove('action-btn-active');
+            row.classList.remove('row-new');
+            row.classList.add('row-viewed');
+            const noCell = row.querySelector('td:nth-child(2)');
+            if (noCell) {
+              const num = (noCell.textContent.match(/\d+/) || [''])[0];
+              noCell.innerHTML = '<span class="status-check">✓</span>' + num;
+            }
+          }
+          refreshDetailCommentsIfOpen(source, contestId);
+          showToast('공모전 참가');
+        } else {
+          showToast(j.error || '참가 실패', 'error');
+        }
+      } catch (err) {
+        showToast('오류가 발생했습니다', 'error');
+      }
+    }
+
     tableBody.addEventListener('click', async (e) => {
       const delBtn = e.target.closest('.comment-delete-btn');
       if (delBtn) {
@@ -1161,35 +1336,21 @@
       if (btnPart && !btnPart.disabled) {
         e.preventDefault();
         e.stopPropagation();
+        e.stopImmediatePropagation();
         const source = btnPart.dataset.source || '요즘것들';
         const contestId = btnPart.dataset.contestId || '';
         if (!contestId) return;
+        const key = source + ':' + contestId;
+        if (participation[key] === 'participate') {
+          showToast('이미 참가 상태입니다');
+          return;
+        }
         try {
-          const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/participation', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'participate' })
-          });
-          const j = await r.json();
-          if (j.success) {
-            participation[source + ':' + contestId] = 'participate';
-            commentedSet.add(source + ':' + contestId);
-            const row = btnPart.closest('tr');
-            if (row && !row.classList.contains('detail-row')) {
-              row.querySelector('.btn-participate')?.classList.add('action-btn-active');
-              row.querySelector('.btn-pass')?.classList.remove('action-btn-active');
-              row.classList.remove('row-new');
-              row.classList.add('row-viewed');
-              const noCell = row.querySelector('td:nth-child(2)');
-              if (noCell) {
-                const num = (noCell.textContent.match(/\d+/) || [''])[0];
-                noCell.innerHTML = '<span class="status-check">✓</span>' + num;
-              }
-            }
-            refreshDetailCommentsIfOpen(source, contestId);
-            showToast('공모전 참가');
-          } else showToast(j.error || '실패', 'error');
-        } catch (err) { showToast('오류가 발생했습니다', 'error'); }
+          showParticipationModal(source, contestId, btnPart);
+        } catch (err) {
+          console.error('Modal error:', err);
+          showToast('오류가 발생했습니다', 'error');
+        }
         return;
       }
       if (btnPass && !btnPass.disabled) {
@@ -1198,6 +1359,11 @@
         const source = btnPass.dataset.source || '요즘것들';
         const contestId = btnPass.dataset.contestId || '';
         if (!contestId) return;
+        const key = source + ':' + contestId;
+        if (participation[key] === 'pass') {
+          showToast('이미 패스 상태입니다');
+          return;
+        }
         try {
           const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/participation', {
             method: 'POST',

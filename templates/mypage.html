@@ -258,12 +258,42 @@
       border-radius: 6px;
       font-size: 0.75rem;
       font-weight: 600;
+      margin-right: 6px;
     }
     .participation-badge.participate { background: #d1fae5; color: #059669; }
     .participation-badge.pass { background: #e5e7eb; color: #6b7280; }
+    .participation-type-badge {
+      flex-shrink: 0;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      margin-right: 8px;
+    }
+    .participation-type-badge.individual { background: #dbeafe; color: #1d4ed8; }
+    .participation-type-badge.team { background: #fef3c7; color: #d97706; }
     .participation-info { flex: 1; min-width: 0; }
     .participation-title { font-size: 0.95rem; font-weight: 600; color: var(--text-dark); margin-bottom: 4px; }
-    .participation-meta { font-size: 0.8rem; color: var(--gray-muted); }
+    .participation-meta { font-size: 0.8rem; color: var(--gray-muted); margin-bottom: 6px; }
+    .participation-team-info {
+      font-size: 0.8rem;
+      color: var(--text-dark);
+      background: #f9fafb;
+      padding: 8px 12px;
+      border-radius: 6px;
+      margin-top: 8px;
+      border-left: 3px solid var(--accent-yellow);
+    }
+    .participation-team-info > div {
+      margin-bottom: 4px;
+    }
+    .participation-team-info > div:last-child {
+      margin-bottom: 0;
+    }
+    .participation-team-info strong {
+      font-weight: 600;
+      color: var(--main-purple);
+    }
     .actions-section {
       display: flex;
       gap: 12px;
@@ -1094,11 +1124,30 @@
         const meta = [item.d_day && item.d_day !== '-' ? item.d_day : '', item.host && item.host !== '-' ? item.host : ''].filter(Boolean).join(' · ');
         const src = String(item.source || '').replace(/"/g, '&quot;');
         const cid = String(item.contest_id || '').replace(/"/g, '&quot;');
+        
+        const participationType = item.participation_type || 'individual';
+        const typeText = participationType === 'team' ? '팀' : '개인';
+        const typeBadge = '<span class="participation-type-badge ' + participationType + '">' + typeText + '</span>';
+        
+        let teamInfoHtml = '';
+        if (item.team_info) {
+          const teamName = (item.team_info.team_name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const leaderName = (item.team_info.leader_nickname || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+          const members = (item.team_info.members || []).map(m => m.replace(/</g, '&lt;').replace(/>/g, '&gt;')).join(', ');
+          teamInfoHtml = '<div class="participation-team-info">' +
+            '<div><strong>팀명:</strong> ' + teamName + '</div>' +
+            '<div><strong>리더:</strong> ' + leaderName + '</div>' +
+            (members ? '<div><strong>팀원:</strong> ' + members + '</div>' : '') +
+            '</div>';
+        }
+        
         const linkPart = '<a href="' + linkUrl + '" target="_blank" rel="noopener" class="participation-item">' +
           '<span class="participation-badge ' + badgeClass + '">' + badgeText + '</span>' +
+          typeBadge +
           '<div class="participation-info">' +
           '<div class="participation-title">' + (item.title || '(제목 없음)').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
           (meta ? '<div class="participation-meta">' + meta.replace(/</g, '&lt;') + '</div>' : '') +
+          teamInfoHtml +
           '</div>' +
           '</a>';
         const delBtn = isOwnProfile ? '<button type="button" class="participation-delete-btn" data-source="' + src + '" data-contest-id="' + cid + '">삭제</button>' : '';

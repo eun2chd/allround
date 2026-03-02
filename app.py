@@ -1318,19 +1318,53 @@ def api_user_participation():
         return jsonify({"success": True, "data": []})
     try:
         supabase = get_supabase_admin_client()
-        r = supabase.table("contest_participation").select("source, contest_id, status, updated_at").eq("user_id", user_id).order("updated_at", desc=True).execute()
+        r = supabase.table("contest_participation").select("source, contest_id, status, participation_type, team_id, updated_at").eq("user_id", user_id).order("updated_at", desc=True).execute()
         rows = r.data or []
         result = []
         for p in rows:
             src = p.get("source") or ""
             cid = p.get("contest_id") or ""
             status = p.get("status") or ""
+            participation_type = p.get("participation_type") or "individual"
+            team_id = p.get("team_id")
+            
             c = supabase.table("contests").select("source, id, title, url, d_day, host, category").eq("source", src).eq("id", cid).limit(1).execute()
             contest = (c.data or [{}])[0] if c.data else {}
+            
+            team_info = None
+            if team_id:
+                try:
+                    team_res = supabase.table("contest_team").select("id, team_name, leader_user_id").eq("id", team_id).single().execute()
+                    if team_res.data:
+                        team_data = team_res.data
+                        leader_profile = supabase.table("profiles").select("nickname").eq("id", team_data["leader_user_id"]).single().execute()
+                        leader_nickname = leader_profile.data.get("nickname") if leader_profile.data else "Unknown"
+                        
+                        team_members_res = supabase.table("contest_participation").select("user_id").eq("team_id", team_id).execute()
+                        member_ids = [m["user_id"] for m in (team_members_res.data or [])]
+                        member_nicknames = []
+                        for mid in member_ids:
+                            try:
+                                member_profile = supabase.table("profiles").select("nickname").eq("id", mid).single().execute()
+                                if member_profile.data:
+                                    member_nicknames.append(member_profile.data.get("nickname", "Unknown"))
+                            except:
+                                pass
+                        
+                        team_info = {
+                            "team_name": team_data.get("team_name"),
+                            "leader_nickname": leader_nickname,
+                            "members": member_nicknames
+                        }
+                except Exception as e:
+                    logger.warning(f"팀 정보 조회 실패: {e}")
+            
             result.append({
                 "source": src,
                 "contest_id": cid,
                 "status": status,
+                "participation_type": participation_type,
+                "team_info": team_info,
                 "updated_at": p.get("updated_at"),
                 "title": contest.get("title", "(제목 없음)"),
                 "url": contest.get("url", ""),
@@ -1426,6 +1460,8 @@ def api_contest_participation(source, contest_id):
     status = (data.get("status") or "").strip()
     if status not in ("participate", "pass"):
         return jsonify({"success": False, "error": "status는 participate 또는 pass"}), 400
+    participation_type = (data.get("participation_type") or "individual").strip()
+    team_id = data.get("team_id")
     try:
         supabase = get_supabase_admin_client()
         try:
@@ -1435,7 +1471,14 @@ def api_contest_participation(source, contest_id):
         except Exception:
             return jsonify({"success": False, "error": "먼저 내용확인을 해주세요"}), 400
         supabase.table("contest_participation").upsert(
-            {"user_id": user_id, "source": source, "contest_id": contest_id, "status": status},
+            {
+                "user_id": user_id,
+                "source": source,
+                "contest_id": contest_id,
+                "status": status,
+                "participation_type": participation_type,
+                "team_id": team_id
+            },
             on_conflict="user_id,source,contest_id"
         ).execute()
         comment_body = "공모전 참가" if status == "participate" else "공모전 패스"
@@ -1444,6 +1487,56 @@ def api_contest_participation(source, contest_id):
     except Exception as e:
         logger.error("api/contest/participation 오류: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/contests/teams", methods=["GET", "POST"])
+def api_contest_teams():
+    """팀 조회(GET) 및 생성(POST)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    
+    supabase = get_supabase_admin_client()
+    
+    if request.method == "GET":
+        source = request.args.get("source")
+        contest_id = request.args.get("contest_id")
+        if not source or not contest_id:
+            return jsonify([])
+        try:
+            r = supabase.table("contest_team").select("id, team_name, leader_user_id").eq("source", source).eq("contest_id", contest_id).execute()
+            teams = r.data or []
+            for team in teams:
+                try:
+                    profile = supabase.table("profiles").select("nickname").eq("id", team["leader_user_id"]).single().execute()
+                    team["leader_nickname"] = profile.data.get("nickname") if profile.data else "Unknown"
+                except Exception:
+                    team["leader_nickname"] = "Unknown"
+            return jsonify(teams)
+        except Exception as e:
+            logger.error("팀 조회 오류: %s", e)
+            return jsonify([])
+    
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        source = data.get("source")
+        contest_id = data.get("contest_id")
+        team_name = (data.get("team_name") or "").strip()
+        if not source or not contest_id or not team_name:
+            return jsonify({"success": False, "error": "필수 정보 누락"}), 400
+        try:
+            r = supabase.table("contest_team").insert({
+                "source": source,
+                "contest_id": contest_id,
+                "team_name": team_name,
+                "leader_user_id": user_id
+            }).execute()
+            return jsonify(r.data[0])
+        except Exception as e:
+            logger.error("팀 생성 오류: %s", e)
+            return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/contests/<source>/<contest_id>/comments")
