@@ -36,7 +36,7 @@ requirements.txt 읽기
 
 export PYTHONUTF8=1
 pip install -r requirements.txt
-
+12341234!
 ## 실행
 
 ```bash

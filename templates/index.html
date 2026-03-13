@@ -1328,7 +1328,7 @@
               }
             }
             refreshDetailCommentsIfOpen(source, contestId);
-            showToast('내용확인 완료');
+            showToast(j.exp_gained ? '내용확인 완료 +' + j.exp_gained + ' EXP 획득!' : '내용확인 완료');
           } else showToast(j.error || '실패', 'error');
         } catch (err) { showToast('오류가 발생했습니다', 'error'); }
         return;
@@ -1387,7 +1387,7 @@
               }
             }
             refreshDetailCommentsIfOpen(source, contestId);
-            showToast('공모전 패스');
+            showToast(j.exp_gained ? '공모전 패스 +' + j.exp_gained + ' EXP 획득!' : '공모전 패스');
           } else showToast(j.error || '실패', 'error');
         } catch (err) { showToast('오류가 발생했습니다', 'error'); }
         return;

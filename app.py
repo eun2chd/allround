@@ -6,6 +6,7 @@ allforyoung 웹 테이블 뷰어
 
 import logging
 import traceback
+import time
 from datetime import datetime, timezone
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
@@ -25,14 +26,21 @@ def _validate_password(password: str) -> bool:
 
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
     datefmt="%H:%M:%S",
+    force=True,
 )
 logger = logging.getLogger("allyoung")
 
 app = Flask(__name__)
 app.secret_key = "allyoung-dev-secret-change-in-production"
+
+
+@app.context_processor
+def inject_is_admin():
+    """모든 템플릿에서 is_admin 사용 가능 (DB 기준)"""
+    return {"is_admin": _is_admin()}
 
 
 def _presence_insert(user_id: str):
@@ -112,12 +120,12 @@ def login_page():
             session["email"] = user.email or email
             session["access_token"] = response.session.access_token
             session["refresh_token"] = response.session.refresh_token
-            profile = supabase.table("profiles").select("id, nickname, profile_url, role").eq("email", user.email or email).limit(1).execute()
+            profile = get_supabase_admin_client().table("profiles").select("id, nickname, profile_url, role").eq("id", str(user.id)).limit(1).execute()
             if profile.data and len(profile.data) > 0:
                 session["user_id"] = str(profile.data[0]["id"])
                 session["nickname"] = profile.data[0].get("nickname", "")
                 session["profile_url"] = profile.data[0].get("profile_url") or ""
-                session["role"] = profile.data[0].get("role", "member")
+                session["role"] = (profile.data[0].get("role") or "member").lower().strip()
             else:
                 session["user_id"] = str(user.id)
                 session["nickname"] = user.user_metadata.get("nickname", "") if user.user_metadata else ""
@@ -126,7 +134,7 @@ def login_page():
             if not session.get("user_id"):
                 session["user_id"] = str(user.id)
             _presence_insert(str(user.id))
-            logger.info("로그인 성공: user_id=%s, nickname=%s", session.get("user_id"), session.get("nickname"))
+            logger.info("로그인 성공: user_id=%s, nickname=%s, role=%s", session.get("user_id"), session.get("nickname"), session.get("role"))
             return redirect(url_for("home"))
         except Exception as e:
             err_msg = str(e)
@@ -306,15 +314,17 @@ def api_debug_presence():
 
 @app.route("/api/me")
 def api_me():
-    """로그인된 사용자 정보 (닉네임, 프로필 이미지)"""
+    """로그인된 사용자 정보 (닉네임, 프로필 이미지, role은 profiles에서 조회)"""
     if not session.get("logged_in"):
         return jsonify({"success": False, "error": "unauthorized"}), 401
+    role_from_db = "admin" if _is_admin() else "member"
     return jsonify({
         "success": True,
         "data": {
             "nickname": session.get("nickname", ""),
             "profile_url": session.get("profile_url", ""),
             "email": session.get("email", ""),
+            "role": role_from_db,
         },
     })
 
@@ -399,6 +409,56 @@ def _get_tier_from_level(level):
     if level <= 140:
         return 4, "PLATINUM", 3
     return 5, "LEGEND", 4
+
+
+# exp_events: 행위별 경험치 (기본값)
+EXP_AMOUNTS = {
+    "content_check": 5,      # 내용확인
+    "participate": 15,       # 참가
+    "pass": 5,               # 패스
+    "support_complete": 20,  # 지원완료 (참가상세 제출)
+    "finalist": 300,         # 본선진출
+    "award": 1000,           # 수상
+}
+
+EXP_ACTIVITY_LABELS = {
+    "content_check": "내용확인",
+    "participate": "참가",
+    "pass": "패스",
+    "support_complete": "지원완료",
+    "finalist": "본선진출",
+    "award": "수상",
+}
+
+
+def _grant_exp(supabase, user_id: str, activity_type: str, source: str, contest_id: str) -> int:
+    """경험치 지급 (중복 방지). exp_events insert + profiles.total_exp 증가. 지급된 XP 반환."""
+    if activity_type not in EXP_AMOUNTS:
+        return 0
+    exp_amount = EXP_AMOUNTS[activity_type]
+    user_id = str(user_id or "").strip()
+    source = str(source or "").strip()
+    contest_id = str(contest_id or "").strip()
+    if not user_id or not source or not contest_id:
+        return 0
+    try:
+        r = supabase.table("exp_events").select("user_id").eq("user_id", user_id).eq("activity_type", activity_type).eq("source", source).eq("contest_id", contest_id).limit(1).execute()
+        if r.data and len(r.data) > 0:
+            return 0  # 이미 지급됨
+        supabase.table("exp_events").insert({
+            "user_id": user_id,
+            "activity_type": activity_type,
+            "source": source,
+            "contest_id": contest_id,
+            "exp_amount": exp_amount,
+        }).execute()
+        prof = supabase.table("profiles").select("total_exp").eq("id", user_id).limit(1).execute()
+        cur = int((prof.data or [{}])[0].get("total_exp") or 0)
+        supabase.table("profiles").update({"total_exp": cur + exp_amount}).eq("id", user_id).execute()
+        return exp_amount
+    except Exception as e:
+        logger.warning("exp_events 지급 실패: %s", e)
+        return 0
 
 
 def _compute_level_from_exp(supabase, total_exp_val: int) -> int:
@@ -518,13 +578,25 @@ def mypage_user(user_id):
                 hashtag_master_by_category[cat].append({"id": r["id"], "tag_name": r["tag_name"]})
         except Exception:
             pass
-        pinned_portfolio = profile.get("pinned_portfolio") or []
-        if isinstance(pinned_portfolio, str):
-            try:
-                import json
-                pinned_portfolio = json.loads(pinned_portfolio) if pinned_portfolio else []
-            except Exception:
-                pinned_portfolio = []
+        representative_works = []
+        try:
+            rw = supabase.table("user_representative_works").select("source, contest_id, sort_order, award_status, result_announcement_method, image_path").eq("user_id", user_id).order("sort_order").execute()
+            for row in (rw.data or []):
+                src, cid = row.get("source") or "", row.get("contest_id") or ""
+                c = supabase.table("contests").select("title, url").eq("source", src).eq("id", cid).limit(1).execute()
+                contest = (c.data or [{}])[0] if c.data else {}
+                representative_works.append({
+                    "source": src,
+                    "contest_id": cid,
+                    "sort_order": int(row.get("sort_order") or 1),
+                    "award_status": row.get("award_status") or "",
+                    "result_announcement_method": row.get("result_announcement_method") or "",
+                    "image_path": row.get("image_path") or "",
+                    "title": contest.get("title", "(제목 없음)"),
+                    "url": contest.get("url", "#"),
+                })
+        except Exception:
+            pass
 
         participate_count = 0
         try:
@@ -532,6 +604,28 @@ def mypage_user(user_id):
             participate_count = len(pc.data or [])
         except Exception:
             pass
+
+        awards_by_status = {"대상": 0, "최우수상": 0, "우수상": 0}
+        prize_total = 0
+        try:
+            rw_all = supabase.table("user_representative_works").select("award_status").eq("user_id", user_id).execute()
+            for row in (rw_all.data or []):
+                s = (row.get("award_status") or "").strip()
+                if s in awards_by_status:
+                    awards_by_status[s] = awards_by_status.get(s, 0) + 1
+        except Exception:
+            pass
+        try:
+            pd = supabase.table("contest_participation_detail").select("prize_amount, has_prize").eq("user_id", user_id).execute()
+            for row in (pd.data or []):
+                if row.get("has_prize") and row.get("prize_amount") is not None:
+                    try:
+                        prize_total += float(row["prize_amount"])
+                    except (TypeError, ValueError):
+                        pass
+        except Exception:
+            pass
+        prize_total_str = f"{int(prize_total):,}" if prize_total == int(prize_total) else f"{prize_total:,.0f}"
 
         tier_exp_milestones = _get_tier_exp_milestones(supabase)
         return render_template(
@@ -549,14 +643,15 @@ def mypage_user(user_id):
             hashtag_master_by_category=hashtag_master_by_category,
             hashtag_category_order=["기술·개발력 중심", "문제해결력", "데이터 특화", "창의성", "밈"],
             hashtag_max_limit=5 if tier_level == 2 else (10 if tier_level == 3 else (15 if tier_level == 4 else 0)),
-            pinned_portfolio=pinned_portfolio,
+            representative_works=representative_works,
             tier_level=tier_level,
             tier_name=tier_name,
             tier_sprite=tier_sprite,
             auto_headlines=auto_headlines,
             participate_count=participate_count,
-            awards_count=profile.get("awards_count") or 0,
-            prize_total=profile.get("prize_total") or "0",
+            awards_by_status=awards_by_status,
+            awards_total=sum(awards_by_status.values()),
+            prize_total=prize_total_str,
             tier_exp_milestones=tier_exp_milestones,
         )
     except Exception as e:
@@ -565,7 +660,11 @@ def mypage_user(user_id):
 
 
 PROFILE_BUCKET = "profile"
+REP_BUCKET = "rep"  # 대표작 이미지
+CONTEST_BUCKET = "contest"  # 참가 상세 제출물
+TEAMPROFILE_BUCKET = "teamprofile"  # 팀 프로필 이미지
 ALLOWED_IMAGE_EXT = {"jpg", "jpeg", "png", "gif", "webp"}
+ALLOWED_DOC_EXT = {"pdf", "doc", "docx", "hwp", "ppt", "pptx", "xls", "xlsx", "zip", "txt"}
 
 
 @app.route("/api/profile/update-image", methods=["POST"])
@@ -703,6 +802,13 @@ def api_profile_hashtags():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/exp/amounts")
+def api_exp_amounts():
+    """행위별 경험치 포인트 조회 (모달 표시용)"""
+    amounts = [{"activity_type": k, "label": EXP_ACTIVITY_LABELS.get(k, k), "exp": v} for k, v in EXP_AMOUNTS.items()]
+    return jsonify({"success": True, "data": amounts})
+
+
 @app.route("/api/contests/by-ids")
 def api_contests_by_ids():
     """ID 목록으로 공고 조회 (최근 본 공고용) - source=요즘것들 기준"""
@@ -765,6 +871,244 @@ def api_users():
         return jsonify({"success": True, "data": users, "current_user_id": current_id})
     except Exception as e:
         logger.error("사용자 목록 조회 실패: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _is_admin():
+    """profiles 테이블에서 현재 유저 role 조회 (세션 아닌 DB 기준). id, email 둘 다 시도."""
+    if not session.get("logged_in"):
+        return False
+    supabase = get_supabase_admin_client()
+    try:
+        # 1) id로 조회
+        user_id = session.get("user_id")
+        if user_id:
+            r = supabase.table("profiles").select("role").eq("id", str(user_id)).limit(1).execute()
+            if r.data and r.data[0]:
+                role = (r.data[0].get("role") or "").lower().strip()
+                if role == "admin":
+                    return True
+                if r.data[0].get("role") is not None:
+                    return False
+        # 2) id 실패 시 email로 조회
+        email = session.get("email")
+        if email:
+            r = supabase.table("profiles").select("role").eq("email", str(email).strip()).limit(1).execute()
+            if r.data and r.data[0]:
+                return (r.data[0].get("role") or "").lower().strip() == "admin"
+    except Exception as ex:
+        print(f"[_is_admin] 오류: {ex}")
+    return False
+
+
+def _get_team_year():
+    """쿼리 year 파라미터 또는 현재 연도"""
+    y = request.args.get("year", "").strip()
+    try:
+        return int(y) if y else datetime.now().year
+    except ValueError:
+        return datetime.now().year
+
+
+def _sum_prize_achieved(supabase):
+    """contest_participation_detail에서 상금 합계 (원)"""
+    total = 0.0
+    try:
+        r = supabase.table("contest_participation_detail").select("prize_amount, has_prize").execute()
+        for row in (r.data or []):
+            if row.get("has_prize") and row.get("prize_amount") is not None:
+                try:
+                    total += float(row["prize_amount"])
+                except (TypeError, ValueError):
+                    pass
+    except Exception as e:
+        logger.warning("팀 상금 합계 조회 실패: %s", e)
+    return int(total)
+
+
+@app.route("/api/team/prize-progress")
+def api_team_prize_progress():
+    """전체 유저 상금 합계 + 해당 연도 팀 목표 대비 진행률. ?year=2025"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "goal_prize": 0, "total_achieved": 0})
+    try:
+        year = _get_team_year()
+        supabase = get_supabase_admin_client()
+        goal = 0
+        achieved_stored = 0
+        closed = False
+        try:
+            r = supabase.table("site_team_settings").select("goal_prize, achieved_amount, closed").eq("year", year).limit(1).execute()
+            if r.data and len(r.data) > 0:
+                goal = int(r.data[0].get("goal_prize") or 0)
+                achieved_stored = int(r.data[0].get("achieved_amount") or 0)
+                closed = bool(r.data[0].get("closed"))
+        except Exception:
+            pass
+        total_achieved = _sum_prize_achieved(supabase)
+        if closed and achieved_stored > 0:
+            total_achieved = achieved_stored
+        return jsonify({
+            "success": True,
+            "year": year,
+            "goal_prize": goal,
+            "total_achieved": total_achieved,
+            "closed": closed,
+        })
+    except Exception as e:
+        logger.error("api/team/prize-progress 오류: %s", e)
+        return jsonify({"success": True, "goal_prize": 0, "total_achieved": 0})
+
+
+@app.route("/api/team/settings", methods=["GET", "POST", "DELETE"])
+def api_team_settings():
+    """GET: 팀 설정 조회. POST: 추가/수정. DELETE: 삭제 (관리자 전용)"""
+    if not session.get("logged_in"):
+        if request.method in ("POST", "DELETE"):
+            return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+        return jsonify({"success": True, "data": None})
+    try:
+        supabase = get_supabase_admin_client()
+        if request.method == "POST":
+            if not _is_admin():
+                return jsonify({"success": False, "error": "권한이 없습니다"}), 403
+            data = request.get_json(silent=True) or request.form.to_dict()
+            year = data.get("year")
+            try:
+                year = int(year) if year is not None and year != "" else datetime.now().year
+            except (TypeError, ValueError):
+                year = datetime.now().year
+            team_name = (data.get("team_name") or "").strip() or "우리 팀"
+            team_desc = (data.get("team_desc") or "").strip() or ""
+            goal_prize = data.get("goal_prize")
+            try:
+                goal_prize = max(0, int(goal_prize)) if goal_prize is not None and goal_prize != "" else 0
+            except (TypeError, ValueError):
+                goal_prize = 0
+            payload = {"year": year, "team_name": team_name, "team_desc": team_desc, "goal_prize": goal_prize}
+            r = supabase.table("site_team_settings").select("closed").eq("year", year).limit(1).execute()
+            if r.data and r.data[0].get("closed"):
+                return jsonify({"success": False, "error": "마감된 연도는 수정할 수 없습니다."}), 400
+            supabase.table("site_team_settings").upsert([payload], on_conflict="year").execute()
+            return jsonify({"success": True})
+        if request.method == "DELETE":
+            if not _is_admin():
+                return jsonify({"success": False, "error": "권한이 없습니다"}), 403
+            year = request.args.get("year", "").strip() or str(datetime.now().year)
+            try:
+                year = int(year)
+            except ValueError:
+                return jsonify({"success": False, "error": "유효한 연도를 입력해 주세요."}), 400
+            r = supabase.table("site_team_settings").select("closed").eq("year", year).limit(1).execute()
+            if r.data and r.data[0].get("closed"):
+                return jsonify({"success": False, "error": "마감된 연도는 삭제할 수 없습니다."}), 400
+            supabase.table("site_team_settings").delete().eq("year", year).execute()
+            return jsonify({"success": True})
+        list_all = request.args.get("list") in ("1", "true")
+        if list_all:
+            cur_year = datetime.now().year
+            try:
+                r = supabase.table("site_team_settings").select("year, team_name, team_desc, goal_prize, image_path, achieved_amount, closed").order("year", desc=True).execute()
+                rows = r.data or []
+            except Exception:
+                rows = []
+            for row in rows:
+                if row.get("year") is None:
+                    row["year"] = datetime.now().year
+            out = {"success": True, "data": rows, "can_edit": _is_admin()}
+            if request.args.get("_debug"):
+                out["_debug"] = {"can_edit": out["can_edit"], "session_email": bool(session.get("email")), "session_user_id": bool(session.get("user_id"))}
+            return jsonify(out)
+        year = _get_team_year()
+        r = supabase.table("site_team_settings").select("year, team_name, team_desc, goal_prize, image_path, achieved_amount, closed").eq("year", year).limit(1).execute()
+        row = (r.data or [{}])[0] if r.data else {}
+        data = {
+            "year": row.get("year", year),
+            "team_name": row.get("team_name") or "우리 팀",
+            "team_desc": row.get("team_desc") or "",
+            "goal_prize": int(row.get("goal_prize") or 0),
+            "image_path": row.get("image_path") or "",
+            "achieved_amount": int(row.get("achieved_amount") or 0),
+            "closed": bool(row.get("closed")),
+        }
+        can_edit = _is_admin()
+        out = {"success": True, "data": data, "can_edit": can_edit}
+        if request.args.get("_debug"):
+            out["_debug"] = {"can_edit": can_edit, "session_email": bool(session.get("email")), "session_user_id": bool(session.get("user_id"))}
+        return jsonify(out)
+    except Exception as e:
+        logger.error("api/team/settings 오류: %s", e)
+        return jsonify({"success": True, "data": {"year": datetime.now().year, "team_name": "우리 팀", "team_desc": "", "goal_prize": 0}, "can_edit": _is_admin()})
+
+
+@app.route("/api/team/settings/close", methods=["POST"])
+def api_team_settings_close():
+    """해당 연도 팀 목표 마감 (관리자 전용). achieved_amount 스냅샷 저장"""
+    if not session.get("logged_in") or not _is_admin():
+        return jsonify({"success": False, "error": "권한이 없습니다"}), 403
+    year = request.args.get("year", "").strip() or str(datetime.now().year)
+    try:
+        year = int(year)
+    except ValueError:
+        return jsonify({"success": False, "error": "유효한 연도를 입력해 주세요."}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("site_team_settings").select("closed").eq("year", year).limit(1).execute()
+        if r.data and r.data[0].get("closed"):
+            return jsonify({"success": False, "error": "이미 마감된 연도입니다."}), 400
+        achieved = _sum_prize_achieved(supabase)
+        supabase.table("site_team_settings").upsert(
+            [{"year": year, "achieved_amount": achieved, "closed": True}],
+            on_conflict="year"
+        ).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/team/settings/close 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/team/settings/image", methods=["POST"])
+def api_team_settings_image():
+    """팀 프로필 이미지 업로드 (관리자 전용, 해당 연도, 마감 전).
+    auth 클라이언트 사용 → Storage RLS 정책 통과 (대표작 이미지와 동일 방식)"""
+    if not session.get("logged_in") or not _is_admin():
+        return jsonify({"success": False, "error": "권한이 없습니다"}), 403
+    access_token = session.get("access_token") or ""
+    refresh_token = session.get("refresh_token") or ""
+    if not access_token:
+        return jsonify({"success": False, "error": "세션이 만료되었습니다. 다시 로그인해 주세요."}), 401
+    if "file" not in request.files and "image" not in request.files:
+        return jsonify({"success": False, "error": "이미지를 선택해 주세요."}), 400
+    file = request.files.get("file") or request.files.get("image")
+    if not file or file.filename == "":
+        return jsonify({"success": False, "error": "파일이 없습니다."}), 400
+    ext = (file.filename.rsplit(".", 1)[-1] or "").lower()
+    if ext not in ALLOWED_IMAGE_EXT:
+        return jsonify({"success": False, "error": f"허용 형식: {', '.join(ALLOWED_IMAGE_EXT)}"}), 400
+    year = request.form.get("year", "").strip() or str(datetime.now().year)
+    try:
+        year = int(year)
+    except ValueError:
+        year = datetime.now().year
+    try:
+        supabase_admin = get_supabase_admin_client()
+        r = supabase_admin.table("site_team_settings").select("closed").eq("year", year).limit(1).execute()
+        if r.data and r.data[0].get("closed"):
+            return jsonify({"success": False, "error": "마감된 연도는 이미지를 변경할 수 없습니다."}), 400
+        path = f"private/{year}_team.{ext}"
+        file_data = file.read()
+        content_type = file.content_type or ("image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}")
+        supabase = get_supabase_client_with_auth(access_token, refresh_token)
+        supabase.storage.from_(TEAMPROFILE_BUCKET).upload(
+            file=file_data,
+            path=path,
+            file_options={"content-type": content_type, "upsert": "true"},
+        )
+        url = supabase.storage.from_(TEAMPROFILE_BUCKET).get_public_url(path)
+        supabase_admin.table("site_team_settings").update({"image_path": url}).eq("year", year).execute()
+        return jsonify({"success": True, "image_path": url})
+    except Exception as e:
+        logger.error("api/team/settings/image 오류: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 
@@ -1308,6 +1652,282 @@ def api_user_contest_status():
         return jsonify({"success": True, "data": {"content_checks": [], "participation": {}, "commented": []}})
 
 
+@app.route("/api/user/representative-works")
+def api_user_representative_works():
+    """대표작품 목록 조회 (user_id 또는 현재 유저). sort_order 1~3 순"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": []})
+    user_id = request.args.get("user_id", "").strip() or session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": []})
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("user_representative_works").select("user_id, sort_order, source, contest_id, award_status, result_announcement_method, image_path").eq("user_id", user_id).order("sort_order").execute()
+        rows = r.data or []
+        result = []
+        for row in rows:
+            src = row.get("source") or ""
+            cid = row.get("contest_id") or ""
+            c = supabase.table("contests").select("title, url").eq("source", src).eq("id", cid).limit(1).execute()
+            contest = (c.data or [{}])[0] if c.data else {}
+            result.append({
+                "source": src,
+                "contest_id": cid,
+                "sort_order": int(row.get("sort_order") or 1),
+                "award_status": row.get("award_status") or "",
+                "result_announcement_method": row.get("result_announcement_method") or "",
+                "image_path": row.get("image_path") or "",
+                "title": contest.get("title", "(제목 없음)"),
+                "url": contest.get("url", "#"),
+            })
+        return jsonify({"success": True, "data": result})
+    except Exception as e:
+        logger.error("api/user/representative-works 오류: %s", e)
+        return jsonify({"success": True, "data": []})
+
+
+@app.route("/api/user/representative-works", methods=["POST"])
+def api_user_representative_works_add():
+    """대표작품 추가 (참가한 공모전만 가능, 최대 3개). JSON 또는 multipart 지원."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = str(session.get("user_id") or "")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    VALID_ANNOUNCEMENT = ("문자", "SNS", "홈페이지", "전화통보", "이메일", "기타")
+    if request.content_type and "multipart/form-data" in request.content_type:
+        source = (request.form.get("source") or "").strip()
+        contest_id = (request.form.get("contest_id") or "").strip()
+        award_status = (request.form.get("award_status") or "").strip() or None
+        result_method = (request.form.get("result_announcement_method") or "").strip() or None
+        file = request.files.get("file") or request.files.get("image")
+    else:
+        data = request.get_json(silent=True) or {}
+        source = (data.get("source") or "").strip()
+        contest_id = (data.get("contest_id") or "").strip()
+        award_status = (data.get("award_status") or "").strip() or None
+        result_method = (data.get("result_announcement_method") or "").strip() or None
+        file = None
+    if not source or not contest_id:
+        return jsonify({"success": False, "error": "source, contest_id가 필요합니다"}), 400
+    if award_status and award_status not in ("대상", "최우수상", "우수상"):
+        award_status = None
+    if result_method and result_method not in VALID_ANNOUNCEMENT:
+        result_method = None
+    try:
+        access_token = session.get("access_token") or ""
+        refresh_token = session.get("refresh_token") or ""
+        supabase_admin = get_supabase_admin_client()
+        supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else supabase_admin
+        part = supabase_admin.table("contest_participation").select("user_id").eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).limit(1).execute()
+        if not part.data or len(part.data) == 0:
+            return jsonify({"success": False, "error": "참가한 공모전만 대표작으로 추가할 수 있습니다"}), 400
+        existing = supabase_admin.table("user_representative_works").select("sort_order").eq("user_id", user_id).order("sort_order").execute()
+        if existing.data and len(existing.data) >= 3:
+            return jsonify({"success": False, "error": "대표작품은 최대 3개까지 등록할 수 있습니다"}), 400
+        dup = supabase_admin.table("user_representative_works").select("user_id").eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).limit(1).execute()
+        if dup.data and len(dup.data) > 0:
+            return jsonify({"success": False, "error": "이미 대표작품에 등록되어 있습니다"}), 400
+        used_orders = {int(r.get("sort_order") or 0) for r in (existing.data or [])}
+        sort_order = 1
+        for i in range(1, 4):
+            if i not in used_orders:
+                sort_order = i
+                break
+        image_path = ""
+        if file:
+            image_path = _upload_rep_image(user_id, source, contest_id, file, access_token, refresh_token) or ""
+        supabase.table("user_representative_works").insert({
+            "user_id": user_id,
+            "source": source,
+            "contest_id": contest_id,
+            "sort_order": sort_order,
+            "award_status": award_status,
+            "result_announcement_method": result_method,
+            "image_path": image_path or None,
+        }).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/user/representative-works POST 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _upload_rep_image(user_id: str, source: str, contest_id: str, file, access_token: str = "", refresh_token: str = "") -> str:
+    """대표작 이미지 업로드 → rep 버킷 private/{user_id}/____{contest_id}.png → public URL 반환.
+    auth 클라이언트 사용 시 Storage RLS 통과 (본인 폴더만 업로드 가능)"""
+    if not file or file.filename == "":
+        return ""
+    ext = (file.filename.rsplit(".", 1)[-1] or "png").lower()
+    if ext not in ALLOWED_IMAGE_EXT:
+        ext = "png"
+    path = f"private/{user_id}/____{contest_id}.{ext}"
+    file_data = file.read()
+    content_type = file.content_type or ("image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}")
+    supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else get_supabase_admin_client()
+    supabase.storage.from_(REP_BUCKET).upload(
+        file=file_data,
+        path=path,
+        file_options={"content-type": content_type, "upsert": "true"},
+    )
+    return supabase.storage.from_(REP_BUCKET).get_public_url(path)
+
+
+def _upload_participation_document(user_id: str, source: str, contest_id: str, file, access_token: str = "", refresh_token: str = "") -> tuple:
+    """참가 상세 제출물 업로드 → contest 버킷. Supabase Storage key는 ASCII만 허용."""
+    if not file or file.filename == "":
+        return (None, None)
+    orig_filename = file.filename or "document"
+    ext = (orig_filename.rsplit(".", 1)[-1] or "").lower()
+    if ext not in ALLOWED_DOC_EXT:
+        ext = "pdf"
+    safe_src = "".join(c for c in str(source) if c.isascii() and (c.isalnum() or c in "._-")) or "src"
+    safe_cid = "".join(c for c in str(contest_id) if c.isascii() and (c.isalnum() or c in "._-")) or "cid"
+    ts = str(int(time.time() * 1000))
+    safe_key = f"doc_{safe_src}_{safe_cid}_{ts}.{ext}"
+    path = f"private/{user_id}/{safe_key}"
+    try:
+        supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else get_supabase_admin_client()
+        file_data = file.read()
+        content_type = file.content_type or "application/octet-stream"
+        supabase.storage.from_(CONTEST_BUCKET).upload(
+            file=file_data,
+            path=path,
+            file_options={"content-type": content_type, "upsert": "true"},
+        )
+        url = supabase.storage.from_(CONTEST_BUCKET).get_public_url(path)
+        return (url, orig_filename)
+    except Exception as e:
+        logger.error("참가 상세 문서 업로드 실패: %s", e)
+        raise
+
+
+@app.route("/api/user/representative-works", methods=["PATCH"])
+def api_user_representative_works_update():
+    """대표작품 수정 (award_status, image). form 또는 JSON. image는 multipart file."""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = str(session.get("user_id") or "")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+
+    VALID_ANNOUNCEMENT = ("문자", "SNS", "홈페이지", "전화통보", "이메일", "기타")
+    if request.content_type and "multipart/form-data" in request.content_type:
+        source = (request.form.get("source") or "").strip()
+        contest_id = (request.form.get("contest_id") or "").strip()
+        award_status = (request.form.get("award_status") or "").strip() or None
+        result_method = (request.form.get("result_announcement_method") or "").strip() or None
+        file = request.files.get("file") or request.files.get("image")
+    else:
+        data = request.get_json(silent=True) or {}
+        source = (data.get("source") or "").strip()
+        contest_id = (data.get("contest_id") or "").strip()
+        award_status = (data.get("award_status") or "").strip() or None
+        result_method = (data.get("result_announcement_method") or "").strip() or None
+        file = None
+
+    if not source or not contest_id:
+        return jsonify({"success": False, "error": "source, contest_id가 필요합니다"}), 400
+    if award_status and award_status not in ("대상", "최우수상", "우수상"):
+        award_status = None
+    if result_method and result_method not in VALID_ANNOUNCEMENT:
+        result_method = None
+
+    try:
+        access_token = session.get("access_token") or ""
+        refresh_token = session.get("refresh_token") or ""
+        supabase_admin = get_supabase_admin_client()
+        supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else supabase_admin
+        r = supabase_admin.table("user_representative_works").select("user_id").eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).limit(1).execute()
+        if not r.data or len(r.data) == 0:
+            return jsonify({"success": False, "error": "대표작을 찾을 수 없습니다"}), 404
+
+        updates = {}
+        if award_status is not None:
+            updates["award_status"] = award_status
+        if result_method is not None:
+            updates["result_announcement_method"] = result_method
+        if file:
+            image_url = _upload_rep_image(user_id, source, contest_id, file, access_token, refresh_token)
+            if image_url:
+                updates["image_path"] = image_url
+        if not updates:
+            return jsonify({"success": True})
+        supabase.table("user_representative_works").update(updates).eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/user/representative-works PATCH 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/user/representative-works/reorder", methods=["PATCH"])
+def api_user_representative_works_reorder():
+    """대표작품 순서 변경. body: [{source, contest_id, sort_order}, ...]"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = str(session.get("user_id") or "")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    data = request.get_json(silent=True) or {}
+    items = data.get("items") or []
+    if not items or len(items) > 3:
+        return jsonify({"success": False, "error": "items(1~3개)가 필요합니다"}), 400
+    try:
+        access_token = session.get("access_token") or ""
+        refresh_token = session.get("refresh_token") or ""
+        supabase_admin = get_supabase_admin_client()
+        supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else supabase_admin
+        valid_items = [(i, (it.get("source") or "").strip(), (it.get("contest_id") or "").strip()) for i, it in enumerate(items, start=1) if (it.get("source") or "").strip() and (it.get("contest_id") or "").strip()]
+        if not valid_items:
+            return jsonify({"success": True})
+        keys_set = {(src, cid) for _, src, cid in valid_items}
+        rows = supabase_admin.table("user_representative_works").select("source, contest_id, award_status, result_announcement_method, image_path").eq("user_id", user_id).execute()
+        by_key = {(r.get("source"), r.get("contest_id")): r for r in (rows.data or []) if (r.get("source"), r.get("contest_id")) in keys_set}
+        for sort_order, src, cid in valid_items:
+            if (src, cid) not in by_key:
+                continue
+            supabase.table("user_representative_works").delete().eq("user_id", user_id).eq("source", src).eq("contest_id", cid).execute()
+        for sort_order, src, cid in valid_items:
+            if (src, cid) not in by_key:
+                continue
+            r = by_key[(src, cid)]
+            supabase.table("user_representative_works").insert({
+                "user_id": user_id,
+                "source": src,
+                "contest_id": cid,
+                "sort_order": sort_order,
+                "award_status": r.get("award_status"),
+                "result_announcement_method": r.get("result_announcement_method"),
+                "image_path": r.get("image_path"),
+            }).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/user/representative-works/reorder 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/user/representative-works", methods=["DELETE"])
+def api_user_representative_works_delete():
+    """대표작품 삭제"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = str(session.get("user_id") or "")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    source = request.args.get("source", "").strip() or (request.get_json(silent=True) or {}).get("source", "")
+    contest_id = request.args.get("contest_id", "").strip() or (request.get_json(silent=True) or {}).get("contest_id", "")
+    if not source or not contest_id:
+        return jsonify({"success": False, "error": "source, contest_id가 필요합니다"}), 400
+    try:
+        access_token = session.get("access_token") or ""
+        refresh_token = session.get("refresh_token") or ""
+        supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else get_supabase_admin_client()
+        supabase.table("user_representative_works").delete().eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/user/representative-works DELETE 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/user/participation")
 def api_user_participation():
     """참가/패스한 공모전 목록 (contest 정보 포함). user_id 없으면 현재 로그인 유저"""
@@ -1320,6 +1940,17 @@ def api_user_participation():
         supabase = get_supabase_admin_client()
         r = supabase.table("contest_participation").select("source, contest_id, status, participation_type, team_id, updated_at").eq("user_id", user_id).order("updated_at", desc=True).execute()
         rows = r.data or []
+        detail_by_key = {}
+        try:
+            dr = supabase.table("contest_participation_detail").select(
+                "source, contest_id, participation_status, award_status, has_prize, prize_amount, "
+                "document_filename, submitted_at, result_announcement_date, result_announcement_method"
+            ).eq("user_id", user_id).execute()
+            for d in (dr.data or []):
+                k = (str(d.get("source", "")), str(d.get("contest_id", "")))
+                detail_by_key[k] = d
+        except Exception:
+            pass
         result = []
         for p in rows:
             src = p.get("source") or ""
@@ -1359,6 +1990,7 @@ def api_user_participation():
                 except Exception as e:
                     logger.warning(f"팀 정보 조회 실패: {e}")
             
+            det = detail_by_key.get((src, cid), {})
             result.append({
                 "source": src,
                 "contest_id": cid,
@@ -1371,7 +2003,18 @@ def api_user_participation():
                 "d_day": contest.get("d_day", "-"),
                 "host": contest.get("host", "-"),
                 "category": contest.get("category", "공모전"),
+                "has_detail": (src, cid) in detail_by_key,
+                "participation_status": det.get("participation_status") or "",
+                "award_status": det.get("award_status") or "",
+                "has_prize": bool(det.get("has_prize")),
+                "prize_amount": det.get("prize_amount"),
+                "document_filename": det.get("document_filename") or "",
+                "submitted_at": det.get("submitted_at"),
+                "result_announcement_date": det.get("result_announcement_date"),
+                "result_announcement_method": det.get("result_announcement_method") or "",
             })
+        result.sort(key=lambda x: (x.get("updated_at") or ""), reverse=True)
+        result.sort(key=lambda x: 0 if x.get("status") == "participate" else 1)
         return jsonify({"success": True, "data": result})
     except Exception as e:
         logger.error("api/user/participation 오류: %s", e)
@@ -1430,7 +2073,8 @@ def api_contest_content_check(source, contest_id):
                 "contest_id": contest_id,
             }).execute()
         _post_comment(supabase, user_id, source, contest_id, "공모전 내용확인 완료")
-        return jsonify({"success": True})
+        exp_gained = _grant_exp(supabase, user_id, "content_check", source, contest_id)
+        return jsonify({"success": True, "exp_gained": exp_gained})
     except Exception as e:
         logger.error("api/contest/content-check 오류: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
@@ -1483,9 +2127,141 @@ def api_contest_participation(source, contest_id):
         ).execute()
         comment_body = "공모전 참가" if status == "participate" else "공모전 패스"
         _upsert_participation_comment(supabase, user_id, source, contest_id, comment_body)
-        return jsonify({"success": True})
+        act = "participate" if status == "participate" else "pass"
+        exp_gained = _grant_exp(supabase, user_id, act, source, contest_id)
+        return jsonify({"success": True, "exp_gained": exp_gained})
     except Exception as e:
         logger.error("api/contest/participation 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/contests/<source>/<contest_id>/participation/detail/document-download")
+def api_participation_detail_document_download(source, contest_id):
+    """제출물 다운로드 URL 반환. user_id 쿼리파라미터 있으면 해당 유저 제출물(타인 프로필 조회용), 없으면 본인 제출물"""
+    if not session.get("user_id"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    target_user_id = request.args.get("user_id", "").strip() or session.get("user_id")
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contest_participation_detail").select("document_path, document_filename").eq("user_id", target_user_id).eq("source", source).eq("contest_id", contest_id).limit(1).execute()
+        if not r.data or len(r.data) == 0:
+            return jsonify({"success": False, "error": "제출물이 없습니다"}), 404
+        doc = r.data[0]
+        path = (doc.get("document_path") or "").strip()
+        filename = doc.get("document_filename") or "document"
+        if not path:
+            return jsonify({"success": False, "error": "제출물이 없습니다"}), 404
+        if "/storage/v1/object/public/" in path and "/" + CONTEST_BUCKET + "/" in path:
+            try:
+                storage_path = path.split("/" + CONTEST_BUCKET + "/", 1)[-1]
+                signed = supabase.storage.from_(CONTEST_BUCKET).create_signed_url(storage_path, 60)
+                if signed:
+                    url = signed.get("path") or signed.get("signedURL") or (list(signed.values())[0] if signed else None)
+                    if url:
+                        return jsonify({"success": True, "download_url": url, "filename": filename})
+            except Exception:
+                pass
+        return jsonify({"success": True, "download_url": path, "filename": filename})
+    except Exception as e:
+        logger.error("document-download 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/contests/<source>/<contest_id>/participation/detail", methods=["GET", "POST", "DELETE"])
+def api_contest_participation_detail(source, contest_id):
+    """참가 상세 정보: GET=조회, POST=등록/수정(upsert), DELETE=삭제"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        if request.method == "GET":
+            r = supabase.table("contest_participation_detail").select("*").eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).limit(1).execute()
+            data = r.data[0] if r.data else None
+            return jsonify({"success": True, "data": data})
+        if request.method == "DELETE":
+            supabase.table("contest_participation_detail").delete().eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).execute()
+            return jsonify({"success": True})
+        if request.method == "POST":
+            is_multipart = request.content_type and "multipart/form-data" in request.content_type
+            if is_multipart:
+                data = request.form.to_dict()
+                doc_file = request.files.get("document") or request.files.get("file")
+            else:
+                data = request.get_json(silent=True) or {}
+                doc_file = None
+            participation_status = (data.get("participation_status") or "지원완료").strip()
+            valid_statuses = ("지원완료", "심사중", "본선진출", "수상", "미수상", "취소")
+            if participation_status not in valid_statuses:
+                return jsonify({"success": False, "error": f"participation_status는 {', '.join(valid_statuses)} 중 하나"}), 400
+            award_status = (data.get("award_status") or "").strip() or None
+            if participation_status == "수상" and not award_status:
+                return jsonify({"success": False, "error": "수상 시 award_status를 선택해주세요"}), 400
+            valid_awards = ("대상", "최우수상", "우수상", "장려상", "입선", "기타")
+            if award_status and award_status not in valid_awards:
+                return jsonify({"success": False, "error": f"award_status는 {', '.join(valid_awards)} 중 하나"}), 400
+            has_prize = data.get("has_prize") in (True, "true", "1", "on") if isinstance(data.get("has_prize"), str) else bool(data.get("has_prize"))
+            prize_amount = data.get("prize_amount")
+            try:
+                prize_amount = float(prize_amount) if prize_amount is not None and prize_amount != "" else None
+            except (TypeError, ValueError):
+                prize_amount = None
+            submitted_at = data.get("submitted_at") or None
+            result_announcement_date = data.get("result_announcement_date") or None
+            result_announcement_method = (data.get("result_announcement_method") or "").strip() or None
+            document_path = (data.get("document_path") or "").strip() or None
+            document_filename = (data.get("document_filename") or "").strip() or None
+            has_doc = bool(document_path and document_filename) or (doc_file and doc_file.filename)
+            if not has_doc:
+                return jsonify({"success": False, "error": "제출물을 등록해 주세요."}), 400
+            if doc_file and doc_file.filename:
+                try:
+                    acc = session.get("access_token") or ""
+                    ref = session.get("refresh_token") or ""
+                    doc_url, doc_name = _upload_participation_document(user_id, source, contest_id, doc_file, acc, ref)
+                    if doc_url:
+                        document_path = doc_url
+                        document_filename = doc_name
+                    else:
+                        return jsonify({"success": False, "error": "문서 업로드에 실패했습니다."}), 500
+                except Exception as up_err:
+                    logger.error("참가 상세 문서 업로드 오류: %s", up_err)
+                    return jsonify({"success": False, "error": f"문서 업로드 실패: {str(up_err)}"}), 500
+            old_row = None
+            try:
+                r = supabase.table("contest_participation_detail").select("participation_status").eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).limit(1).execute()
+                old_row = r.data[0] if r.data else None
+            except Exception:
+                pass
+            payload = {
+                "user_id": user_id,
+                "source": source,
+                "contest_id": contest_id,
+                "participation_status": participation_status,
+                "award_status": award_status,
+                "has_prize": has_prize,
+                "prize_amount": prize_amount,
+                "submitted_at": submitted_at,
+                "result_announcement_date": result_announcement_date,
+                "result_announcement_method": result_announcement_method,
+                "document_path": document_path,
+                "document_filename": document_filename,
+            }
+            supabase.table("contest_participation_detail").upsert(payload, on_conflict="user_id,source,contest_id").execute()
+            exp_gained = 0
+            if not old_row:
+                exp_gained = _grant_exp(supabase, user_id, "support_complete", source, contest_id)
+            else:
+                old_status = (old_row.get("participation_status") or "").strip()
+                if participation_status == "본선진출" and old_status != "본선진출":
+                    exp_gained = _grant_exp(supabase, user_id, "finalist", source, contest_id)
+                elif participation_status == "수상" and old_status != "수상":
+                    exp_gained = _grant_exp(supabase, user_id, "award", source, contest_id)
+            return jsonify({"success": True, "exp_gained": exp_gained})
+    except Exception as e:
+        logger.error("api/contest/participation/detail 오류: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

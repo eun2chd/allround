@@ -171,11 +171,7 @@
     <div class="login-card">
       <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent" class="login-logo">
       <h2>로그인</h2>
-      {% with messages = get_flashed_messages() %}
-        {% if messages %}
-          <div class="login-flash">{{ messages[0] }}</div>
-        {% endif %}
-      {% endwith %}
+      {% set login_flashed = get_flashed_messages() %}
       <form class="login-form" id="loginForm" action="/login" method="POST">
         <div class="form-group">
           <label for="email">이메일</label>
@@ -219,6 +215,14 @@
       });
     })();
   </script>
+  {% include 'partials/_toast.html' %}
+  {% if login_flashed %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof showToast === 'function') showToast({{ login_flashed[0] | tojson }}, 'error');
+    });
+  </script>
+  {% endif %}
   {% include 'partials/_loading_overlay.html' %}
   <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
 </body>

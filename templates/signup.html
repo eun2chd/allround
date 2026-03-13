@@ -161,11 +161,7 @@
     <div class="signup-card">
       <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent" class="signup-logo">
       <h2>회원가입</h2>
-      {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-          <div class="signup-flash{% if messages[0][0] == 'success' %} success{% endif %}">{{ messages[0][1] }}</div>
-        {% endif %}
-      {% endwith %}
+      {% set flashed = get_flashed_messages(with_categories=true) %}
       <form class="signup-form" id="signupForm" action="/signup" method="POST">
         <table>
           <tr>
@@ -296,26 +292,36 @@
       const pw2 = document.getElementById('password_confirm').value;
       if (pw !== pw2) {
         e.preventDefault();
-        alert('비밀번호가 일치하지 않습니다.');
+        showToast('비밀번호가 일치하지 않습니다.', 'error');
         return false;
       }
       if (!validatePassword(pw)) {
         e.preventDefault();
-        alert('비밀번호는 숫자 6자 이상 + 특수문자 1개 이상을 포함해야 합니다.');
+        showToast('비밀번호는 숫자 6자 이상 + 특수문자 1개 이상을 포함해야 합니다.', 'error');
         return false;
       }
       if (emailValid === false) {
         e.preventDefault();
-        alert('이미 사용 중인 이메일입니다.');
+        showToast('이미 사용 중인 이메일입니다.', 'error');
         return false;
       }
       if (nicknameValid === false) {
         e.preventDefault();
-        alert('이미 사용 중인 닉네임입니다.');
+        showToast('이미 사용 중인 닉네임입니다.', 'error');
         return false;
       }
     });
   </script>
+  {% include 'partials/_toast.html' %}
+  {% if flashed %}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof showToast === 'function') {
+        showToast({{ flashed[0][1] | tojson }}, {{ ('error' if flashed[0][0] == 'error' else 'success') | tojson }});
+      }
+    });
+  </script>
+  {% endif %}
   {% include 'partials/_loading_overlay.html' %}
   <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
 </body>

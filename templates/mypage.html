@@ -21,7 +21,7 @@
       --main-purple-hover: #5b21b6;
       --soft-purple: #ede9fe;
       --text-dark: #212121;
-      --gray-muted: #9ca3af;
+      --gray-muted: #212121;
       --bg-white: #ffffff;
       --border-gray: #e5e7eb;
       --radius: 8px;
@@ -40,7 +40,7 @@
       overflow-x: hidden;
     }
     .main-wrap { margin-left: 260px; }
-    .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+    .container { max-width: 1180px; margin: 0 auto; padding: 24px; }
     .page-header {
       margin-bottom: 32px;
       padding-bottom: 24px;
@@ -97,11 +97,20 @@
       background-size: cover;
       background-position: center;
       position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pinned-card-thumb-no-image {
+      font-size: 0.75rem;
+      color: var(--gray-muted);
+      text-align: center;
+      padding: 12px;
     }
     .pinned-card-badge {
       position: absolute;
       top: 8px;
-      right: 8px;
+      left: 8px;
       padding: 4px 10px;
       font-size: 0.7rem;
       font-weight: 700;
@@ -116,10 +125,157 @@
       font-weight: 600;
       color: var(--text-dark);
     }
+    .pinned-card-result-method {
+      padding: 0 14px 12px;
+      font-size: 0.8rem;
+      color: var(--text-dark, #212121);
+    }
     .pinned-card-placeholder {
       opacity: 0.85;
-      pointer-events: none;
     }
+    .pinned-card-wrap {
+      position: relative;
+    }
+    .pinned-card-wrap:hover .pinned-card-actions { opacity: 1; }
+    .pinned-card-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      left: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+      z-index: 2;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .pinned-card-edit, .pinned-card-del {
+      height: 28px;
+      padding: 0 8px;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      transition: background 0.2s;
+    }
+    .pinned-card-edit { background: rgba(37, 99, 235, 0.9); }
+    .pinned-card-edit:hover { background: #2563eb; }
+    .pinned-card-del { background: rgba(220, 38, 38, 0.9); }
+    .pinned-card-del:hover { background: #dc2626; }
+    .pinned-card-actions .btn-label { display: inline; }
+    .pinned-card-move {
+      width: 28px;
+      height: 28px;
+      border: none;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.6);
+      color: #fff;
+      font-size: 0.75rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pinned-card-move:hover {
+      background: var(--main-purple);
+    }
+    .pinned-card-add {
+      cursor: pointer;
+      border: 2px dashed var(--border-gray);
+      background: #fafafa;
+    }
+    .pinned-card-add:hover {
+      border-color: var(--main-purple);
+      background: var(--soft-purple);
+    }
+    .pinned-card-add-thumb {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      color: var(--gray-muted);
+    }
+    .representative-add-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    .representative-add-item {
+      padding: 12px 16px;
+      text-align: left;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      background: var(--bg-white);
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .representative-add-item:hover {
+      border-color: var(--main-purple);
+      background: var(--soft-purple);
+    }
+    .representative-add-form, .representative-form-title { margin-bottom: 12px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label { display: block; font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; color: var(--text-dark); }
+    .form-group select,
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="date"],
+    .form-group input[type="datetime-local"] {
+      width: 100%; padding: 10px 14px; border: 1px solid var(--border-gray); border-radius: var(--radius);
+      font-family: var(--font); font-size: 0.9rem; background: var(--bg-white); color: var(--text-dark);
+    }
+    .form-group-checkbox label { display: flex; align-items: center; cursor: pointer; }
+    .participation-detail-checkbox { width: 18px; height: 18px; margin-right: 10px; accent-color: var(--main-purple); cursor: pointer; }
+    .participation-doc-current { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; background: #f8f5fc; border: 1px solid var(--border-gray); border-radius: var(--radius); }
+    .participation-doc-filename { font-size: 0.9rem; color: var(--text-dark); word-break: break-all; }
+    .participation-doc-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .btn-sm { padding: 6px 12px; font-size: 0.8rem; }
+    .participation-doc-file-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border-gray); border-radius: var(--radius); font-family: var(--font); font-size: 0.9rem; background: var(--bg-white); }
+    .form-group select:focus,
+    .form-group input[type="text"]:focus,
+    .form-group input[type="number"]:focus,
+    .form-group input[type="date"]:focus,
+    .form-group input[type="datetime-local"]:focus {
+      outline: none; border-color: var(--main-purple); box-shadow: 0 0 0 2px rgba(109,40,217,0.15);
+    }
+    .form-group input[type="file"] {
+      width: 100%;
+      padding: 10px 16px;
+      font-size: 0.9rem;
+      font-family: var(--font);
+      font-weight: 500;
+      background: var(--bg-white);
+      color: var(--main-purple);
+      border: 2px solid var(--main-purple);
+      border-radius: var(--radius);
+      cursor: pointer;
+      box-sizing: border-box;
+    }
+    .form-group input[type="file"]::file-selector-button {
+      padding: 6px 14px;
+      margin-right: 12px;
+      font-family: var(--font);
+      font-size: 0.85rem;
+      font-weight: 500;
+      background: var(--main-purple);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .rep-form-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+    .rep-form-actions .btn-outline, .rep-form-actions .btn-primary { flex: 1; min-width: 100px; }
+    .participation-detail-actions { display: flex; align-items: center; justify-content: flex-end; margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--border-gray); gap: 12px; flex-wrap: wrap; }
+    .edit-image-preview { min-height: 80px; margin-bottom: 8px; border-radius: var(--radius); background: #f3f4f6; background-size: contain; background-position: center; background-repeat: no-repeat; }
     /* 카드 공통 */
     .card {
       background: var(--bg-white);
@@ -160,6 +316,7 @@
     .summary-card .summary-icon.rocket { background: linear-gradient(135deg, #e0e7ff, #c7d2fe); }
     .summary-card .summary-value { font-size: 1.25rem; font-weight: 700; color: var(--text-dark); }
     .summary-card .summary-label { font-size: 0.85rem; color: var(--gray-muted); margin-top: 2px; }
+    .summary-awards-breakdown { font-size: 0.75rem; color: var(--gray-muted); margin-top: 4px; }
     /* 참가/패스 공모전 */
     .participation-section {
       background: var(--bg-white);
@@ -168,15 +325,67 @@
       box-shadow: 0 4px 6px rgba(0,0,0,0.05);
       margin-bottom: 24px;
     }
-    .participation-section h3 {
-      font-size: 1rem;
-      font-weight: 700;
-      color: var(--text-dark);
+    .participation-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
       margin-bottom: 20px;
       padding-bottom: 12px;
       border-bottom: 1px solid var(--border-gray);
     }
+    .participation-section h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-dark);
+      margin: 0;
+    }
+    .participation-section-hint {
+      font-size: 0.8rem;
+      color: var(--text-dark, #1f2937);
+      font-weight: 700;
+    }
+    .participation-filter-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+    .participation-filter { display: flex; gap: 8px; flex-wrap: wrap; }
+    .participation-view-toggle { display: flex; gap: 4px; }
+    .participation-view-btn {
+      padding: 5px 12px;
+      border: 1px solid var(--border-gray);
+      background: var(--bg-white);
+      color: var(--gray-muted);
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .participation-view-btn:hover { border-color: var(--main-purple); color: var(--main-purple); }
+    .participation-view-btn.active { background: var(--main-purple); border-color: var(--main-purple); color: #fff; }
+    .participation-filter-btn {
+      padding: 6px 14px;
+      border: 1px solid var(--border-gray);
+      background: var(--bg-white);
+      color: var(--gray-muted);
+      font-size: 0.85rem;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, color 0.2s;
+    }
+    .participation-filter-btn:hover { border-color: var(--main-purple); color: var(--main-purple); }
+    .participation-filter-btn.active { background: var(--main-purple); border-color: var(--main-purple); color: #fff; }
     .participation-list { display: flex; flex-direction: column; gap: 12px; }
+    .participation-table-wrap { overflow-x: auto; }
+    .participation-table {
+      width: 100%; border-collapse: collapse; font-size: 0.85rem;
+    }
+    .participation-table th, .participation-table td {
+      padding: 10px 12px; text-align: center; border-bottom: 1px solid var(--border-gray);
+    }
+    .participation-table th { background: #f8f5fc; font-weight: 600; color: var(--text-dark); }
+    .participation-table tr:hover { background: var(--soft-purple); }
+    .participation-table .participation-table-title { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .participation-table-actions { display: flex; gap: 6px; flex-wrap: wrap; }
     .participation-item-wrap {
       display: flex;
       align-items: center;
@@ -188,17 +397,76 @@
       transition: background 0.2s, border-color 0.2s;
     }
     .participation-item-wrap:hover { border-color: rgba(109,40,217,0.3); }
-    .participation-item {
+    .participation-item-wrap.has-detail { border-left: 3px solid var(--main-purple); background: #f8f5fc; }
+    .participation-item-wrap.has-detail:hover { background: var(--soft-purple); }
+    .participation-item-wrap.no-detail { border-left: 3px solid var(--border-gray); }
+    .participation-detail-badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-weight: 500;
+    }
+    .participation-detail-badge.registered { background: #e9d5ff; color: var(--main-purple); }
+    .participation-card-detail { font-size: 0.78rem; color: var(--gray-muted); margin-top: 6px; }
+    .participation-detail-badge.unregistered { background: #f3f4f6; color: var(--gray-muted); }
+    .participation-content {
       display: flex;
       align-items: center;
       gap: 12px;
       flex: 1;
       min-width: 0;
-      text-decoration: none;
-      color: inherit;
     }
-    .participation-item-wrap:hover .participation-item { background: transparent; }
     .participation-item-wrap:hover { background: var(--soft-purple); }
+    .participation-link-btn {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border: 1px solid var(--main-purple);
+      background: var(--bg-white);
+      color: var(--main-purple);
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: background 0.2s, color 0.2s;
+    }
+    .participation-link-btn:hover {
+      background: var(--main-purple);
+      color: #fff;
+    }
+    .participation-detail-btn {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border: 1px solid var(--gray-muted);
+      background: var(--bg-white);
+      color: var(--text-dark);
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+    }
+    .participation-detail-btn:hover {
+      background: #f3f4f6;
+      border-color: var(--main-purple);
+      color: var(--main-purple);
+    }
+    .participation-doc-download-btn {
+      flex-shrink: 0;
+      padding: 6px 14px;
+      border: 1px solid var(--main-purple);
+      background: var(--bg-white);
+      color: var(--main-purple);
+      font-size: 0.8rem;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s, color 0.2s;
+    }
+    .participation-doc-download-btn:hover {
+      background: var(--main-purple);
+      color: #fff;
+    }
     .participation-delete-btn {
       flex-shrink: 0;
       padding: 4px 10px;
@@ -261,7 +529,7 @@
       margin-right: 6px;
     }
     .participation-badge.participate { background: #d1fae5; color: #059669; }
-    .participation-badge.pass { background: #e5e7eb; color: #6b7280; }
+    .participation-badge.pass { background: #e5e7eb; color: #212121; }
     .participation-type-badge {
       flex-shrink: 0;
       padding: 4px 10px;
@@ -318,6 +586,25 @@
     }
     .btn-outline:hover {
       background: var(--soft-purple);
+    }
+    .btn-primary {
+      padding: 12px 24px;
+      font-family: var(--font);
+      font-size: 0.95rem;
+      font-weight: 500;
+      background: var(--main-purple);
+      color: #fff;
+      border: 2px solid var(--main-purple);
+      border-radius: var(--radius);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+    .btn-primary:hover {
+      background: var(--main-purple-hover, #5b21b6);
+      border-color: var(--main-purple-hover, #5b21b6);
     }
     .btn-outline.danger {
       color: #dc2626;
@@ -423,9 +710,12 @@
     }
     .modal-body th, .modal-body td {
       padding: 10px 12px;
-      text-align: left;
+      text-align: center;
       border: 1px solid var(--border-gray);
     }
+    .exp-amounts-desc { font-size: 0.9rem; color: var(--gray-muted); margin-bottom: 16px; }
+    .exp-amounts-table .exp-value { font-weight: 700; color: var(--main-purple); }
+    .exp-loading { color: var(--gray-muted); }
     .modal-body th {
       background: var(--soft-purple);
       color: var(--main-purple);
@@ -556,7 +846,10 @@
             <div class="level-tier-line">
               <span class="level-text">Lv.{{ level }}</span>
               <span class="tier-badge-pill tier-badge-pill-{{ tier_name|lower }}">{{ tier_name }}</span>
-              <button type="button" class="btn-tier-exp" onclick="openModal('modalTierExp')" title="티어별 도달 경험치">EXP</button>
+              <div class="level-exp-btns">
+                <button type="button" class="btn-tier-exp" onclick="openModal('modalTierExp')" title="티어별 도달 경험치">EXP</button>
+                <button type="button" class="btn-tier-exp" onclick="openExpAmountsModal()" title="행위별 경험치">경험치</button>
+              </div>
             </div>
             <p class="level-total-exp">총 {{ total_exp|default(profile.get('total_exp', 0)) }} EXP</p>
             <div class="exp-bar-wrap">
@@ -577,21 +870,43 @@
       {% endif %}
     </section>
 
-    <!-- 대표 작품 (Pinned Portfolio) -->
-    <section class="pinned-portfolio-section">
+    <!-- 대표 작품 (user_representative_works) -->
+    <section class="pinned-portfolio-section" id="representativeWorksSection" data-user-id="{{ profile.get('id', '') }}" data-own-profile="{{ '1' if is_own_profile else '0' }}">
       <h3>대표 작품</h3>
-      <div class="pinned-cards">
-        {% set filler = [{'title':'대표 작품','award':'수상','url':'#','thumbnail':''}] * 3 %}
-        {% set items = (pinned_portfolio or []) + filler %}
-        {% for item in items[:3] %}
-        <a href="{{ item.url or '#' }}" class="pinned-card{% if not item.thumbnail %} pinned-card-placeholder{% endif %}" target="_blank">
-          <div class="pinned-card-thumb" style="{% if item.thumbnail %}background-image: url('{{ item.thumbnail }}');{% endif %}">
-            <span class="pinned-card-badge">{{ item.award or '수상' }}</span>
+      <div class="pinned-cards" id="representativeWorksCards">
+        {% for item in (representative_works or []) %}
+        <div class="pinned-card-wrap">
+          <a href="{{ item.url or '#' }}" class="pinned-card{% if not item.image_path %} pinned-card-placeholder{% endif %}" target="_blank" data-source="{{ item.source|e }}" data-contest-id="{{ item.contest_id|e }}">
+            <div class="pinned-card-thumb" style="{% if item.image_path %}background-image: url('{{ item.image_path|e }}');{% endif %}">
+              {% if not item.image_path %}<span class="pinned-card-thumb-no-image">대표이미지가 없습니다</span>{% endif %}
+              <span class="pinned-card-badge">{{ item.award_status or '수상' }}</span>
+            </div>
+            <div class="pinned-card-title">{{ item.title or '작품 제목' }}</div>
+          </a>
+          {% if item.result_announcement_method %}<div class="pinned-card-result-method">결과발표: {{ item.result_announcement_method }}</div>{% endif %}
+          {% if is_own_profile %}
+          <div class="pinned-card-actions">
+            <button type="button" class="pinned-card-edit" data-source="{{ item.source|e }}" data-contest-id="{{ item.contest_id|e }}" data-award="{{ item.award_status|e }}" data-result-announcement="{{ item.result_announcement_method|e }}" data-image="{{ item.image_path|e }}" title="수정"><span>✎</span><span class="btn-label">수정</span></button>
+            <button type="button" class="pinned-card-del" data-source="{{ item.source|e }}" data-contest-id="{{ item.contest_id|e }}" title="삭제"><span>✕</span><span class="btn-label">삭제</span></button>
+            <button type="button" class="pinned-card-move" data-idx="{{ loop.index0 }}" data-dir="up" title="위로">↑</button>
+            <button type="button" class="pinned-card-move" data-idx="{{ loop.index0 }}" data-dir="down" title="아래로">↓</button>
           </div>
-          <div class="pinned-card-title">{{ item.title or '작품 제목' }}</div>
-        </a>
+          {% endif %}
+        </div>
         {% endfor %}
+        {% if is_own_profile and (representative_works or [])|length < 3 %}
+        <button type="button" class="pinned-card pinned-card-add" id="btnAddRepresentative" title="대표작 추가">
+          <div class="pinned-card-thumb pinned-card-add-thumb">+</div>
+          <div class="pinned-card-title">추가하기</div>
+        </button>
+        {% endif %}
       </div>
+      {% if not representative_works and is_own_profile %}
+      <p class="pinned-empty-hint" style="color:var(--gray-muted);font-size:0.9rem;padding:8px 0;">참가한 공모전 중에서 대표작을 골라 추가해 보세요.</p>
+      {% endif %}
+      {% if not representative_works and not is_own_profile %}
+      <p class="pinned-empty-hint" style="color:var(--gray-muted);font-size:0.9rem;padding:16px;">대표 작품이 없습니다.</p>
+      {% endif %}
     </section>
 
     <!-- 요약 대시보드 (DB 연동) -->
@@ -599,14 +914,19 @@
       <div class="summary-card">
         <div class="summary-icon trophy">🏆</div>
         <div>
-          <div class="summary-value">{{ awards_count|default(0) }}건</div>
+          <div class="summary-value">{{ awards_total|default(0) }}건</div>
           <div class="summary-label">수상</div>
+          {% if awards_by_status and awards_total|default(0) > 0 %}
+          <div class="summary-awards-breakdown">
+            {% for status, cnt in awards_by_status.items() %}{% if cnt > 0 %}{{ status }} {{ cnt }}건{% if not loop.last %} · {% endif %}{% endif %}{% endfor %}
+          </div>
+          {% endif %}
         </div>
       </div>
       <div class="summary-card">
         <div class="summary-icon money">💰</div>
         <div>
-          <div class="summary-value">{{ prize_total|default('0') }}</div>
+          <div class="summary-value">{{ prize_total|default('0') }}원</div>
           <div class="summary-label">상금</div>
         </div>
       </div>
@@ -621,7 +941,21 @@
 
     <!-- 참가/패스 공모전 (본인·타인 프로필 모두 표시, 5개씩 최대 10페이지) -->
     <section class="participation-section" id="participationSection" data-user-id="{{ profile.get('id', '') }}" data-own-profile="{{ '1' if is_own_profile else '0' }}">
-      <h3>참가 / 패스 공모전</h3>
+      <div class="participation-section-header">
+        <h3>참가 / 패스 공모전</h3>
+        {% if is_own_profile %}<span class="participation-section-hint">해당 목록의 상세 정보를 입력해보세요!</span>{% endif %}
+      </div>
+      <div class="participation-filter-row">
+        <div class="participation-filter">
+          <button type="button" class="participation-filter-btn active" data-filter="all">전체</button>
+          <button type="button" class="participation-filter-btn" data-filter="participate">참가만 보기</button>
+          <button type="button" class="participation-filter-btn" data-filter="pass">패스만 보기</button>
+        </div>
+        <div class="participation-view-toggle">
+          <button type="button" class="participation-view-btn active" data-view="card" title="카드 보기">카드</button>
+          <button type="button" class="participation-view-btn" data-view="table" title="테이블 보기">테이블</button>
+        </div>
+      </div>
       <div class="participation-list" id="participationList">
         <div class="participation-loading" id="participationLoading" style="color:var(--gray-muted);padding:24px;text-align:center;">불러오는 중...</div>
       </div>
@@ -717,6 +1051,29 @@
     </div>
   </div>
 
+  <!-- 행위별 경험치 모달 -->
+  <div class="modal-overlay" id="modalExpAmounts">
+    <div class="modal-box modal-exp-amounts">
+      <div class="modal-header">
+        <h4>행위별 경험치</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalExpAmounts')" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="exp-amounts-desc">아래 행위를 수행하면 경험치를 획득할 수 있습니다.</p>
+            <p class="exp-amounts-desc">경험치 획득경로는 추가적인 업데이트를 진행할 예정입니다.</p>
+            <p class="exp-amounts-desc">중복행위 경험치 획득 및 악용 시 모든 경험치 몰수 처리되오니 주의하시기 바랍니다.</p>
+        <table class="exp-amounts-table">
+          <thead>
+            <tr><th>행위</th><th>경험치</th></tr>
+          </thead>
+          <tbody id="expAmountsBody">
+            <tr><td colspan="2" class="exp-loading">로딩 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
   <!-- 해시태그 선택 모달 (골드 이상) -->
   <div class="modal-overlay" id="modalHashtags">
     <div class="modal-box modal-hashtags">
@@ -752,6 +1109,155 @@
         {% else %}
         <p class="tags-tier-notice">해시태그는 골드 등급(Lv.71) 이상부터 추가할 수 있습니다.</p>
         {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- 대표작 추가 모달 -->
+  <div class="modal-overlay" id="modalAddRepresentative">
+    <div class="modal-box modal-add-representative">
+      <div class="modal-header">
+        <h4>대표작 추가</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalAddRepresentative')" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <p class="representative-modal-desc">참가한 공모전을 선택한 뒤 수상 등급과 이미지를 입력하세요.</p>
+        <div class="representative-add-list" id="representativeAddList"></div>
+        <div class="representative-add-form" id="representativeAddForm" style="display:none">
+          <p class="representative-form-title" id="representativeAddFormTitle"></p>
+          <div class="form-group">
+            <label>수상 등급</label>
+            <select id="addAwardStatus">
+              <option value="">수상을 선택해주세요</option>
+              <option value="대상">대상</option>
+              <option value="최우수상">최우수상</option>
+              <option value="우수상">우수상</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>결과 발표 (경로)</label>
+            <input type="text" id="addResultAnnouncement" placeholder="예: 문자, SNS, 홈페이지, 전화통보, 이메일 등">
+          </div>
+          <div class="form-group">
+            <label>대표 이미지</label>
+            <input type="file" id="addImageFile" accept="image/*" class="rep-file-input">
+          </div>
+          <div class="rep-form-actions">
+            <button type="button" class="btn-outline" id="btnAddRepBack">뒤로</button>
+            <button type="button" class="btn-primary" id="btnSubmitAddRep">추가</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 대표작 수정 모달 -->
+  <div class="modal-overlay" id="modalEditRepresentative">
+    <div class="modal-box modal-edit-representative">
+      <div class="modal-header">
+        <h4>대표작 수정</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalEditRepresentative')" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>수상 등급</label>
+          <select id="editAwardStatus">
+            <option value="">수상을 선택해주세요</option>
+            <option value="대상">대상</option>
+            <option value="최우수상">최우수상</option>
+            <option value="우수상">우수상</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>결과 발표 (경로)</label>
+          <input type="text" id="editResultAnnouncement" placeholder="예: 문자, SNS, 홈페이지, 전화통보, 이메일 등">
+        </div>
+        <div class="form-group">
+          <label>대표 이미지</label>
+          <div class="edit-image-preview" id="editImagePreview"></div>
+          <input type="file" id="editImageFile" accept="image/*" class="rep-file-input">
+        </div>
+        <input type="hidden" id="editRepSource">
+        <input type="hidden" id="editRepContestId">
+        <div class="rep-form-actions">
+          <button type="button" class="btn-primary" id="btnSubmitEditRep">저장</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 참가 상세 모달 (등록/수정/삭제) -->
+  <div class="modal-overlay" id="modalParticipationDetail">
+    <div class="modal-box modal-participation-detail">
+      <div class="modal-header">
+        <h4 id="modalParticipationDetailTitle">참가 상세</h4>
+        <button type="button" class="modal-close" onclick="closeModal('modalParticipationDetail')" aria-label="닫기">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="participationDetailSource">
+        <input type="hidden" id="participationDetailContestId">
+        <input type="hidden" id="participationDetailDocPath">
+        <input type="hidden" id="participationDetailDocFilename">
+        <div class="form-group">
+          <label>참가 상태</label>
+          <select id="participationDetailStatus">
+            <option value="지원완료">지원완료</option>
+            <option value="심사중">심사중</option>
+            <option value="본선진출">본선진출</option>
+            <option value="수상">수상</option>
+            <option value="미수상">미수상</option>
+            <option value="취소">취소</option>
+          </select>
+        </div>
+        <div class="form-group" id="participationDetailAwardGroup" style="display:none">
+          <label>수상 등급</label>
+          <select id="participationDetailAward">
+            <option value="">선택</option>
+            <option value="대상">대상</option>
+            <option value="최우수상">최우수상</option>
+            <option value="우수상">우수상</option>
+            <option value="장려상">장려상</option>
+            <option value="입선">입선</option>
+            <option value="기타">기타</option>
+          </select>
+        </div>
+        <div class="form-group form-group-checkbox">
+          <label><input type="checkbox" id="participationDetailHasPrize" class="participation-detail-checkbox"> 상금 수령</label>
+        </div>
+        <div class="form-group">
+          <label>상금 액수 (원)</label>
+          <input type="number" id="participationDetailPrizeAmount" placeholder="0" min="0" step="1">
+        </div>
+        <div class="form-group">
+          <label>제출일</label>
+          <input type="datetime-local" id="participationDetailSubmittedAt">
+        </div>
+        <div class="form-group">
+          <label>결과 발표일</label>
+          <input type="date" id="participationDetailResultDate">
+        </div>
+        <div class="form-group">
+          <label>결과 발표 (경로)</label>
+          <input type="text" id="participationDetailResultMethod" placeholder="예: 문자, SNS, 홈페이지, 전화통보, 이메일 등">
+        </div>
+        <div class="form-group" id="participationDetailDocDisplay" style="display:none">
+          <label>현재 제출물</label>
+          <div class="participation-doc-current">
+            <span class="participation-doc-filename" id="participationDetailDocFilenameDisplay"></span>
+            <div class="participation-doc-actions">
+              <a href="#" id="participationDetailDocDownload" target="_blank" rel="noopener" class="btn-outline btn-sm">다운로드</a>
+              <button type="button" class="btn-outline btn-sm" id="participationDetailDocRemove">제거</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-group" id="participationDetailDocUploadGroup">
+          <label>제출물 <span class="required">*</span> <span id="participationDetailDocUploadLabel">등록</span></label>
+          <input type="file" id="participationDetailDocFile" accept=".pdf,.doc,.docx,.hwp,.ppt,.pptx,.xls,.xlsx,.zip,.txt" class="participation-doc-file-input">
+        </div>
+        <div class="participation-detail-actions">
+          <button type="button" class="btn-outline danger" id="participationDetailDelete">삭제</button>
+          <button type="button" class="btn-primary" id="participationDetailSave">저장</button>
+        </div>
       </div>
     </div>
   </div>
@@ -890,6 +1396,23 @@
         if (id === 'modalHashtags' && typeof updateHashtagCount === 'function') updateHashtagCount();
       }
     }
+    function openExpAmountsModal() {
+      var tbody = document.getElementById('expAmountsBody');
+      if (tbody) tbody.innerHTML = '<tr><td colspan="2" class="exp-loading">로딩 중...</td></tr>';
+      openModal('modalExpAmounts');
+      fetch('/api/exp/amounts').then(function(r) { return r.json(); }).then(function(j) {
+        if (!tbody) return;
+        if (j.success && j.data && j.data.length) {
+          tbody.innerHTML = j.data.map(function(row) {
+            return '<tr><td>' + (row.label || row.activity_type) + '</td><td class="exp-value">+' + (row.exp || 0) + ' EXP</td></tr>';
+          }).join('');
+        } else {
+          tbody.innerHTML = '<tr><td colspan="2">데이터를 불러올 수 없습니다.</td></tr>';
+        }
+      }).catch(function() {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="2">로드 실패</td></tr>';
+      });
+    }
     function closeModal(id) {
       const el = document.getElementById(id);
       if (el) { el.classList.remove('active'); document.body.style.overflow = ''; }
@@ -979,7 +1502,7 @@
           if (btn.classList.contains('active')) return;
           applyProfileTheme(theme);
           closeModal('modalProfileTheme');
-          var t = document.getElementById('toast'); if (t) { t.textContent = '프로필 테마가 적용되었습니다.'; t.className = 'toast success'; t.style.display = 'block'; setTimeout(function() { t.style.display = 'none'; }, 2000); }
+          showToast('프로필 테마가 적용되었습니다.');
         });
       }
     });
@@ -1104,64 +1627,117 @@
     const PARTICIPATION_MAX_PAGES = 10;
     let participationAllData = [];
     let participationCurrentPage = 1;
+    let participationFilter = 'all';
+    let participationViewMode = 'card';
+    function fmtDate(s) {
+      if (!s) return '-';
+      var d = new Date(s);
+      return isNaN(d.getTime()) ? '-' : d.toLocaleDateString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit' }).replace(/\. /g, '.').replace(/\.$/, '');
+    }
+    function fmtPrize(amt) {
+      if (amt == null || amt === '' || amt === undefined) return '-';
+      var n = parseFloat(amt);
+      if (isNaN(n)) return '-';
+      return n >= 10000 ? (n/10000).toFixed(1).replace(/\.0$/, '') + '만원' : n + '원';
+    }
     function renderParticipationList(data, page) {
       if (!participationList) return;
-      participationAllData = data || [];
+      if (data) participationAllData = data;
+      let filteredData = participationAllData;
+      if (participationFilter === 'participate') filteredData = participationAllData.filter(function(x) { return x.status === 'participate'; });
+      else if (participationFilter === 'pass') filteredData = participationAllData.filter(function(x) { return x.status === 'pass'; });
       participationCurrentPage = Math.max(1, Math.min(page || 1, PARTICIPATION_MAX_PAGES));
-      const totalItems = Math.min(participationAllData.length, PARTICIPATION_PAGE_SIZE * PARTICIPATION_MAX_PAGES);
+      const totalItems = Math.min(filteredData.length, PARTICIPATION_PAGE_SIZE * PARTICIPATION_MAX_PAGES);
       const totalPages = Math.max(1, Math.ceil(totalItems / PARTICIPATION_PAGE_SIZE));
       const start = (participationCurrentPage - 1) * PARTICIPATION_PAGE_SIZE;
-      const pageData = participationAllData.slice(start, start + PARTICIPATION_PAGE_SIZE);
-      if (participationAllData.length === 0) {
-        participationList.innerHTML = '<div style="color:var(--gray-muted);padding:24px;text-align:center;">참가 또는 패스한 공모전이 없습니다.</div>';
+      const pageData = filteredData.slice(start, start + PARTICIPATION_PAGE_SIZE);
+      if (filteredData.length === 0) {
+        participationList.innerHTML = '<div style="color:var(--gray-muted);padding:24px;text-align:center;">' + (participationFilter === 'participate' ? '참가한 공모전이 없습니다.' : participationFilter === 'pass' ? '패스한 공모전이 없습니다.' : '참가 또는 패스한 공모전이 없습니다.') + '</div>';
         if (participationPagination) participationPagination.style.display = 'none';
         return;
       }
-      participationList.innerHTML = pageData.map(function(item) {
-        const badgeClass = item.status === 'participate' ? 'participate' : 'pass';
-        const badgeText = item.status === 'participate' ? '참가' : '패스';
-        const linkUrl = item.url || '#';
-        const meta = [item.d_day && item.d_day !== '-' ? item.d_day : '', item.host && item.host !== '-' ? item.host : ''].filter(Boolean).join(' · ');
-        const src = String(item.source || '').replace(/"/g, '&quot;');
-        const cid = String(item.contest_id || '').replace(/"/g, '&quot;');
-        
-        const participationType = item.participation_type || 'individual';
-        const typeText = participationType === 'team' ? '팀' : '개인';
-        const typeBadge = '<span class="participation-type-badge ' + participationType + '">' + typeText + '</span>';
-        
-        let teamInfoHtml = '';
-        if (item.team_info) {
-          const teamName = (item.team_info.team_name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          const leaderName = (item.team_info.leader_nickname || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-          const members = (item.team_info.members || []).map(m => m.replace(/</g, '&lt;').replace(/>/g, '&gt;')).join(', ');
-          teamInfoHtml = '<div class="participation-team-info">' +
-            '<div><strong>팀명:</strong> ' + teamName + '</div>' +
-            '<div><strong>리더:</strong> ' + leaderName + '</div>' +
-            (members ? '<div><strong>팀원:</strong> ' + members + '</div>' : '') +
-            '</div>';
-        }
-        
-        const linkPart = '<a href="' + linkUrl + '" target="_blank" rel="noopener" class="participation-item">' +
-          '<span class="participation-badge ' + badgeClass + '">' + badgeText + '</span>' +
-          typeBadge +
-          '<div class="participation-info">' +
-          '<div class="participation-title">' + (item.title || '(제목 없음)').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
-          (meta ? '<div class="participation-meta">' + meta.replace(/</g, '&lt;') + '</div>' : '') +
-          teamInfoHtml +
-          '</div>' +
-          '</a>';
-        const delBtn = isOwnProfile ? '<button type="button" class="participation-delete-btn" data-source="' + src + '" data-contest-id="' + cid + '">삭제</button>' : '';
-        return '<div class="participation-item-wrap">' + linkPart + delBtn + '</div>';
-      }).join('');
+      var html;
+      if (participationViewMode === 'table') {
+        var rows = pageData.map(function(item) {
+          var badgeClass = item.status === 'participate' ? 'participate' : 'pass';
+          var badgeText = item.status === 'participate' ? '참가' : '패스';
+          var linkUrl = item.url || '#';
+          var src = String(item.source || '').replace(/"/g, '&quot;');
+          var cid = String(item.contest_id || '').replace(/"/g, '&quot;');
+          var titleEsc = (item.title || '(제목 없음)').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+          var partStatus = item.participation_status || '-';
+          var awardStatus = item.award_status ? item.award_status : '-';
+          var prizeStr = item.has_prize && item.prize_amount != null ? fmtPrize(item.prize_amount) : '-';
+          var docName = item.document_filename || '-';
+          var subDate = fmtDate(item.submitted_at);
+          var resDate = fmtDate(item.result_announcement_date);
+          var resMethod = item.result_announcement_method || '-';
+          var linkBtn = '<a href="' + linkUrl + '" target="_blank" rel="noopener" class="participation-link-btn">보기</a>';
+          var detailBtn = isOwnProfile ? '<button type="button" class="participation-detail-btn" data-source="' + src + '" data-contest-id="' + cid + '" data-title="' + titleEsc + '">상세</button>' : '';
+          var delBtn = isOwnProfile ? '<button type="button" class="participation-delete-btn" data-source="' + src + '" data-contest-id="' + cid + '">삭제</button>' : '';
+          var profileUid = participationSection ? (participationSection.dataset.userId || '') : '';
+          var downloadBtn = (!isOwnProfile && item.document_filename && profileUid) ? '<button type="button" class="participation-doc-download-btn" data-source="' + src + '" data-contest-id="' + cid + '" data-user-id="' + profileUid.replace(/"/g, '&quot;') + '">제출물</button>' : '';
+          return '<tr><td class="participation-table-title" title="' + titleEsc + '">' + titleEsc + '</td>' +
+            '<td><span class="participation-badge ' + badgeClass + '">' + badgeText + '</span></td>' +
+            '<td>' + partStatus + '</td><td>' + awardStatus + '</td><td>' + prizeStr + '</td>' +
+            '<td style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + (item.document_filename || '') + '">' + (item.document_filename ? docName : '-') + '</td>' +
+            '<td>' + subDate + '</td><td>' + resDate + '</td><td>' + resMethod + '</td>' +
+            '<td><div class="participation-table-actions">' + linkBtn + detailBtn + downloadBtn + delBtn + '</div></td></tr>';
+        });
+        html = '<div class="participation-table-wrap"><table class="participation-table"><thead><tr>' +
+          '<th>공모전</th><th>참가/패스</th><th>참가상태</th><th>수상등급</th><th>상금</th><th>제출물</th><th>제출일</th><th>결과발표일</th><th>결과발표</th><th></th></tr></thead><tbody>' +
+          rows.join('') + '</tbody></table></div>';
+      } else {
+        html = pageData.map(function(item) {
+          var badgeClass = item.status === 'participate' ? 'participate' : 'pass';
+          var badgeText = item.status === 'participate' ? '참가' : '패스';
+          var linkUrl = item.url || '#';
+          var meta = [item.d_day && item.d_day !== '-' ? item.d_day : '', item.host && item.host !== '-' ? item.host : ''].filter(Boolean).join(' · ');
+          var src = String(item.source || '').replace(/"/g, '&quot;');
+          var cid = String(item.contest_id || '').replace(/"/g, '&quot;');
+          var participationType = item.participation_type || 'individual';
+          var typeText = participationType === 'team' ? '팀' : '개인';
+          var typeBadge = '<span class="participation-type-badge ' + participationType + '">' + typeText + '</span>';
+          var teamInfoHtml = '';
+          if (item.team_info) {
+            var teamName = (item.team_info.team_name || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            var leaderName = (item.team_info.leader_nickname || '').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            var members = (item.team_info.members || []).map(function(m) { return m.replace(/</g, '&lt;').replace(/>/g, '&gt;'); }).join(', ');
+            teamInfoHtml = '<div class="participation-team-info"><div><strong>팀명:</strong> ' + teamName + '</div><div><strong>리더:</strong> ' + leaderName + '</div>' + (members ? '<div><strong>팀원:</strong> ' + members + '</div>' : '') + '</div>';
+          }
+          var hasDetail = !!item.has_detail;
+          var detailBadge = hasDetail ? '<span class="participation-detail-badge registered">상세등록</span>' : '<span class="participation-detail-badge unregistered">미등록</span>';
+          var wrapClass = 'participation-item-wrap' + (hasDetail ? ' has-detail' : ' no-detail');
+          var detailInfoItems = [];
+          if (item.participation_status) detailInfoItems.push('<span>참가상태: ' + item.participation_status + '</span>');
+          if (item.award_status) detailInfoItems.push('<span>수상: ' + item.award_status + '</span>');
+          if (item.has_prize && item.prize_amount != null) detailInfoItems.push('<span>상금: ' + fmtPrize(item.prize_amount) + '</span>');
+          if (item.document_filename) detailInfoItems.push('<span>제출물: ' + (item.document_filename || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>');
+          if (item.submitted_at) detailInfoItems.push('<span>제출일: ' + fmtDate(item.submitted_at) + '</span>');
+          if (item.result_announcement_date) detailInfoItems.push('<span>결과발표일: ' + fmtDate(item.result_announcement_date) + '</span>');
+          if (item.result_announcement_method) detailInfoItems.push('<span>결과발표: ' + (item.result_announcement_method || '').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</span>');
+          var detailInfoHtml = detailInfoItems.length ? '<div class="participation-card-detail">' + detailInfoItems.join(' &nbsp;|&nbsp; ') + '</div>' : '';
+          var contentPart = '<div class="participation-content"><span class="participation-badge ' + badgeClass + '">' + badgeText + '</span>' + typeBadge + detailBadge +
+            '<div class="participation-info"><div class="participation-title">' + (item.title || '(제목 없음)').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '</div>' +
+            (meta ? '<div class="participation-meta">' + meta.replace(/</g, '&lt;') + '</div>' : '') + detailInfoHtml + teamInfoHtml + '</div></div>';
+          var linkBtn = '<a href="' + linkUrl + '" target="_blank" rel="noopener" class="participation-link-btn">보기</a>';
+          var detailBtn = isOwnProfile ? '<button type="button" class="participation-detail-btn" data-source="' + src + '" data-contest-id="' + cid + '" data-title="' + (item.title || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;') + '">상세</button>' : '';
+          var delBtn = isOwnProfile ? '<button type="button" class="participation-delete-btn" data-source="' + src + '" data-contest-id="' + cid + '">삭제</button>' : '';
+          var profileUid = participationSection ? (participationSection.dataset.userId || '') : '';
+          var downloadBtn = (!isOwnProfile && item.document_filename && profileUid) ? '<button type="button" class="participation-doc-download-btn" data-source="' + src + '" data-contest-id="' + cid + '" data-user-id="' + profileUid.replace(/"/g, '&quot;') + '">제출물</button>' : '';
+          return '<div class="' + wrapClass + '">' + contentPart + linkBtn + detailBtn + downloadBtn + delBtn + '</div>';
+        }).join('');
+      }
+      participationList.innerHTML = html;
       if (participationPagination) {
         participationPagination.style.display = totalPages > 1 ? 'flex' : 'none';
         if (participationPrev) {
           participationPrev.disabled = participationCurrentPage <= 1;
-          participationPrev.onclick = function() { if (participationCurrentPage > 1) renderParticipationList(participationAllData, participationCurrentPage - 1); };
+          participationPrev.onclick = function() { if (participationCurrentPage > 1) renderParticipationList(null, participationCurrentPage - 1); };
         }
         if (participationNext) {
           participationNext.disabled = participationCurrentPage >= totalPages;
-          participationNext.onclick = function() { if (participationCurrentPage < totalPages) renderParticipationList(participationAllData, participationCurrentPage + 1); };
+          participationNext.onclick = function() { if (participationCurrentPage < totalPages) renderParticipationList(null, participationCurrentPage + 1); };
         }
         if (participationPages) {
           var maxShow = Math.min(totalPages, PARTICIPATION_MAX_PAGES);
@@ -1172,7 +1748,7 @@
           }
           participationPages.innerHTML = html.join('');
           participationPages.querySelectorAll('.participation-page-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() { renderParticipationList(participationAllData, parseInt(btn.dataset.page, 10)); });
+            btn.addEventListener('click', function() { renderParticipationList(null, parseInt(btn.dataset.page, 10)); });
           });
         }
       }
@@ -1191,13 +1767,62 @@
                 const idx = participationAllData.findIndex(function(x) { return x.source === src && x.contest_id === cid; });
                 if (idx >= 0) participationAllData.splice(idx, 1);
                 renderParticipationList(participationAllData, participationCurrentPage);
-                var t = document.getElementById('toast'); if (t) { t.textContent = '삭제되었습니다.'; t.className = 'toast success'; t.style.display = 'block'; setTimeout(function() { t.style.display = 'none'; }, 2000); }
-              } else { alert(j.error || '삭제 실패'); }
+                showToast('삭제되었습니다.');
+              } else { showToast(j.error || '삭제 실패', 'error'); }
             })
-            .catch(function() { alert('삭제에 실패했습니다.'); });
+            .catch(function() { showToast('삭제에 실패했습니다.', 'error'); });
+        });
+      });
+      participationList.querySelectorAll('.participation-detail-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          openParticipationDetailModal(btn.dataset.source || '', btn.dataset.contestId || '', btn.dataset.title || '');
+        });
+      });
+      participationList.querySelectorAll('.participation-doc-download-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          var src = btn.dataset.source || '';
+          var cid = btn.dataset.contestId || '';
+          var uid = btn.dataset.userId || '';
+          if (!src || !cid) return;
+          var url = '/api/contests/' + encodeURIComponent(src) + '/' + encodeURIComponent(cid) + '/participation/detail/document-download';
+          if (uid) url += '?user_id=' + encodeURIComponent(uid);
+          fetch(url).then(function(r) { return r.json(); }).then(function(j) {
+            if (j.success && j.download_url) {
+              var a = document.createElement('a');
+              a.href = j.download_url;
+              a.download = j.filename || 'document';
+              a.target = '_blank';
+              a.rel = 'noopener';
+              document.body.appendChild(a);
+              a.click();
+              document.body.removeChild(a);
+            } else { showToast(j.error || '다운로드 실패', 'error'); }
+          }).catch(function() { showToast('다운로드에 실패했습니다.', 'error'); });
         });
       });
     }
+    document.querySelectorAll('.participation-filter-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var f = btn.dataset.filter || 'all';
+        if (f === participationFilter) return;
+        participationFilter = f;
+        document.querySelectorAll('.participation-filter-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.filter === participationFilter); });
+        renderParticipationList(null, 1);
+      });
+    });
+    document.querySelectorAll('.participation-view-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var v = btn.dataset.view || 'card';
+        if (v === participationViewMode) return;
+        participationViewMode = v;
+        document.querySelectorAll('.participation-view-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.view === participationViewMode); });
+        renderParticipationList(null, participationCurrentPage);
+      });
+    });
     if (participationList) {
       (async function() {
         try {
@@ -1213,6 +1838,394 @@
         }
       })();
     }
+
+    function openParticipationDetailModal(source, contestId, title) {
+      if (!source || !contestId) return;
+      const titleEl = document.getElementById('modalParticipationDetailTitle');
+      const sourceInp = document.getElementById('participationDetailSource');
+      const contestInp = document.getElementById('participationDetailContestId');
+      const statusSel = document.getElementById('participationDetailStatus');
+      const awardGrp = document.getElementById('participationDetailAwardGroup');
+      const awardSel = document.getElementById('participationDetailAward');
+      const hasPrizeCb = document.getElementById('participationDetailHasPrize');
+      const prizeInp = document.getElementById('participationDetailPrizeAmount');
+      const submittedInp = document.getElementById('participationDetailSubmittedAt');
+      const resultInp = document.getElementById('participationDetailResultDate');
+      const resultMethodSel = document.getElementById('participationDetailResultMethod');
+      const docPathInp = document.getElementById('participationDetailDocPath');
+      const docFilenameInp = document.getElementById('participationDetailDocFilename');
+      const docDisplay = document.getElementById('participationDetailDocDisplay');
+      const docFilenameDisplay = document.getElementById('participationDetailDocFilenameDisplay');
+      const docDownloadBtn = document.getElementById('participationDetailDocDownload');
+      const docRemoveBtn = document.getElementById('participationDetailDocRemove');
+      const docFileInp = document.getElementById('participationDetailDocFile');
+      const docUploadLabel = document.getElementById('participationDetailDocUploadLabel');
+      if (titleEl) titleEl.textContent = '참가 상세: ' + (title || '');
+      if (sourceInp) sourceInp.value = source;
+      if (contestInp) contestInp.value = contestId;
+      statusSel.value = '지원완료';
+      awardGrp.style.display = 'none';
+      awardSel.value = '';
+      hasPrizeCb.checked = false;
+      prizeInp.value = '';
+      submittedInp.value = '';
+      resultInp.value = '';
+      if (resultMethodSel) resultMethodSel.value = '';
+      docPathInp.value = '';
+      docFilenameInp.value = '';
+      if (docDisplay) docDisplay.style.display = 'none';
+      if (docFileInp) docFileInp.value = '';
+      if (docUploadLabel) docUploadLabel.textContent = '등록';
+      function toggleAward() {
+        awardGrp.style.display = statusSel.value === '수상' ? 'block' : 'none';
+      }
+      statusSel.onchange = toggleAward;
+      fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/participation/detail')
+        .then(function(r) { return r.json(); })
+        .then(function(j) {
+          if (j.success && j.data) {
+            var d = j.data;
+            statusSel.value = d.participation_status || '지원완료';
+            awardSel.value = d.award_status || '';
+            hasPrizeCb.checked = !!d.has_prize;
+            prizeInp.value = d.prize_amount != null ? String(d.prize_amount) : '';
+            if (d.submitted_at) {
+              var dt = new Date(d.submitted_at);
+              submittedInp.value = dt.toISOString().slice(0, 16);
+            }
+            if (d.result_announcement_date) resultInp.value = d.result_announcement_date;
+            if (resultMethodSel && d.result_announcement_method) resultMethodSel.value = d.result_announcement_method;
+            docPathInp.value = d.document_path || '';
+            docFilenameInp.value = d.document_filename || '';
+            var fn = d.document_filename || (d.document_path ? (d.document_path.split('/').pop() || d.document_path) : '');
+            if (fn && d.document_path) {
+              if (docDisplay) docDisplay.style.display = 'block';
+              if (docFilenameDisplay) docFilenameDisplay.textContent = fn;
+              if (docUploadLabel) docUploadLabel.textContent = '변경';
+            }
+          }
+          toggleAward();
+        })
+        .catch(function() { toggleAward(); });
+      if (docDownloadBtn) {
+        docDownloadBtn.onclick = function(e) {
+          e.preventDefault();
+          var src = document.getElementById('participationDetailSource')?.value;
+          var cid = document.getElementById('participationDetailContestId')?.value;
+          if (!src || !cid) return;
+          fetch('/api/contests/' + encodeURIComponent(src) + '/' + encodeURIComponent(cid) + '/participation/detail/document-download')
+            .then(function(r) { return r.json(); })
+            .then(function(j) {
+              if (j.success && j.download_url) {
+                var a = document.createElement('a');
+                a.href = j.download_url;
+                a.download = j.filename || 'document';
+                a.target = '_blank';
+                a.rel = 'noopener';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              } else { showToast(j.error || '다운로드 실패', 'error'); }
+            })
+            .catch(function() { showToast('다운로드에 실패했습니다.', 'error'); });
+        };
+      }
+      if (docRemoveBtn) {
+        docRemoveBtn.onclick = function() {
+          docPathInp.value = '';
+          docFilenameInp.value = '';
+          if (docDisplay) docDisplay.style.display = 'none';
+          if (docFileInp) docFileInp.value = '';
+          if (docUploadLabel) docUploadLabel.textContent = '등록';
+        };
+      }
+      if (docFileInp) docFileInp.onchange = function() {
+        if (docFileInp.files && docFileInp.files.length > 0) docUploadLabel.textContent = '변경됨 (' + docFileInp.files[0].name + ')';
+      };
+      if (typeof openModal === 'function') openModal('modalParticipationDetail');
+    }
+    (function initParticipationDetailModal() {
+      var saveBtn = document.getElementById('participationDetailSave');
+      var delBtn = document.getElementById('participationDetailDelete');
+      if (saveBtn) {
+        saveBtn.addEventListener('click', function() {
+          var src = document.getElementById('participationDetailSource')?.value;
+          var cid = document.getElementById('participationDetailContestId')?.value;
+          if (!src || !cid) return;
+          var statusSel = document.getElementById('participationDetailStatus');
+          var awardSel = document.getElementById('participationDetailAward');
+          var hasPrizeCb = document.getElementById('participationDetailHasPrize');
+          var prizeInp = document.getElementById('participationDetailPrizeAmount');
+          var submittedInp = document.getElementById('participationDetailSubmittedAt');
+          var resultInp = document.getElementById('participationDetailResultDate');
+          var docPathInp = document.getElementById('participationDetailDocPath');
+          var docFilenameInp = document.getElementById('participationDetailDocFilename');
+          var docFileInp = document.getElementById('participationDetailDocFile');
+          var hasFile = docFileInp?.files && docFileInp.files.length > 0;
+          var hasDoc = (docPathInp?.value && docFilenameInp?.value) || hasFile;
+          if (!hasDoc) {
+            showToast('제출물을 등록해 주세요.', 'error');
+            return;
+          }
+          var opts = {
+            method: 'POST',
+            body: null
+          };
+          if (hasFile) {
+            var fd = new FormData();
+            fd.append('participation_status', statusSel?.value || '지원완료');
+            fd.append('award_status', statusSel?.value === '수상' ? (awardSel?.value || '') : '');
+            fd.append('has_prize', hasPrizeCb?.checked ? '1' : '0');
+            fd.append('prize_amount', prizeInp?.value || '');
+            fd.append('submitted_at', submittedInp?.value || '');
+            fd.append('result_announcement_date', resultInp?.value || '');
+            fd.append('result_announcement_method', document.getElementById('participationDetailResultMethod')?.value || '');
+            fd.append('document', docFileInp.files[0]);
+            opts.body = fd;
+          } else {
+            opts.headers = { 'Content-Type': 'application/json' };
+            opts.body = JSON.stringify({
+              participation_status: statusSel?.value || '지원완료',
+              award_status: statusSel?.value === '수상' ? (awardSel?.value || '') : null,
+              has_prize: hasPrizeCb?.checked || false,
+              prize_amount: prizeInp?.value ? parseFloat(prizeInp.value) : null,
+              submitted_at: submittedInp?.value || null,
+              result_announcement_date: resultInp?.value || null,
+              result_announcement_method: document.getElementById('participationDetailResultMethod')?.value || null,
+              document_path: docPathInp?.value || null,
+              document_filename: docFilenameInp?.value || null
+            });
+          }
+          fetch('/api/contests/' + encodeURIComponent(src) + '/' + encodeURIComponent(cid) + '/participation/detail', opts).then(function(r) { return r.json(); }).then(function(j) {
+            if (j.success) {
+              var item = typeof participationAllData !== 'undefined' && participationAllData.find(function(x) { return x.source === src && x.contest_id === cid; });
+              if (item) item.has_detail = true;
+              if (typeof renderParticipationList === 'function') renderParticipationList(participationAllData || [], participationCurrentPage || 1);
+              showToast(j.exp_gained ? '저장되었습니다. +' + j.exp_gained + ' EXP 획득!' : '저장되었습니다.');
+              if (docFileInp) docFileInp.value = '';
+              if (typeof closeModal === 'function') closeModal('modalParticipationDetail');
+            } else { showToast(j.error || '저장 실패', 'error'); }
+          }).catch(function() { showToast('저장에 실패했습니다.', 'error'); });
+        });
+      }
+      if (delBtn) {
+        delBtn.addEventListener('click', function() {
+          var src = document.getElementById('participationDetailSource')?.value;
+          var cid = document.getElementById('participationDetailContestId')?.value;
+          if (!src || !cid) return;
+          if (!confirm('참가 상세 정보를 삭제할까요?')) return;
+          fetch('/api/contests/' + encodeURIComponent(src) + '/' + encodeURIComponent(cid) + '/participation/detail', { method: 'DELETE' })
+            .then(function(r) { return r.json(); })
+            .then(function(j) {
+              if (j.success) {
+                var item = typeof participationAllData !== 'undefined' && participationAllData.find(function(x) { return x.source === src && x.contest_id === cid; });
+                if (item) item.has_detail = false;
+                if (typeof renderParticipationList === 'function') renderParticipationList(participationAllData || [], participationCurrentPage || 1);
+                showToast('삭제되었습니다.');
+                if (typeof closeModal === 'function') closeModal('modalParticipationDetail');
+              } else { showToast(j.error || '삭제 실패', 'error'); }
+            })
+            .catch(function() { showToast('삭제에 실패했습니다.', 'error'); });
+        });
+      }
+    })();
+
+    // 대표작품: 추가/삭제/순서변경
+    (function() {
+      const section = document.getElementById('representativeWorksSection');
+      const cardsEl = document.getElementById('representativeWorksCards');
+      const btnAdd = document.getElementById('btnAddRepresentative');
+      const modalList = document.getElementById('representativeAddList');
+      if (!section) return;
+      const isOwn = section.dataset.ownProfile === '1';
+      const profileUserId = section.dataset.userId || '';
+
+      function showToast(msg, type) {
+        var t = document.getElementById('toast');
+        if (t) { t.textContent = msg; t.className = 'toast ' + (type || 'success'); t.style.display = 'block'; setTimeout(function() { t.style.display = 'none'; }, 2000); }
+      }
+      function escapeHtml(s) { return String(s || '').replace(/[&<>"']/g, function(c) { return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+      function renderCards(data) {
+        if (!cardsEl || !isOwn) return;
+        var html = (data || []).map(function(item, idx) {
+          var src = escapeHtml(item.source);
+          var cid = escapeHtml(item.contest_id);
+          var title = escapeHtml(item.title || '작품 제목');
+          var url = (item.url || '#').replace(/"/g, '&quot;');
+          var thumbStyle = item.image_path ? "background-image:url('" + (item.image_path || '').replace(/'/g, "\\'") + "')" : '';
+          var noImageHint = !item.image_path ? '<span class="pinned-card-thumb-no-image">대표이미지가 없습니다</span>' : '';
+          var badge = escapeHtml(item.award_status || '수상');
+          var resultMethodHtml = item.result_announcement_method ? '<div class="pinned-card-result-method">결과발표: ' + escapeHtml(item.result_announcement_method) + '</div>' : '';
+          return '<div class="pinned-card-wrap">' +
+            '<a href="' + url + '" class="pinned-card' + (item.image_path ? '' : ' pinned-card-placeholder') + '" target="_blank" data-source="' + src + '" data-contest-id="' + cid + '">' +
+            '<div class="pinned-card-thumb" style="' + thumbStyle + '">' + noImageHint + '<span class="pinned-card-badge">' + badge + '</span></div>' +
+            '<div class="pinned-card-title">' + title + '</div></a>' +
+            resultMethodHtml +
+            '<div class="pinned-card-actions">' +
+            '<button type="button" class="pinned-card-edit" data-source="' + src + '" data-contest-id="' + cid + '" data-award="' + escapeHtml(item.award_status || '') + '" data-result-announcement="' + escapeHtml(item.result_announcement_method || '') + '" data-image="' + escapeHtml(item.image_path || '') + '" title="수정"><span>✎</span><span class="btn-label">수정</span></button>' +
+            '<button type="button" class="pinned-card-del" data-source="' + src + '" data-contest-id="' + cid + '" title="삭제"><span>✕</span><span class="btn-label">삭제</span></button>' +
+            '<button type="button" class="pinned-card-move" data-dir="up" data-idx="' + idx + '" title="위로">↑</button>' +
+            '<button type="button" class="pinned-card-move" data-dir="down" data-idx="' + idx + '" title="아래로">↓</button></div></div>';
+        }).join('');
+        if (data && data.length < 3) {
+          html += '<button type="button" class="pinned-card pinned-card-add" id="btnAddRepresentative" title="대표작 추가"><div class="pinned-card-thumb pinned-card-add-thumb">+</div><div class="pinned-card-title">추가하기</div></button>';
+        }
+        cardsEl.innerHTML = html;
+        if (data && data.length === 0) {
+          var hint = cardsEl.parentElement.querySelector('.pinned-empty-hint');
+          if (hint) hint.style.display = 'block';
+        }
+        bindRepCards();
+      }
+      function bindRepCards() {
+        if (!cardsEl) return;
+        var addBtn = document.getElementById('btnAddRepresentative');
+        if (addBtn) addBtn.onclick = openAddModal;
+        var btnSubmitAdd = document.getElementById('btnSubmitAddRep');
+        if (btnSubmitAdd) btnSubmitAdd.onclick = submitAddRep;
+        var btnAddBack = document.getElementById('btnAddRepBack');
+        if (btnAddBack) btnAddBack.onclick = backToAddList;
+        var btnSubmitEdit = document.getElementById('btnSubmitEditRep');
+        if (btnSubmitEdit) btnSubmitEdit.onclick = submitEditRep;
+        cardsEl.querySelectorAll('.pinned-card-edit').forEach(function(btn) {
+          btn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); openEditModal(btn.dataset.source, btn.dataset.contestId, btn.dataset.award, btn.dataset.resultAnnouncement, btn.dataset.image); };
+        });
+        cardsEl.querySelectorAll('.pinned-card-del').forEach(function(btn) {
+          btn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); deleteRep(btn.dataset.source, btn.dataset.contestId); };
+        });
+        cardsEl.querySelectorAll('.pinned-card-move').forEach(function(btn) {
+          btn.onclick = function(e) { e.preventDefault(); e.stopPropagation(); moveRep(parseInt(btn.dataset.idx, 10), btn.dataset.dir); };
+        });
+      }
+      function loadRepWorks() {
+        var url = '/api/user/representative-works' + (profileUserId ? '?user_id=' + encodeURIComponent(profileUserId) : '');
+        fetch(url).then(function(r) { return r.json(); }).then(function(j) {
+          if (j.success && j.data) renderCards(j.data);
+        });
+      }
+      var addForm = document.getElementById('representativeAddForm');
+      var addFormTitle = document.getElementById('representativeAddFormTitle');
+      var addAwardSelect = document.getElementById('addAwardStatus');
+      var addResultSelect = document.getElementById('addResultAnnouncement');
+      var addImageInput = document.getElementById('addImageFile');
+      var editModal = document.getElementById('modalEditRepresentative');
+      var editAwardSelect = document.getElementById('editAwardStatus');
+      var editResultSelect = document.getElementById('editResultAnnouncement');
+      var editImagePreview = document.getElementById('editImagePreview');
+      var editImageInput = document.getElementById('editImageFile');
+      var editSourceInput = document.getElementById('editRepSource');
+      var editContestInput = document.getElementById('editRepContestId');
+      var pendingAdd = { source: '', contestId: '', title: '' };
+
+      function openAddModal() {
+        if (!modalList) return;
+        modalList.innerHTML = '<div style="color:var(--gray-muted);padding:16px;">로딩 중...</div>';
+        if (addForm) addForm.style.display = 'none';
+        if (typeof openModal === 'function') openModal('modalAddRepresentative');
+        fetch('/api/user/participation').then(function(r) { return r.json(); }).then(function(j) {
+          var participation = (j.data || []).filter(function(p) { return p.status === 'participate'; });
+          return fetch('/api/user/representative-works').then(function(r2) { return r2.json(); }).then(function(j2) {
+            var existing = (j2.data || []).map(function(x) { return x.source + ':' + x.contest_id; });
+            var available = participation.filter(function(p) { return existing.indexOf(p.source + ':' + p.contest_id) < 0; });
+            if (available.length === 0) {
+              modalList.innerHTML = '<div style="color:var(--gray-muted);padding:16px;">추가할 수 있는 참가 공모전이 없습니다.</div>';
+              return;
+            }
+            modalList.innerHTML = available.map(function(p) {
+              return '<button type="button" class="representative-add-item" data-source="' + escapeHtml(p.source) + '" data-contest-id="' + escapeHtml(p.contest_id) + '" data-title="' + escapeHtml(p.title || '') + '">' + escapeHtml(p.title || '(제목 없음)') + '</button>';
+            }).join('');
+            modalList.querySelectorAll('.representative-add-item').forEach(function(btn) {
+              btn.onclick = function() {
+                pendingAdd = { source: btn.dataset.source, contestId: btn.dataset.contestId, title: btn.dataset.title || '(제목 없음)' };
+                if (addFormTitle) addFormTitle.textContent = '선택: ' + pendingAdd.title;
+                if (addAwardSelect) addAwardSelect.value = '';
+                if (addResultSelect) addResultSelect.value = '';
+                if (addImageInput) addImageInput.value = '';
+                if (modalList) modalList.style.display = 'none';
+                if (addForm) addForm.style.display = 'block';
+              };
+            });
+          });
+        });
+      }
+      function backToAddList() {
+        if (addForm) addForm.style.display = 'none';
+        if (modalList) modalList.style.display = 'block';
+      }
+      function resetAddForm() {
+        backToAddList();
+        if (typeof closeModal === 'function') closeModal('modalAddRepresentative');
+      }
+      function submitAddRep() {
+        var fd = new FormData();
+        fd.append('source', pendingAdd.source);
+        fd.append('contest_id', pendingAdd.contestId);
+        fd.append('award_status', (addAwardSelect && addAwardSelect.value) || '');
+        fd.append('result_announcement_method', (addResultSelect && addResultSelect.value) || '');
+        var file = addImageInput && addImageInput.files && addImageInput.files[0];
+        if (file) fd.append('file', file);
+        fetch('/api/user/representative-works', { method: 'POST', body: fd }).then(function(r) { return r.json(); }).then(function(j) {
+          if (j.success) { showToast('추가되었습니다.'); resetAddForm(); loadRepWorks(); }
+          else { showToast(j.error || '추가 실패', 'error'); }
+        }).catch(function() { showToast('추가에 실패했습니다.', 'error'); });
+      }
+      function openEditModal(source, contestId, awardStatus, resultAnnouncement, imagePath) {
+        if (editSourceInput) editSourceInput.value = source || '';
+        if (editContestInput) editContestInput.value = contestId || '';
+        if (editAwardSelect) editAwardSelect.value = awardStatus || '';
+        if (editResultSelect) editResultSelect.value = resultAnnouncement || '';
+        if (editImagePreview) {
+          editImagePreview.style.backgroundImage = imagePath ? "url('" + (imagePath || '').replace(/'/g, "\\'") + "')" : 'none';
+          editImagePreview.style.minHeight = imagePath ? '120px' : '0';
+        }
+        if (editImageInput) editImageInput.value = '';
+        if (typeof openModal === 'function') openModal('modalEditRepresentative');
+      }
+      function submitEditRep() {
+        var fd = new FormData();
+        fd.append('source', (editSourceInput && editSourceInput.value) || '');
+        fd.append('contest_id', (editContestInput && editContestInput.value) || '');
+        fd.append('award_status', (editAwardSelect && editAwardSelect.value) || '');
+        fd.append('result_announcement_method', (editResultSelect && editResultSelect.value) || '');
+        var file = editImageInput && editImageInput.files && editImageInput.files[0];
+        if (file) fd.append('file', file);
+        fetch('/api/user/representative-works', { method: 'PATCH', body: fd }).then(function(r) { return r.json(); }).then(function(j) {
+          if (j.success) { showToast('수정되었습니다.'); if (typeof closeModal === 'function') closeModal('modalEditRepresentative'); loadRepWorks(); }
+          else { showToast(j.error || '수정 실패', 'error'); }
+        }).catch(function() { showToast('수정에 실패했습니다.', 'error'); });
+      }
+      function deleteRep(source, contestId) {
+        if (!confirm('이 대표작을 삭제할까요?')) return;
+        fetch('/api/user/representative-works?source=' + encodeURIComponent(source) + '&contest_id=' + encodeURIComponent(contestId), { method: 'DELETE' })
+          .then(function(r) { return r.json(); }).then(function(j) {
+            if (j.success) { showToast('삭제되었습니다.'); loadRepWorks(); }
+            else { showToast(j.error || '삭제 실패', 'error'); }
+          }).catch(function() { showToast('삭제에 실패했습니다.', 'error'); });
+      }
+      function moveRep(idx, dir) {
+        var numIdx = parseInt(idx, 10);
+        if (isNaN(numIdx) && numIdx !== 0) return;
+        fetch('/api/user/representative-works').then(function(r) { return r.json(); }).then(function(j) {
+          var items = (j.data || []).slice();
+          if (items.length < 2) return;
+          var newIdx = dir === 'up' ? numIdx - 1 : numIdx + 1;
+          if (newIdx < 0 || newIdx >= items.length) return;
+          var tmp = items[numIdx]; items[numIdx] = items[newIdx]; items[newIdx] = tmp;
+          var payload = items.map(function(it, i) { return { source: it.source, contest_id: it.contest_id, sort_order: i + 1 }; });
+          return fetch('/api/user/representative-works/reorder', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ items: payload })
+          }).then(function(r2) { return r2.json(); }).then(function(j2) {
+            if (j2.success) { showToast('순서가 변경되었습니다.'); loadRepWorks(); }
+            else { showToast(j2.error || '순서 변경 실패', 'error'); }
+          });
+        }).catch(function() { showToast('순서 변경 요청에 실패했습니다.', 'error'); });
+      }
+      if (btnAdd) btnAdd.addEventListener('click', openAddModal);
+      bindRepCards();
+    })();
 
     // 최근 본 공모전 로드 (내 프로필일 때만)
     (async function() {

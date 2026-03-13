@@ -53,6 +53,7 @@ ALTER TABLE profiles ADD COLUMN IF NOT EXISTS total_exp BIGINT NOT NULL DEFAULT 
 레벨 구간별 티어 정의. tier.jpg 스프라이트와 1:1 매핑.
 
 ```sql
+
 CREATE TABLE IF NOT EXISTS level_tiers (
     tier_id SMALLINT PRIMARY KEY CHECK (tier_id BETWEEN 1 AND 5),
     tier_name TEXT NOT NULL UNIQUE,
@@ -175,7 +176,37 @@ ON CONFLICT (level) DO NOTHING;
 - L2 도달: 25, L3: 50, … L21: 500
 - L71 도달: 2,500, L121: 5,500, L141: 7,500
 
-**경험치 획득**: 공모전 참가·수상·댓글 등 액션별 규칙은 추후 정의. `profiles.total_exp`는 API/트리거로 증가시키고, 레벨은 `total_exp`와 `level_config`로 산출.
+**경험치 획득**: `exp_events` 테이블에 액션별 기록, `profiles.total_exp` 갱신. 액션별 XP는 `/api/exp/amounts` 참고.
+
+---
+
+### 3-1. exp_events (경험치 이벤트)
+
+각 행위별 경험치 지급 기록. 중복 지급 방지용 (user_id, activity_type, source, contest_id PK).
+
+```sql
+CREATE TABLE public.exp_events (
+    user_id uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    activity_type text NOT NULL,
+    source text NOT NULL,
+    contest_id text NOT NULL,
+    exp_amount int4 NOT NULL,
+    created_at timestamptz DEFAULT now(),
+    CONSTRAINT exp_events_activity_type_check CHECK (activity_type = ANY (ARRAY['content_check','participate','pass','support_complete','finalist','award'])),
+    CONSTRAINT exp_events_pkey PRIMARY KEY (user_id, activity_type, source, contest_id)
+);
+CREATE INDEX idx_exp_events_created ON exp_events (created_at DESC);
+CREATE INDEX idx_exp_events_user ON exp_events (user_id);
+```
+
+| activity_type | 설명 | 기본 XP |
+|---------------|------|--------|
+| content_check | 내용확인 완료 | 5 |
+| participate | 참가 | 15 |
+| pass | 패스 | 5 |
+| support_complete | 지원완료 (참가상세 제출) | 20 |
+| finalist | 본선진출 | 300 |
+| award | 수상 | 1000 |
 
 ---
 
@@ -437,8 +468,49 @@ CREATE TABLE contest_team (
 ```
 CREATE INDEX idx_contest_team_contest
 ON contest_team (source, contest_id);
+
 ---
 
+### 12-1. contest_participation_detail (참가 상세)
+
+참가/패스한 공모전의 상세 정보 (지원 상태, 수상 등급, 상금, 제출일 등). `contest_participation`과 1:1 (동일 PK).
+
+```sql
+CREATE TABLE public.contest_participation_detail (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    contest_id TEXT NOT NULL,
+    participation_status TEXT NOT NULL DEFAULT '지원완료'
+        CHECK (participation_status IN ('지원완료', '심사중', '본선진출', '수상', '미수상', '취소')),
+    award_status TEXT NULL
+        CHECK (award_status IN ('대상', '최우수상', '우수상', '장려상', '입선', '기타')),
+    has_prize BOOLEAN DEFAULT false,
+    prize_amount NUMERIC(12, 2) NULL,
+    submitted_at TIMESTAMPTZ NULL,
+    result_announcement_date DATE NULL,
+    result_announcement_method TEXT NULL,
+    document_path TEXT NULL,
+    document_filename TEXT NULL,
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    PRIMARY KEY (user_id, source, contest_id),
+    FOREIGN KEY (source, contest_id) REFERENCES contests(source, id) ON DELETE CASCADE,
+    CONSTRAINT award_status_required_when_수상 CHECK (
+        (participation_status = '수상' AND award_status IS NOT NULL) OR
+        (participation_status <> '수상')
+    )
+);
+
+CREATE INDEX idx_contest_participation_detail_user ON contest_participation_detail(user_id);
+```
+
+**기존 테이블에 `result_announcement_method` 컬럼 추가**:
+```sql
+ALTER TABLE contest_participation_detail
+ADD COLUMN IF NOT EXISTS result_announcement_method TEXT;
+```
+- 이전에 CHECK 제약이 적용된 경우 자유 입력 허용: `ALTER TABLE contest_participation_detail DROP CONSTRAINT IF EXISTS contest_participation_detail_result_announcement_method_check;`
+
+---
 
 ### 13. crawl_state (크롤 페이지 추적)
 
@@ -524,6 +596,147 @@ ALTER TABLE notification_user_state ADD CONSTRAINT notification_user_state_user_
 
 ---
 
+### 16. user_representative_works (대표작품)
+
+마이페이지 대표작품. 참가한 공모전 중 최대 3개를 선택해 표시. sort_order 1~3으로 순서 지정.
+
+```sql
+CREATE TABLE public.user_representative_works (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    sort_order SMALLINT NOT NULL CHECK (sort_order >= 1 AND sort_order <= 3),
+    source TEXT NOT NULL,
+    contest_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    award_status TEXT CHECK (award_status IN ('대상', '최우수상', '우수상')),
+    result_announcement_method TEXT,
+    image_path TEXT,
+    PRIMARY KEY (user_id, sort_order),
+    UNIQUE (user_id, source, contest_id),
+    FOREIGN KEY (source, contest_id) REFERENCES contests(source, id) ON DELETE CASCADE
+);
+CREATE INDEX idx_user_representative_works_user ON user_representative_works(user_id);
+```
+
+- `sort_order`: 1~3 (표시 순서)
+- `award_status`: 수상 등급 (대상/최우수상/우수상, 선택)
+- `result_announcement_method`: 결과 발표 경로 (자유 입력)
+
+**기존 테이블에 컬럼 추가**:
+```sql
+ALTER TABLE user_representative_works
+ADD COLUMN IF NOT EXISTS result_announcement_method TEXT;
+```
+- `image_path`: 대표 이미지 전체 URL (선택). 예: Supabase Storage public `rep` 버킷 `private/{user_id}/____{contest_id}.png` → `https://{project}.supabase.co/storage/v1/object/public/rep/private/{user_id}/____{contest_id}.png`
+- image_path 없으면 "대표이미지가 없습니다" 안내 표시
+
+**RLS 정책** (403 Unauthorized 시 Supabase SQL Editor에서 실행):
+```sql
+ALTER TABLE user_representative_works ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "user_representative_works_insert" ON user_representative_works
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "user_representative_works_select" ON user_representative_works
+  FOR SELECT USING (true);
+
+CREATE POLICY "user_representative_works_update" ON user_representative_works
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "user_representative_works_delete" ON user_representative_works
+  FOR DELETE USING (auth.uid() = user_id);
+```
+
+**rep 버킷 Storage 정책** (403 시 Supabase Storage → rep 버킷 → Policies에서 추가):
+- 경로: `rep` 버킷 > `private/{user_id}/` 폴더
+- 정책: 본인 폴더에만 업로드 허용
+  - **Policy name**: `rep_insert_own_folder`
+  - **Allowed operation**: INSERT (Upload)
+  - **Target roles**: authenticated
+  - **Policy definition** (USING): `(bucket_id = 'rep') AND ((storage.foldername(name))[2] = auth.uid()::text)`  
+    → 경로 `private/{user_id}/파일`에서 두 번째 폴더가 본인 user_id일 때만 허용
+  - **WITH CHECK**: 동일
+
+(Supabase 대시보드 Storage > rep > Policies > New Policy에서 위 조건으로 추가)
+
+---
+
+### 17. site_team_settings (팀 설정 - 년도별)
+
+왼쪽 사이드바 "팀 목표" 섹션. 년도별로 한 행씩 (year = PK).
+
+```sql
+CREATE TABLE public.site_team_settings (
+	year int4 NOT NULL,
+	team_name text NOT NULL DEFAULT '우리 팀',
+	team_desc text,
+	goal_prize int4 NOT NULL DEFAULT 0,
+	image_path text,
+	achieved_amount bigint DEFAULT 0,
+	closed boolean NOT NULL DEFAULT false,
+	updated_at timestamptz DEFAULT now(),
+	CONSTRAINT site_team_settings_pkey PRIMARY KEY (year)
+);
+```
+
+- `year`: 연도 (PK)
+- `team_name`: 팀 이름
+- `team_desc`: 팀 설명
+- `goal_prize`: 목표 상금 (만원 단위)
+- `image_path`: 팀 프로필 이미지 URL (teamprofile 버킷)
+- `achieved_amount`: 달성 금액 (원 단위, 마감 시 스냅샷)
+- `closed`: 마감 여부. true면 수정 불가
+
+**기존 테이블 마이그레이션** (id 기반 → year 기반):
+```sql
+-- 1) 새 테이블 생성
+CREATE TABLE IF NOT EXISTS site_team_settings_new (
+	year int4 NOT NULL,
+	team_name text NOT NULL DEFAULT '우리 팀',
+	team_desc text,
+	goal_prize int4 NOT NULL DEFAULT 0,
+	image_path text,
+	achieved_amount bigint DEFAULT 0,
+	closed boolean NOT NULL DEFAULT false,
+	updated_at timestamptz DEFAULT now(),
+	PRIMARY KEY (year)
+);
+
+-- 2) 기존 데이터 이전 (id=1 행이 있으면)
+INSERT INTO site_team_settings_new (year, team_name, team_desc, goal_prize)
+SELECT 2025, COALESCE(team_name,'우리 팀'), team_desc, COALESCE(goal_prize,0)
+FROM site_team_settings WHERE id = 1
+ON CONFLICT (year) DO NOTHING;
+
+-- 3) 기존 테이블 백업 후 교체
+ALTER TABLE site_team_settings RENAME TO site_team_settings_old;
+ALTER TABLE site_team_settings_new RENAME TO site_team_settings;
+
+-- 4) 2025년이 없으면 기본 행 삽입
+INSERT INTO site_team_settings (year, team_name, team_desc, goal_prize)
+VALUES (2025, '우리 팀', '공모전 수상 목표 달성 팀', 2000)
+ON CONFLICT (year) DO NOTHING;
+```
+
+**신규 설치** (기존 테이블 없음):
+```sql
+CREATE TABLE public.site_team_settings (
+	year int4 NOT NULL PRIMARY KEY,
+	team_name text NOT NULL DEFAULT '우리 팀',
+	team_desc text,
+	goal_prize int4 NOT NULL DEFAULT 0,
+	image_path text,
+	achieved_amount bigint DEFAULT 0,
+	closed boolean NOT NULL DEFAULT false,
+	updated_at timestamptz DEFAULT now()
+);
+INSERT INTO site_team_settings (year, team_name, team_desc, goal_prize)
+VALUES (2025, '우리 팀', '공모전 수상 목표 달성 팀', 2000);
+```
+
+---
+
+
+
 ## ER 관계
 
 ```
@@ -579,6 +792,9 @@ notifications (id)
 
 ## Supabase Storage
 
-- 버킷: `profile`
-- 경로: `private/{user_id}/avatar.{ext}`
-- 상세: docs/프로필_이미지_Storage_설정.md
+| 버킷 | 경로 | 용도 | 상세 |
+|------|------|------|------|
+| profile | `private/{user_id}/avatar.{ext}` | 프로필 이미지 | docs/프로필_이미지_Storage_설정.md |
+| rep | `private/{user_id}/____{contest_id}.{ext}` | 대표작 이미지 | docs/대표작_이미지_Storage_설정.md |
+| contest | `private/{user_id}/doc_{source}_{contest_id}_{filename}` | 참가 상세 제출물 | docs/참가_상세_문서_Storage_설정.md |
+| teamprofile | `private/{year}_team.{ext}` | 팀 프로필 이미지 | docs/팀_프로필_이미지_Storage_설정.md |
