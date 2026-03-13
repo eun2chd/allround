@@ -1,13 +1,19 @@
 <nav class="navbar">
   <div class="navbar-inner">
-    <a href="{{ url_for('index') }}" class="navbar-logo">
-      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent">
-    </a>
+    <div class="navbar-logo-wrap">
+      <a href="{{ url_for('index') }}" class="navbar-logo">
+        <img id="headerLogo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent"
+             data-logo1="{{ url_for('static', filename='images/logo.png') }}"
+             data-logo2="{{ url_for('static', filename='images/logo2.png') }}">
+      </a>
+      <button type="button" class="logo-switcher" id="logoSwitcher" title="로고 변경" aria-label="로고 변경">⟳</button>
+    </div>
     {% if session.get('logged_in') %}
     <div class="navbar-nav">
-      <a href="#" class="nav-link active" data-page="allyoung">공모전</a>
-      <a href="#" class="nav-link" data-page="wavity">창업</a>
-      <a href="{{ url_for('notices_page') }}" class="nav-link" data-skip-loading>공지사항</a>
+      <a href="{{ url_for('home') }}" class="nav-link{% if request.endpoint == 'home' %} active{% endif %}" data-page="allyoung">공모전</a>
+      <a href="{{ url_for('home') }}" class="nav-link" data-page="wavity">창업</a>
+      <a href="{{ url_for('notices_page') }}" class="nav-link{% if request.endpoint == 'notices_page' %} active{% endif %}" data-skip-loading>공지사항</a>
+      <a href="{{ url_for('feedback_page') }}" class="nav-link{% if request.endpoint == 'feedback_page' %} active{% endif %}" data-skip-loading>건의·신고</a>
     </div>
     <div class="navbar-right navbar-user">
       <div class="user-profile">
@@ -36,3 +42,31 @@
 {% if session.get('logged_in') %}
   {% include 'partials/_notification_panel.html' %}
 {% endif %}
+<script>
+(function() {
+  var KEY = 'headerLogo';
+  var el = document.getElementById('headerLogo');
+  var btn = document.getElementById('logoSwitcher');
+  if (!el || !btn) return;
+  var logo1 = el.dataset.logo1 || '';
+  var logo2 = el.dataset.logo2 || '';
+  function applyLogo(useLogo2) {
+    el.src = useLogo2 ? logo2 : logo1;
+    el.classList.toggle('logo-large', !!useLogo2);
+    try { localStorage.setItem(KEY, useLogo2 ? 'logo2' : 'logo'); } catch (e) {}
+  }
+  try {
+    var saved = localStorage.getItem(KEY);
+    var useLogo2 = saved === 'logo2';
+    applyLogo(useLogo2);
+  } catch (e) {
+    applyLogo(false);
+  }
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    var useLogo2 = el.src.indexOf('logo2') === -1;
+    applyLogo(useLogo2);
+  });
+})();
+</script>

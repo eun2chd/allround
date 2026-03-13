@@ -67,6 +67,57 @@
       margin-bottom: 32px;
       line-height: 1.6;
     }
+    .resend-wrap {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 1px solid #e5e7eb;
+    }
+    .resend-wrap p {
+      font-size: 0.9rem;
+      color: var(--gray-muted);
+      margin-bottom: 12px;
+    }
+    .resend-form {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .resend-form input {
+      flex: 1;
+      min-width: 160px;
+      padding: 10px 14px;
+      font-family: var(--font);
+      font-size: 0.9rem;
+      border: 1px solid #d1d5db;
+      border-radius: var(--radius);
+      outline: none;
+    }
+    .resend-form input:focus {
+      border-color: var(--main-purple);
+    }
+    .resend-form button {
+      padding: 10px 20px;
+      font-family: var(--font);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--main-purple);
+      background: var(--soft-purple);
+      border: 1px solid var(--main-purple);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .resend-form button:hover {
+      background: var(--main-purple);
+      color: #fff;
+    }
+    .resend-msg {
+      font-size: 0.85rem;
+      margin-top: 12px;
+    }
+    .resend-msg.success { color: #166534; }
+    .resend-msg.error { color: #b91c1c; }
     .btn-login {
       display: inline-block;
       padding: 14px 32px;
@@ -93,6 +144,21 @@
       <h2>가입 완료</h2>
       <p>회원가입이 완료되었습니다.<br>이메일 인증 후 로그인해 주세요.</p>
       <a href="{{ url_for('login_page') }}" class="btn-login">로그인하러 가기</a>
+      <div class="resend-wrap">
+        <p>회원가입 후 이메일 인증 링크를 못받으셨나요?</p>
+        <p>이메일을 입력하면 인증 링크를 다시 보내드립니다.</p>
+        <form class="resend-form" action="{{ url_for('resend_verification') }}" method="POST">
+          <input type="email" name="email" placeholder="example@email.com" required>
+          <button type="submit">인증 메일 다시 받기</button>
+        </form>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, msg in messages %}
+              <p class="resend-msg {{ category or 'success' }}">{{ msg }}</p>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
     </div>
   </div>
   {% include 'partials/_loading_overlay.html' %}

@@ -514,7 +514,7 @@ ADD COLUMN IF NOT EXISTS result_announcement_method TEXT;
 
 ### 13. crawl_state (크롤 페이지 추적)
 
-위비티 full 크롤 시 "다음에 크롤할 페이지" 저장. 1페이지만 크롤 후 순차 진행.
+위비티/K-Startup 크롤 시 "다음에 크롤할 페이지" 저장. 호출당 1~2페이지만 수집 후 순차 진행.
 
 ```sql
 CREATE TABLE IF NOT EXISTS crawl_state (
@@ -524,7 +524,8 @@ CREATE TABLE IF NOT EXISTS crawl_state (
 );
 ```
 
-- `next_page`: 다음 크롤할 페이지 (1~100, 초과 시 1로 리셋)
+- `source`: 'wevity' | 'kstartup_business' | 'kstartup_announcement'
+- `next_page`: 다음 크롤할 페이지 (초과 시 1로 리셋)
 - Edge Function이 SERVICE_ROLE_KEY로 읽기/쓰기 (RLS 없음)
 
 ---
@@ -619,6 +620,43 @@ CREATE INDEX IF NOT EXISTS idx_notices_pinned ON notices(is_pinned) WHERE is_pin
 - `body`: 본문 (HTML 또는 Markdown 지원 가능)
 - `author_id`: 작성자(관리자) user_id
 - `is_pinned`: 상단 고정 여부 (true면 목록 상단 표시)
+
+---
+
+### 15-2. feedback_requests (오류 신고·기능 제안)
+
+사용자가 오류 신고 또는 기능 제안을 등록. 본인 작성건만 조회(관리자는 전체).
+
+```sql
+CREATE TABLE IF NOT EXISTS feedback_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    category TEXT NOT NULL CHECK (category IN ('error', 'feature')),
+    title TEXT NOT NULL,
+    description TEXT NOT NULL,
+    reason TEXT,
+    image_url TEXT,
+    status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'processing', 'done')),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_feedback_requests_created ON feedback_requests(created_at DESC);
+```
+
+- `category`: error=오류 신고, feature=기능 제안
+- `description`: 오류 신고 시 어떤 오류인지, 기능 제안 시 어떤 기능인지
+- `reason`: 기능 제안 시 해당 기능이 필요한 이유
+- `image_url`: 오류 사진 URL
+- `admin_reply`: 관리자 답변 내용
+- `admin_replied_at`: 관리자 답변 일시
+
+**이미지 업로드**: rep 버킷 `private/{user_id}/feedback_{uuid}.{ext}` 경로에 저장 (auth 클라이언트 사용, 대표작 이미지와 동일 RLS)
+
+**관리자 답변 컬럼 추가**:
+```sql
+ALTER TABLE feedback_requests ADD COLUMN IF NOT EXISTS admin_reply TEXT;
+ALTER TABLE feedback_requests ADD COLUMN IF NOT EXISTS admin_replied_at TIMESTAMPTZ;
+```
 
 ---
 
@@ -843,6 +881,8 @@ CREATE INDEX IF NOT EXISTS idx_startup_announcement_clsfc ON startup_announcemen
 ```
 
 - **pbanc_sn**: 공고 일련번호. 동일하면 upsert(업데이트) 처리
+
+**crawl_state (테이블 13)** 에 진행 페이지 저장: `source='kstartup_business'`, `source='kstartup_announcement'` → `next_page`
 
 **데이터 수집 규칙**:
 - startup_business: detl_pg_url에서 `id` 파라미터 추출 → id가 PK. 동일 id면 update

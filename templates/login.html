@@ -47,12 +47,42 @@
       flex-direction: column;
       align-items: center;
     }
+    .login-logo-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
     .login-logo {
       display: block;
       width: 180px;
       height: auto;
       object-fit: contain;
-      margin: 0 auto 24px;
+    }
+    .login-logo.login-logo-large {
+      width: 360px;
+    }
+    .login-logo-switcher {
+      width: 32px;
+      height: 32px;
+      padding: 0;
+      border: 1px solid var(--border-gray);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--gray-muted);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .login-logo-switcher:hover {
+      color: var(--main-purple);
+      border-color: var(--main-purple);
+      background: var(--soft-purple);
     }
     .login-card {
       width: 100%;
@@ -164,12 +194,24 @@
       margin-bottom: 0;
       line-height: 1.5;
     }
+    .login-notice a {
+      color: inherit;
+      text-decoration: none;
+    }
+    .login-notice a:hover {
+      text-decoration: underline;
+    }
   </style>
 </head>
 <body>
   <div class="login-wrap">
     <div class="login-card">
-      <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent" class="login-logo">
+      <div class="login-logo-wrap">
+        <img id="loginLogo" src="{{ url_for('static', filename='images/logo.png') }}" alt="Ntpercent" class="login-logo"
+             data-logo1="{{ url_for('static', filename='images/logo.png') }}"
+             data-logo2="{{ url_for('static', filename='images/logo2.png') }}">
+        <button type="button" class="login-logo-switcher" id="loginLogoSwitcher" title="로고 변경" aria-label="로고 변경">⟳</button>
+      </div>
       <h2>로그인</h2>
       {% set login_flashed = get_flashed_messages() %}
       <form class="login-form" id="loginForm" action="/login" method="POST">
@@ -185,7 +227,7 @@
           <input type="checkbox" id="saveEmail" name="save_email">
           <label for="saveEmail">아이디 저장</label>
         </div>
-        <p class="login-notice">아이디/비밀번호 분실 시 관리자에게 문의해 주세요.</p>
+        <p class="login-notice"><a href="{{ url_for('find_account_page') }}">아이디/비밀번호 찾기</a></p>
         <button type="submit" class="btn-login">로그인</button>
       </form>
       <p class="login-footer">
@@ -194,6 +236,31 @@
     </div>
   </div>
   <script>
+    (function() {
+      var KEY = 'headerLogo';
+      var el = document.getElementById('loginLogo');
+      var btn = document.getElementById('loginLogoSwitcher');
+      if (el && btn) {
+        var logo1 = el.dataset.logo1 || '';
+        var logo2 = el.dataset.logo2 || '';
+        function applyLogo(useLogo2) {
+          el.src = useLogo2 ? logo2 : logo1;
+          el.classList.toggle('login-logo-large', !!useLogo2);
+          try { localStorage.setItem(KEY, useLogo2 ? 'logo2' : 'logo'); } catch (e) {}
+        }
+        try {
+          var saved = localStorage.getItem(KEY);
+          applyLogo(saved === 'logo2');
+        } catch (e) {
+          applyLogo(false);
+        }
+        btn.addEventListener('click', function(e) {
+          e.preventDefault();
+          var useLogo2 = el.src.indexOf('logo2') === -1;
+          applyLogo(useLogo2);
+        });
+      }
+    })();
     (function() {
       const STORAGE_KEY = 'ntp_saved_email';
       const emailEl = document.getElementById('email');

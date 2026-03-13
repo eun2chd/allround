@@ -333,6 +333,12 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
+    .category-cell {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 90px;
+    }
     .d-day {
       display: inline-block;
       padding: 3px 8px;
@@ -448,9 +454,9 @@
       setTimeout(() => { toast.style.display = 'none'; }, 3000);
     }
 
-    function truncateWithEllipsis(s, maxLen = 20) {
+    function truncateWithEllipsis(s, maxLen = 12) {
       const str = (s || '').trim() || '공모전';
-      return str.length > maxLen ? str.slice(0, maxLen) + '...' : str;
+      return str.length > maxLen ? str.slice(0, maxLen) + '…' : str;
     }
 
     function escapeHtml(s) {
@@ -498,7 +504,7 @@
               <a href="${escapeHtml(row.url)}" target="_blank" rel="noopener" title="${escapeHtml(row.title || '')}">${escapeHtml(row.title)}</a>
             </td>
             <td class="host-cell" title="${escapeHtml(row.host || '')}">${escapeHtml(row.host || '-')}</td>
-            <td class="category-cell" title="${escapeHtml(row.category || '공모전')}">${escapeHtml(truncateWithEllipsis(row.category, 20))}</td>
+            <td class="category-cell" title="${escapeHtml(row.category || '공모전')}">${escapeHtml(truncateWithEllipsis(row.category, 12))}</td>
             <td>${escapeHtml(row.source || '요즘것들')}</td>
             <td>${sel}</td>
           </tr>

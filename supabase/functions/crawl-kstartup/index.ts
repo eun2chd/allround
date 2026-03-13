@@ -1,7 +1,7 @@
 // Supabase Edge Function: K-Startup API 수집 → startup_business, startup_announcement upsert
-// GitHub Actions: 전체 1일 2~3회, 증분 10분마다
+// 호출당 1~2페이지만 수집 후 저장. crawl_state로 진행 페이지 기록, 반복 호출로 끝까지 수집.
 //
-// 호출: full=1 → 전체 페이지 수집, 기본 → page 1~3만 (증분)
+// 호출: full=1 → page 1~2만 수집 (state 무시), 기본 → crawl_state 다음 페이지 1~2장
 // Secret: K_START_UP_SERVICE (공공데이터 인증키)
 //
 // npx supabase functions deploy crawl-kstartup --no-verify-jwt
@@ -10,9 +10,12 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const BASE_URL = "https://apis.data.go.kr/B552735/kisedKstartupService01";
-const PAGES_INCREMENTAL = 3;
+const PAGES_PER_CALL = 2;
 const PER_PAGE = 10;
 const SOURCE = "K-Startup";
+
+const SOURCE_BIZ = "kstartup_business";
+const SOURCE_ANN = "kstartup_announcement";
 
 async function dispatchNotificationToMembers(
   supabase: ReturnType<typeof createClient>,
@@ -81,12 +84,19 @@ async function fetchApi(
   pageNo: number,
   numOfRows: number
 ): Promise<string> {
-  const url = `${BASE_URL}/${apiName}?ServiceKey=${encodeURIComponent(serviceKey)}&pageNo=${pageNo}&numOfRows=${numOfRows}`;
+  // ServiceKey는 공공데이터포털에서 이미 URL 인코딩된 값으로 발급됨. encodeURIComponent 시 이중 인코딩 → 401 발생
+  const url = `${BASE_URL}/${apiName}?ServiceKey=${serviceKey}&pageNo=${pageNo}&numOfRows=${numOfRows}`;
+  console.log(`[crawl-kstartup] API 요청: ${apiName} pageNo=${pageNo} numOfRows=${numOfRows}`);
   const res = await fetch(url, {
     headers: { Accept: "application/xml, text/xml, */*" },
   });
-  if (!res.ok) throw new Error(`API ${apiName} HTTP ${res.status}`);
-  return res.text();
+  const body = await res.text();
+  if (!res.ok) {
+    console.error(`[crawl-kstartup] API 실패: ${apiName} HTTP ${res.status}`, body.slice(0, 500));
+    throw new Error(`API ${apiName} HTTP ${res.status}`);
+  }
+  console.log(`[crawl-kstartup] API 응답: ${apiName} pageNo=${pageNo} HTTP ${res.status} body=${body.length}bytes`);
+  return body;
 }
 
 // --- getBusinessInformation → startup_business ---
@@ -123,20 +133,27 @@ function mapBusinessItem(col: Record<string, string>): BusinessRow | null {
   };
 }
 
-async function fetchAllBusiness(serviceKey: string, full: boolean): Promise<BusinessRow[]> {
-  const xml = await fetchApi("getBusinessInformation01", serviceKey, 1, PER_PAGE);
+async function fetchBusinessPages(
+  serviceKey: string,
+  startPage: number,
+  maxPages: number
+): Promise<{ rows: BusinessRow[]; lastPage: number }> {
+  const xml = await fetchApi("getBusinessInformation01", serviceKey, startPage, PER_PAGE);
   const { totalCount, perPage } = parsePagination(xml);
   const lastPage = Math.ceil(totalCount / perPage) || 1;
-  const maxPage = full ? lastPage : Math.min(PAGES_INCREMENTAL, lastPage);
+  const endPage = Math.min(startPage + maxPages - 1, lastPage);
+  console.log(`[crawl-kstartup] 통합지원사업 fetch: totalCount=${totalCount} 페이지 ${startPage}~${endPage}/${lastPage}`);
 
   const all: BusinessRow[] = [];
   const seen = new Set<string>();
 
-  for (let p = 1; p <= maxPage; p++) {
-    const pageXml = p === 1 ? xml : await fetchApi("getBusinessInformation01", serviceKey, p, PER_PAGE);
+  for (let p = startPage; p <= endPage; p++) {
+    const pageXml = p === startPage ? xml : await fetchApi("getBusinessInformation01", serviceKey, p, PER_PAGE);
     const { currentCount } = parsePagination(pageXml);
-    if (currentCount === 0) break;
-
+    if (currentCount === 0) {
+      console.log(`[crawl-kstartup] 통합지원사업 page ${p}: currentCount=0, 중단`);
+      break;
+    }
     const items = parseColItems(pageXml);
     for (const col of items) {
       const row = mapBusinessItem(col);
@@ -145,9 +162,10 @@ async function fetchAllBusiness(serviceKey: string, full: boolean): Promise<Busi
         all.push(row);
       }
     }
-    if (p < maxPage) await new Promise((r) => setTimeout(r, 300));
+    console.log(`[crawl-kstartup] 통합지원사업 page ${p}/${endPage}: items=${items.length} 누적=${all.length}`);
+    if (p < endPage) await new Promise((r) => setTimeout(r, 200));
   }
-  return all;
+  return { rows: all, lastPage };
 }
 
 // --- getAnnouncementInformation → startup_announcement ---
@@ -219,20 +237,27 @@ function mapAnnouncementItem(col: Record<string, string>): AnnouncementRow | nul
   };
 }
 
-async function fetchAllAnnouncement(serviceKey: string, full: boolean): Promise<AnnouncementRow[]> {
-  const xml = await fetchApi("getAnnouncementInformation01", serviceKey, 1, PER_PAGE);
+async function fetchAnnouncementPages(
+  serviceKey: string,
+  startPage: number,
+  maxPages: number
+): Promise<{ rows: AnnouncementRow[]; lastPage: number }> {
+  const xml = await fetchApi("getAnnouncementInformation01", serviceKey, startPage, PER_PAGE);
   const { totalCount, perPage } = parsePagination(xml);
   const lastPage = Math.ceil(totalCount / perPage) || 1;
-  const maxPage = full ? lastPage : Math.min(PAGES_INCREMENTAL, lastPage);
+  const endPage = Math.min(startPage + maxPages - 1, lastPage);
+  console.log(`[crawl-kstartup] 지원사업 공고 fetch: totalCount=${totalCount} 페이지 ${startPage}~${endPage}/${lastPage}`);
 
   const all: AnnouncementRow[] = [];
   const seen = new Set<string>();
 
-  for (let p = 1; p <= maxPage; p++) {
-    const pageXml = p === 1 ? xml : await fetchApi("getAnnouncementInformation01", serviceKey, p, PER_PAGE);
+  for (let p = startPage; p <= endPage; p++) {
+    const pageXml = p === startPage ? xml : await fetchApi("getAnnouncementInformation01", serviceKey, p, PER_PAGE);
     const { currentCount } = parsePagination(pageXml);
-    if (currentCount === 0) break;
-
+    if (currentCount === 0) {
+      console.log(`[crawl-kstartup] 지원사업 공고 page ${p}: currentCount=0, 중단`);
+      break;
+    }
     const items = parseColItems(pageXml);
     for (const col of items) {
       const row = mapAnnouncementItem(col);
@@ -241,9 +266,10 @@ async function fetchAllAnnouncement(serviceKey: string, full: boolean): Promise<
         all.push(row);
       }
     }
-    if (p < maxPage) await new Promise((r) => setTimeout(r, 300));
+    console.log(`[crawl-kstartup] 지원사업 공고 page ${p}/${endPage}: items=${items.length} 누적=${all.length}`);
+    if (p < endPage) await new Promise((r) => setTimeout(r, 200));
   }
-  return all;
+  return { rows: all, lastPage };
 }
 
 Deno.serve(async (req) => {
@@ -277,10 +303,30 @@ Deno.serve(async (req) => {
   try {
     const serviceKey = getServiceKey();
 
-    const [businessRows, announcementRows] = await Promise.all([
-      fetchAllBusiness(serviceKey, forceFull),
-      fetchAllAnnouncement(serviceKey, forceFull),
+    let bizStartPage = 1;
+    let annStartPage = 1;
+    if (!forceFull) {
+      try {
+        const { data: bizState } = await supabase.from("crawl_state").select("next_page").eq("source", SOURCE_BIZ).maybeSingle();
+        const { data: annState } = await supabase.from("crawl_state").select("next_page").eq("source", SOURCE_ANN).maybeSingle();
+        bizStartPage = Math.max(1, bizState?.next_page ?? 1);
+        annStartPage = Math.max(1, annState?.next_page ?? 1);
+      } catch {
+        console.log("[crawl-kstartup] crawl_state 조회 실패, page 1부터 시작");
+      }
+      console.log(`[crawl-kstartup] 실행 시작: 통합지원사업 page ${bizStartPage}부터, 공고 page ${annStartPage}부터 (각 ${PAGES_PER_CALL}장)`);
+    } else {
+      console.log(`[crawl-kstartup] 실행 시작: full=1 → page 1~${PAGES_PER_CALL} 고정`);
+    }
+
+    const [businessResult, announcementResult] = await Promise.all([
+      fetchBusinessPages(serviceKey, bizStartPage, PAGES_PER_CALL),
+      fetchAnnouncementPages(serviceKey, annStartPage, PAGES_PER_CALL),
     ]);
+
+    const businessRows = businessResult.rows;
+    const announcementRows = announcementResult.rows;
+    console.log(`[crawl-kstartup] API 수집 완료: startup_business=${businessRows.length}건, startup_announcement=${announcementRows.length}건`);
 
     let bizUpsert = 0;
     let annUpsert = 0;
@@ -288,6 +334,7 @@ Deno.serve(async (req) => {
     let annNew = 0;
 
     if (businessRows.length > 0) {
+      console.log(`[crawl-kstartup] startup_business 저장 시작: ${businessRows.length}건`);
       const bizIds = businessRows.map((r) => r.id);
       const { data: existingBiz } = await supabase
         .from("startup_business")
@@ -295,6 +342,8 @@ Deno.serve(async (req) => {
         .in("id", bizIds);
       const existingBizSet = new Set((existingBiz ?? []).map((r) => r.id));
       bizNew = businessRows.filter((r) => !existingBizSet.has(r.id)).length;
+      const bizUpdate = businessRows.length - bizNew;
+      console.log(`[crawl-kstartup] startup_business 기존 조회: ${existingBizSet.size}건 중 신규=${bizNew}건, 업데이트=${bizUpdate}건`);
 
       const { error: bizErr } = await supabase.from("startup_business").upsert(businessRows, {
         onConflict: "id",
@@ -302,9 +351,13 @@ Deno.serve(async (req) => {
       });
       if (bizErr) throw new Error(`startup_business upsert: ${bizErr.message}`);
       bizUpsert = businessRows.length;
+      console.log(`[crawl-kstartup] startup_business upsert 완료: ${bizUpsert}건 (신규 ${bizNew}, 업데이트 ${bizUpdate})`);
+    } else {
+      console.log(`[crawl-kstartup] startup_business 저장할 데이터 없음, 스킵`);
     }
 
     if (announcementRows.length > 0) {
+      console.log(`[crawl-kstartup] startup_announcement 저장 시작: ${announcementRows.length}건`);
       const annIds = announcementRows.map((r) => r.pbanc_sn);
       const { data: existingAnn } = await supabase
         .from("startup_announcement")
@@ -312,6 +365,8 @@ Deno.serve(async (req) => {
         .in("pbanc_sn", annIds);
       const existingAnnSet = new Set((existingAnn ?? []).map((r) => r.pbanc_sn));
       annNew = announcementRows.filter((r) => !existingAnnSet.has(r.pbanc_sn)).length;
+      const annUpdate = announcementRows.length - annNew;
+      console.log(`[crawl-kstartup] startup_announcement 기존 조회: ${existingAnnSet.size}건 중 신규=${annNew}건, 업데이트=${annUpdate}건`);
 
       const { error: annErr } = await supabase.from("startup_announcement").upsert(announcementRows, {
         onConflict: "pbanc_sn",
@@ -319,6 +374,28 @@ Deno.serve(async (req) => {
       });
       if (annErr) throw new Error(`startup_announcement upsert: ${annErr.message}`);
       annUpsert = announcementRows.length;
+      console.log(`[crawl-kstartup] startup_announcement upsert 완료: ${annUpsert}건 (신규 ${annNew}, 업데이트 ${annUpdate})`);
+    } else {
+      console.log(`[crawl-kstartup] startup_announcement 저장할 데이터 없음, 스킵`);
+    }
+
+    const bizNextPage =
+      bizStartPage + PAGES_PER_CALL > businessResult.lastPage ? 1 : bizStartPage + PAGES_PER_CALL;
+    const annNextPage =
+      annStartPage + PAGES_PER_CALL > announcementResult.lastPage ? 1 : annStartPage + PAGES_PER_CALL;
+    try {
+      await supabase.from("crawl_state").upsert(
+        [
+          { source: SOURCE_BIZ, next_page: bizNextPage, updated_at: new Date().toISOString() },
+          { source: SOURCE_ANN, next_page: annNextPage, updated_at: new Date().toISOString() },
+        ],
+        { onConflict: "source" }
+      );
+      console.log(
+        `[crawl-kstartup] crawl_state 업데이트: 통합지원사업 다음 page=${bizNextPage}, 공고 다음 page=${annNextPage}`
+      );
+    } catch (stateErr) {
+      console.warn("[crawl-kstartup] crawl_state 저장 실패:", stateErr);
     }
 
     const totalNew = bizNew + annNew;
@@ -359,18 +436,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    console.log(`[crawl-kstartup] 실행 완료: startup_business=${bizUpsert}건, startup_announcement=${annUpsert}건 다음 biz=${bizNextPage} ann=${annNextPage}`);
     return new Response(
       JSON.stringify({
         success: true,
         mode: forceFull ? "full" : "incremental",
         startup_business: bizUpsert,
         startup_announcement: annUpsert,
-        message: `startup_business ${bizUpsert}건, startup_announcement ${annUpsert}건 upsert 완료`,
+        next_business_page: bizNextPage,
+        next_announcement_page: annNextPage,
+        message: `startup_business ${bizUpsert}건, startup_announcement ${annUpsert}건 upsert 완료 (다음 biz p.${bizNextPage} ann p.${annNextPage})`,
       }),
       { status: 200, headers: { "Content-Type": "application/json" } }
     );
   } catch (e) {
-    console.error(e);
+    console.error("[crawl-kstartup] 오류:", e);
     return new Response(
       JSON.stringify({ success: false, error: String(e) }),
       { status: 500, headers: { "Content-Type": "application/json" } }

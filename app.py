@@ -7,6 +7,7 @@ allforyoung 웹 테이블 뷰어
 import logging
 import traceback
 import time
+import uuid as uuid_module
 from datetime import datetime, timezone
 
 from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
@@ -158,6 +159,68 @@ def login_page():
     return render_template("login.html")
 
 
+def _mask_email(email: str) -> str:
+    """이메일 마스킹: ab***@gmail.com"""
+    if not email or "@" not in email:
+        return ""
+    local, domain = email.rsplit("@", 1)
+    if len(local) <= 2:
+        return local[0] + "***@" + domain
+    return local[:2] + "***@" + domain
+
+
+@app.route("/find-account", methods=["GET", "POST"])
+def find_account_page():
+    """아이디/비밀번호 찾기 - 닉네임으로 아이디(이메일) 조회, 이메일로 비밀번호 재설정"""
+    if request.method == "POST":
+        tab = request.form.get("tab", "password")
+        if tab == "id":
+            nickname = request.form.get("nickname", "").strip()
+            if not nickname:
+                flash("닉네임을 입력해 주세요.", "error")
+                return render_template("find_account.html", active_tab="id")
+            try:
+                supabase = get_supabase_admin_client()
+                r = supabase.table("profiles").select("email").eq("nickname", nickname).limit(1).execute()
+                if r.data and r.data[0] and r.data[0].get("email"):
+                    masked = _mask_email(r.data[0]["email"])
+                    flash(f"등록된 아이디(이메일): {masked}", "success")
+                else:
+                    flash("해당 닉네임으로 등록된 계정이 없습니다.", "error")
+                return render_template("find_account.html", active_tab="id")
+            except Exception as e:
+                logger.error("아이디 조회 실패: %s", e)
+                flash("조회에 실패했습니다. 다시 시도해 주세요.", "error")
+                return render_template("find_account.html", active_tab="id")
+        # tab == "password"
+        email = request.form.get("email", "").strip()
+        if not email or "@" not in email:
+            flash("이메일 형식을 확인해 주세요.", "error")
+            return render_template("find_account.html", active_tab="password")
+        try:
+            supabase = get_supabase_client()
+            redirect_url = request.url_root.rstrip("/") + url_for("reset_password_page")
+            supabase.auth.reset_password_for_email(email, {"redirect_to": redirect_url})
+            flash("입력한 이메일로 비밀번호 재설정 링크를 보냈습니다. 메일함을 확인해 주세요.")
+            return redirect(url_for("login_page"))
+        except Exception as e:
+            logger.error("비밀번호 재설정 메일 발송 실패: %s", e)
+            flash("메일 발송에 실패했습니다. 이메일 주소를 확인하거나 잠시 후 다시 시도해 주세요.", "error")
+            return render_template("find_account.html", active_tab="password")
+    return render_template("find_account.html", active_tab=request.args.get("tab", "id"))
+
+
+@app.route("/reset-password")
+def reset_password_page():
+    """비밀번호 재설정 (이메일 링크에서 진입)"""
+    from config import SUPABASE_ANON_KEY, SUPABASE_URL
+    return render_template(
+        "reset_password.html",
+        supabase_url=SUPABASE_URL or "",
+        supabase_anon_key=SUPABASE_ANON_KEY or "",
+    )
+
+
 @app.route("/logout")
 def logout():
     user_id = str(session.get("user_id") or "")
@@ -250,6 +313,27 @@ def signup():
 @app.route("/signup/complete")
 def signup_complete():
     return render_template("signup_complete.html")
+
+
+@app.route("/signup/resend-verification", methods=["POST"])
+def resend_verification():
+    """이메일 인증 링크 재발송"""
+    email = request.form.get("email", "").strip()
+    if not email or "@" not in email:
+        flash("이메일 형식을 확인해 주세요.", "error")
+        return redirect(url_for("signup_complete"))
+    try:
+        supabase = get_supabase_client()
+        supabase.auth.resend({"type": "signup", "email": email})
+        flash("인증 메일을 다시 보냈습니다. 메일함을 확인해 주세요.")
+    except Exception as e:
+        logger.error("인증 메일 재발송 실패: %s", e)
+        err = str(e).lower()
+        if "rate limit" in err or "too many" in err:
+            flash("요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.", "error")
+        else:
+            flash("메일 발송에 실패했습니다. 이메일을 확인하거나 잠시 후 다시 시도해 주세요.", "error")
+    return redirect(url_for("signup_complete"))
 
 
 @app.route("/api/check-email")
@@ -356,6 +440,14 @@ def notices_page():
     if not session.get("logged_in"):
         return redirect(url_for("login_page"))
     return render_template("notices.html")
+
+
+@app.route("/feedback")
+def feedback_page():
+    """오류 신고·기능 제안 페이지"""
+    if not session.get("logged_in"):
+        return redirect(url_for("login_page"))
+    return render_template("feedback.html")
 
 
 @app.route("/mypage")
@@ -1261,6 +1353,36 @@ def api_contests():
         return jsonify({"success": False, "error": str(e), "data": []}), 500
 
 
+@app.route("/api/contests/by-participation")
+def api_contests_by_participation():
+    """참가/패스한 공고 목록 (참가 패스 필터용). status=participate|pass"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": []})
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": []})
+    status = (request.args.get("status") or "").strip()
+    if status not in ("participate", "pass"):
+        return jsonify({"success": False, "error": "status는 participate 또는 pass"}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contest_participation").select("source, contest_id").eq("user_id", user_id).eq("status", status).order("updated_at", desc=True).execute()
+        rows = r.data or []
+        result = []
+        for p in rows:
+            src = p.get("source") or ""
+            cid = p.get("contest_id") or ""
+            if not src or not cid:
+                continue
+            c = supabase.table("contests").select("id, title, d_day, host, url, category, source, created_at, updated_at").eq("source", src).eq("id", cid).limit(1).execute()
+            if c.data and len(c.data) > 0:
+                result.append(c.data[0])
+        return jsonify({"success": True, "data": result})
+    except Exception as e:
+        logger.error("api/contests/by-participation 오류: %s", e)
+        return jsonify({"success": True, "data": []})
+
+
 @app.route("/api/contests/filters")
 def api_contests_filters():
     """필터용 카테고리/출처 목록 (distinct)"""
@@ -1309,7 +1431,7 @@ def api_bookmarks_contests():
             s, cid = b.get("source"), b.get("contest_id")
             if not s or not cid:
                 continue
-            r = supabase.table("contests").select("id, title, d_day, host, url, category, source, created_at").eq("source", s).eq("id", cid).limit(1).execute()
+            r = supabase.table("contests").select("id, title, d_day, host, url, category, source, created_at, updated_at").eq("source", s).eq("id", cid).limit(1).execute()
             if r.data and len(r.data) > 0:
                 row = r.data[0].copy()
                 row["folder_id"] = b.get("folder_id") if has_folder else None
@@ -1726,6 +1848,51 @@ def api_startup_announcements():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/user/startup-status")
+def api_user_startup_status():
+    """창업 내용확인 상태 (startup_content_checks)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": {"content_checks": []}})
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": {"content_checks": []}})
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("startup_content_checks").select("item_type, item_id").eq("user_id", user_id).execute()
+        content_checks = [(x.get("item_type") or "") + ":" + (x.get("item_id") or "") for x in (r.data or [])]
+        return jsonify({"success": True, "data": {"content_checks": content_checks}})
+    except Exception as e:
+        logger.error("api/user/startup-status 오류: %s", e)
+        return jsonify({"success": True, "data": {"content_checks": []}})
+
+
+@app.route("/api/startup/content-check", methods=["POST"])
+def api_startup_content_check():
+    """창업 내용확인 클릭: startup_content_checks 기록 (경험치 미반영)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    data = request.get_json(silent=True) or {}
+    item_type = (data.get("item_type") or "").strip()
+    item_id = (data.get("item_id") or "").strip()
+    if item_type not in ("business", "announcement"):
+        return jsonify({"success": False, "error": "item_type은 business 또는 announcement"}), 400
+    if not item_id:
+        return jsonify({"success": False, "error": "item_id가 필요합니다"}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        supabase.table("startup_content_checks").upsert(
+            {"user_id": user_id, "item_type": item_type, "item_id": item_id},
+            on_conflict="user_id,item_type,item_id",
+        ).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/startup/content-check 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/notices")
 def api_notices():
     """공지사항 목록 조회 (로그인 필수). 고정공지 먼저, 최신순"""
@@ -1845,6 +2012,271 @@ def api_notice_delete(notice_id):
         return jsonify({"success": True})
     except Exception as e:
         logger.error("api/notices DELETE 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+def _upload_feedback_image(user_id: str, file, access_token: str = "", refresh_token: str = "") -> str | None:
+    """오류 신고 이미지 업로드 → rep 버킷 private/{user_id}/feedback_{uuid}.{ext}.
+    rep 버킷은 대표작 이미지와 동일한 RLS 정책(본인 폴더 업로드) 사용."""
+    if not file or file.filename == "":
+        return None
+    ext = (file.filename or "").rsplit(".", 1)[-1].lower() or "png"
+    if ext not in ("png", "jpg", "jpeg", "gif", "webp"):
+        ext = "png"
+    key = f"feedback_{uuid_module.uuid4().hex}.{ext}"
+    path = f"private/{user_id}/{key}"
+    try:
+        supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else get_supabase_admin_client()
+        file_data = file.read()
+        content_type = file.content_type or f"image/{ext}"
+        supabase.storage.from_(REP_BUCKET).upload(
+            file=file_data,
+            path=path,
+            file_options={"content-type": content_type, "upsert": "true"},
+        )
+        return supabase.storage.from_(REP_BUCKET).get_public_url(path)
+    except Exception as e:
+        logger.error("feedback 이미지 업로드 실패: %s", e)
+        return None
+
+
+@app.route("/api/feedback")
+def api_feedback_list():
+    """오류 신고·기능 제안 목록 (본인 작성건 + 관리자는 전체)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    category = (request.args.get("category") or "").strip() or None
+    try:
+        supabase = get_supabase_admin_client()
+        q = supabase.table("feedback_requests").select(
+            "id, user_id, category, title, description, reason, image_url, status, admin_reply, admin_replied_at, created_at"
+        ).order("created_at", desc=True)
+        if not _is_admin():
+            q = q.eq("user_id", user_id)
+        if category and category in ("error", "feature"):
+            q = q.eq("category", category)
+        r = q.execute()
+        rows = r.data or []
+        for row in rows:
+            if row.get("user_id"):
+                try:
+                    pr = supabase.table("profiles").select("nickname").eq("id", row["user_id"]).limit(1).execute()
+                    row["author_nickname"] = pr.data[0]["nickname"] if pr.data else None
+                except Exception:
+                    row["author_nickname"] = None
+            else:
+                row["author_nickname"] = None
+        return jsonify({"success": True, "data": rows})
+    except Exception as e:
+        logger.error("api/feedback 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/feedback", methods=["POST"])
+def api_feedback_create():
+    """오류 신고·기능 제안 등록"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    is_multipart = request.content_type and "multipart/form-data" in request.content_type
+    if is_multipart:
+        category = (request.form.get("category") or "").strip()
+        title = (request.form.get("title") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        reason = (request.form.get("reason") or "").strip() or None
+        image_file = request.files.get("image") or request.files.get("image_url")
+    else:
+        data = request.get_json(silent=True) or {}
+        category = (data.get("category") or "").strip()
+        title = (data.get("title") or "").strip()
+        description = (data.get("description") or "").strip()
+        reason = (data.get("reason") or "").strip() or None
+        image_file = None
+    if category not in ("error", "feature"):
+        return jsonify({"success": False, "error": "카테고리는 error 또는 feature를 선택해 주세요."}), 400
+    if not title:
+        return jsonify({"success": False, "error": "제목을 입력해 주세요."}), 400
+    if not description:
+        return jsonify({"success": False, "error": "내용을 입력해 주세요."}), 400
+    if category == "feature" and not reason:
+        return jsonify({"success": False, "error": "기능 제안 시 필요한 이유를 입력해 주세요."}), 400
+    image_url = None
+    if image_file and image_file.filename:
+        acc = session.get("access_token") or ""
+        ref = session.get("refresh_token") or ""
+        image_url = _upload_feedback_image(user_id, image_file, acc, ref)
+    try:
+        supabase = get_supabase_admin_client()
+        row = supabase.table("feedback_requests").insert({
+            "user_id": user_id,
+            "category": category,
+            "title": title,
+            "description": description,
+            "reason": reason,
+            "image_url": image_url,
+        }).execute()
+        inserted = row.data[0] if row.data else None
+        nickname = (session.get("nickname") or "").strip() or "회원"
+        try:
+            notif = supabase.table("notifications").insert({
+                "type": "notice",
+                "source": "건의·신고",
+                "count": 1,
+                "message": f"{nickname}님이 새로운 글을 작성했습니다: {title[:30]}{'...' if len(title) > 30 else ''}",
+            }).execute()
+            if notif.data and len(notif.data) > 0:
+                notif_id = notif.data[0].get("id")
+                if notif_id:
+                    admins = supabase.table("profiles").select("id").eq("role", "admin").execute()
+                    states = [
+                        {"user_id": a["id"], "notification_id": notif_id, "read": False, "deleted": False}
+                        for a in (admins.data or [])
+                    ]
+                    if states:
+                        supabase.table("notification_user_state").insert(states).execute()
+        except Exception as notif_err:
+            logger.warning("건의·신고 알림 생성 실패: %s", notif_err)
+        return jsonify({"success": True, "data": inserted})
+    except Exception as e:
+        logger.error("api/feedback POST 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/feedback/<feedback_id>")
+def api_feedback_detail(feedback_id):
+    """오류 신고·기능 제안 상세 (본인 작성건 또는 관리자)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    user_id = session.get("user_id")
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("feedback_requests").select(
+            "id, user_id, category, title, description, reason, image_url, status, admin_reply, admin_replied_at, created_at"
+        ).eq("id", feedback_id).limit(1).execute()
+        if not r.data:
+            return jsonify({"success": False, "error": "not_found"}), 404
+        row = r.data[0]
+        if not _is_admin() and str(row.get("user_id")) != str(user_id):
+            return jsonify({"success": False, "error": "forbidden"}), 403
+        if row.get("user_id"):
+            try:
+                pr = supabase.table("profiles").select("nickname").eq("id", row["user_id"]).limit(1).execute()
+                row["author_nickname"] = pr.data[0]["nickname"] if pr.data else None
+            except Exception:
+                row["author_nickname"] = None
+        else:
+            row["author_nickname"] = None
+        row["is_own"] = str(row.get("user_id")) == str(user_id)
+        return jsonify({"success": True, "data": row})
+    except Exception as e:
+        logger.error("api/feedback detail 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/feedback/<feedback_id>", methods=["PATCH"])
+def api_feedback_update(feedback_id):
+    """오류 신고·기능 제안 수정 (본인 작성건만)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    is_multipart = request.content_type and "multipart/form-data" in request.content_type
+    if is_multipart:
+        category = (request.form.get("category") or "").strip()
+        title = (request.form.get("title") or "").strip()
+        description = (request.form.get("description") or "").strip()
+        reason = (request.form.get("reason") or "").strip() or None
+        image_file = request.files.get("image") or request.files.get("image_url")
+    else:
+        data = request.get_json(silent=True) or {}
+        category = (data.get("category") or "").strip()
+        title = (data.get("title") or "").strip()
+        description = (data.get("description") or "").strip()
+        reason = (data.get("reason") or "").strip() or None
+        image_file = None
+    if category and category not in ("error", "feature"):
+        return jsonify({"success": False, "error": "카테고리는 error 또는 feature"}), 400
+    if not title:
+        return jsonify({"success": False, "error": "제목을 입력해 주세요."}), 400
+    if not description:
+        return jsonify({"success": False, "error": "내용을 입력해 주세요."}), 400
+    if category == "feature" and not reason:
+        return jsonify({"success": False, "error": "기능 제안 시 필요한 이유를 입력해 주세요."}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("feedback_requests").select("user_id, image_url").eq("id", feedback_id).limit(1).execute()
+        if not r.data:
+            return jsonify({"success": False, "error": "not_found"}), 404
+        row = r.data[0]
+        if str(row.get("user_id")) != str(user_id):
+            return jsonify({"success": False, "error": "본인 작성글만 수정할 수 있습니다"}), 403
+        updates = {"title": title, "description": description, "reason": reason, "updated_at": datetime.now(timezone.utc).isoformat()}
+        if category:
+            updates["category"] = category
+        if image_file and image_file.filename:
+            acc = session.get("access_token") or ""
+            ref = session.get("refresh_token") or ""
+            new_url = _upload_feedback_image(user_id, image_file, acc, ref)
+            if new_url:
+                updates["image_url"] = new_url
+        supabase.table("feedback_requests").update(updates).eq("id", feedback_id).eq("user_id", user_id).execute()
+        updated = supabase.table("feedback_requests").select("*").eq("id", feedback_id).limit(1).execute()
+        return jsonify({"success": True, "data": updated.data[0] if updated.data else None})
+    except Exception as e:
+        logger.error("api/feedback PATCH 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/feedback/<feedback_id>", methods=["DELETE"])
+def api_feedback_delete(feedback_id):
+    """오류 신고·기능 제안 삭제 (본인 작성건만)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("feedback_requests").select("user_id").eq("id", feedback_id).limit(1).execute()
+        if not r.data:
+            return jsonify({"success": False, "error": "not_found"}), 404
+        if str(r.data[0].get("user_id")) != str(user_id):
+            return jsonify({"success": False, "error": "본인 작성글만 삭제할 수 있습니다"}), 403
+        supabase.table("feedback_requests").delete().eq("id", feedback_id).eq("user_id", user_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/feedback DELETE 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/feedback/<feedback_id>/reply", methods=["POST", "PATCH"])
+def api_feedback_reply(feedback_id):
+    """관리자 답변 등록/수정"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    if not _is_admin():
+        return jsonify({"success": False, "error": "관리자만 답변할 수 있습니다"}), 403
+    data = request.get_json(silent=True) or {}
+    reply = (data.get("admin_reply") or data.get("reply") or "").strip()
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("feedback_requests").select("id").eq("id", feedback_id).limit(1).execute()
+        if not r.data:
+            return jsonify({"success": False, "error": "not_found"}), 404
+        now = datetime.now(timezone.utc).isoformat()
+        supabase.table("feedback_requests").update({
+            "admin_reply": reply or None,
+            "admin_replied_at": now if reply else None,
+            "updated_at": now,
+        }).eq("id", feedback_id).execute()
+        updated = supabase.table("feedback_requests").select("id, admin_reply, admin_replied_at").eq("id", feedback_id).limit(1).execute()
+        return jsonify({"success": True, "data": updated.data[0] if updated.data else None})
+    except Exception as e:
+        logger.error("api/feedback reply 오류: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

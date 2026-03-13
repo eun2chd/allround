@@ -525,15 +525,19 @@
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 12px;
+      gap: 16px;
       margin-bottom: 20px;
-      padding: 16px;
+      padding: 14px 18px;
       background: var(--soft-purple);
       border-radius: var(--radius);
       border: 1px solid rgba(109, 40, 217, 0.2);
     }
-    .filter-bar input,
-    .filter-bar select {
+    .filter-bar .filter-search {
+      flex: 1;
+      min-width: 160px;
+    }
+    .filter-bar .filter-search input {
+      width: 100%;
       font-family: var(--font);
       font-size: 0.88rem;
       padding: 8px 12px;
@@ -542,7 +546,6 @@
       background: var(--bg-white);
       color: var(--text-dark);
     }
-    .filter-bar input { flex: 1; min-width: 120px; }
     .filter-bar input::placeholder { color: var(--gray-muted); }
     .filter-bar input:focus,
     .filter-bar select:focus {
@@ -550,17 +553,58 @@
       border-color: var(--main-purple);
       box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.15);
     }
-    .filter-bar label {
-      font-size: 0.8rem;
-      color: var(--gray-muted);
-      margin-right: 4px;
+    .filter-bar .filter-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
     }
     .filter-bar .filter-group {
       display: flex;
       align-items: center;
       gap: 6px;
     }
-    .filter-bar .filter-group select { min-width: 100px; }
+    .filter-bar .filter-group label {
+      font-size: 0.8rem;
+      color: var(--text-dark);
+      font-weight: 500;
+      white-space: nowrap;
+    }
+    .filter-bar .filter-group select {
+      font-family: var(--font);
+      font-size: 0.88rem;
+      padding: 8px 12px;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      background: var(--bg-white);
+      color: var(--text-dark);
+      min-width: 100px;
+    }
+    .filter-bar .filter-divider {
+      width: 1px;
+      height: 24px;
+      background: rgba(109, 40, 217, 0.25);
+      flex-shrink: 0;
+    }
+    .filter-bar .filter-check {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .filter-bar .filter-check input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin: 0;
+      accent-color: var(--main-purple);
+      cursor: pointer;
+    }
+    .filter-bar .filter-check label {
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--text-dark);
+      cursor: pointer;
+      user-select: none;
+    }
     .startup-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
     .startup-tab {
       padding: 10px 20px;
@@ -577,6 +621,21 @@
     .startup-tab.active { background: var(--main-purple); border-color: var(--main-purple); color: #fff; }
     .page-header .startup-exp-notice {
       width: 100%; margin: 4px 0 0 0; font-size: 0.8rem; color: var(--gray-muted); font-weight: 500;
+    }
+    #startupTabBusiness td,
+    #startupTabAnnouncements td {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    #startupTabBusiness tr.row-startup-checked,
+    #startupTabAnnouncements tr.row-startup-checked {
+      background: #f0fdf4;
+      border-left: 3px solid #059669;
+    }
+    #startupTabBusiness tr.row-startup-checked:hover td,
+    #startupTabAnnouncements tr.row-startup-checked:hover td {
+      background: #dcfce7;
     }
     @media (max-width: 1200px) {
       .sidebar-team { display: none; }
@@ -605,26 +664,44 @@
     </header>
 
     <div class="filter-bar" id="filterBar" style="display:none">
-      <input type="text" id="searchInput" placeholder="제목, 주최·주관 검색" autocomplete="off">
-      <div class="filter-group">
-        <label for="checkFilterSelect">확인</label>
-        <select id="checkFilterSelect">
-          <option value="">전체</option>
-          <option value="checked">확인함</option>
-          <option value="unchecked">확인 안함</option>
-        </select>
+      <div class="filter-search">
+        <input type="text" id="searchInput" placeholder="제목, 주최·주관 검색" autocomplete="off">
       </div>
-      <div class="filter-group">
-        <label for="categorySelect">카테고리</label>
-        <select id="categorySelect">
-          <option value="">전체</option>
-        </select>
-      </div>
-      <div class="filter-group">
-        <label for="sourceSelect">출처</label>
-        <select id="sourceSelect">
-          <option value="">전체</option>
-        </select>
+      <div class="filter-divider"></div>
+      <div class="filter-row">
+        <div class="filter-check">
+          <input type="checkbox" id="bookmarkFilterCheck" title="북마크 DB에 추가한 것만 표시">
+          <label for="bookmarkFilterCheck">즐겨찾기한 것만</label>
+        </div>
+        <div class="filter-divider"></div>
+        <div class="filter-group">
+          <label for="checkFilterSelect">확인</label>
+          <select id="checkFilterSelect">
+            <option value="">전체</option>
+            <option value="checked">확인함</option>
+            <option value="unchecked">확인 안함</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="participationFilterSelect">참가·패스</label>
+          <select id="participationFilterSelect">
+            <option value="">전체</option>
+            <option value="participate">참가만</option>
+            <option value="pass">패스만</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="categorySelect">카테고리</label>
+          <select id="categorySelect">
+            <option value="">전체</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label for="sourceSelect">출처</label>
+          <select id="sourceSelect">
+            <option value="">전체</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -679,21 +756,27 @@
             <table>
               <thead>
                 <tr>
-                  <th style="min-width:70px">사업연도</th>
-                  <th style="min-width:150px">지원사업명</th>
-                  <th style="min-width:90px">카테고리코드</th>
-                  <th style="min-width:140px">지원대상</th>
-                  <th style="min-width:140px">지원내용</th>
-                  <th style="min-width:100px">예산/지원규모</th>
-                  <th style="min-width:120px">지원사업특징</th>
-                  <th style="min-width:120px">지원사업소개</th>
-                  <th style="min-width:70px">상세</th>
+                  <th style="min-width:50px">No</th>
+                  <th style="min-width:80px">내용확인</th>
+                  <th style="min-width:80px">사업연도</th>
+                  <th style="min-width:220px">지원사업명</th>
+                  <th style="min-width:200px">지원대상</th>
+                  <th style="min-width:220px">지원내용</th>
+                  <th style="min-width:150px">예산/지원규모</th>
+                  <th style="min-width:180px">지원사업특징</th>
+                  <th style="min-width:180px">지원사업소개</th>
+                  <th style="min-width:80px">상세</th>
                 </tr>
               </thead>
               <tbody id="startupBusinessBody">
-                <tr><td colspan="9" class="loading">로딩 중</td></tr>
+                <tr><td colspan="10" class="loading">로딩 중</td></tr>
               </tbody>
             </table>
+          </div>
+          <div class="pagination" id="startupBusinessPagination" style="display:none">
+            <button type="button" id="startupBusinessPrev" class="pagination-arrow" title="이전"><img src="{{ url_for('static', filename='images/left.png') }}" alt="이전"></button>
+            <span class="pagination-numbers" id="startupBusinessPageNumbers"></span>
+            <button type="button" id="startupBusinessNext" class="pagination-arrow" title="다음"><img src="{{ url_for('static', filename='images/right.png') }}" alt="다음"></button>
           </div>
         </div>
       </div>
@@ -703,27 +786,34 @@
             <table>
               <thead>
                 <tr>
-                  <th style="min-width:140px">공고명</th>
-                  <th style="min-width:120px">통합공고명</th>
-                  <th style="min-width:100px">공고기관명</th>
-                  <th style="min-width:80px">담당부서</th>
-                  <th style="min-width:90px">담당연락처</th>
-                  <th style="min-width:70px">지원지역</th>
-                  <th style="min-width:100px">지원사업분류</th>
-                  <th style="min-width:80px">주관기관</th>
-                  <th style="min-width:75px">접수시작</th>
-                  <th style="min-width:75px">접수마감</th>
-                  <th style="min-width:70px">모집진행</th>
-                  <th style="min-width:90px">신청대상</th>
-                  <th style="min-width:80px">창업기간</th>
-                  <th style="min-width:120px">대상연령</th>
-                  <th style="min-width:70px">상세</th>
+                  <th style="min-width:80px">내용확인</th>
+                  <th style="min-width:50px">No</th>
+                  <th style="min-width:200px">공고명</th>
+                  <th style="min-width:180px">통합공고명</th>
+                  <th style="min-width:140px">공고기관명</th>
+                  <th style="min-width:120px">담당부서</th>
+                  <th style="min-width:120px">담당연락처</th>
+                  <th style="min-width:90px">지원지역</th>
+                  <th style="min-width:140px">지원사업분류</th>
+                  <th style="min-width:100px">주관기관</th>
+                  <th style="min-width:90px">접수시작</th>
+                  <th style="min-width:90px">접수마감</th>
+                  <th style="min-width:80px">모집진행</th>
+                  <th style="min-width:120px">신청대상</th>
+                  <th style="min-width:100px">창업기간</th>
+                  <th style="min-width:180px">대상연령</th>
+                  <th style="min-width:80px">상세</th>
                 </tr>
               </thead>
               <tbody id="startupAnnouncementsBody">
-                <tr><td colspan="15" class="loading">로딩 중</td></tr>
+                <tr><td colspan="17" class="loading">로딩 중</td></tr>
               </tbody>
             </table>
+          </div>
+          <div class="pagination" id="startupAnnouncementsPagination" style="display:none">
+            <button type="button" id="startupAnnouncementsPrev" class="pagination-arrow" title="이전"><img src="{{ url_for('static', filename='images/left.png') }}" alt="이전"></button>
+            <span class="pagination-numbers" id="startupAnnouncementsPageNumbers"></span>
+            <button type="button" id="startupAnnouncementsNext" class="pagination-arrow" title="다음"><img src="{{ url_for('static', filename='images/right.png') }}" alt="다음"></button>
           </div>
         </div>
       </div>
@@ -883,6 +973,8 @@
         category: (document.getElementById('categorySelect')?.value || '').trim(),
         source: (document.getElementById('sourceSelect')?.value || '').trim(),
         checkFilter: (document.getElementById('checkFilterSelect')?.value || '').trim(),
+        participationFilter: (document.getElementById('participationFilterSelect')?.value || '').trim(),
+        bookmarkFilter: document.getElementById('bookmarkFilterCheck')?.checked ? 'bookmarked' : '',
       };
     }
 
@@ -965,7 +1057,7 @@
 
     function renderTable(data, page = 1) {
       if (!data || data.length === 0) {
-        const isFiltered = totalDataCount > 0 || (document.getElementById('searchInput')?.value || document.getElementById('categorySelect')?.value || document.getElementById('sourceSelect')?.value);
+        const isFiltered = totalDataCount > 0 || (document.getElementById('searchInput')?.value || document.getElementById('categorySelect')?.value || document.getElementById('sourceSelect')?.value || document.getElementById('checkFilterSelect')?.value || document.getElementById('participationFilterSelect')?.value || document.getElementById('bookmarkFilterCheck')?.checked);
         tableBody.innerHTML = `
           <tr><td colspan="10" class="empty-state">
             <p>${isFiltered ? '검색·필터 조건에 맞는 공고가 없습니다.' : '저장된 공고가 없습니다.'}</p>
@@ -1086,23 +1178,48 @@
       }
       try {
         const fp = getFilterParams();
-        const needsAll = fp.checkFilter === 'checked' || fp.checkFilter === 'unchecked';
-        const params = new URLSearchParams();
-        params.set('page', String(needsAll ? 1 : page));
-        params.set('limit', '10');
-        if (needsAll) params.set('all', '1');
-        if (fp.q) params.set('q', fp.q);
-        if (fp.category) params.set('category', fp.category);
-        if (fp.source) params.set('source', fp.source);
+        const bookmarkOnly = fp.bookmarkFilter === 'bookmarked';
+        const participationOnly = fp.participationFilter === 'participate' || fp.participationFilter === 'pass';
+        const needsAll = fp.checkFilter === 'checked' || fp.checkFilter === 'unchecked' || bookmarkOnly || participationOnly;
 
-        const [contestsRes, bookmarksRes, statusRes] = await Promise.all([
-          fetch('/api/contests?' + params.toString()),
-          fetch('/api/bookmarks'),
-          fetch('/api/user/contest-status')
-        ]);
-        const j = await contestsRes.json();
-        const bj = await bookmarksRes.json();
-        const statusJ = await statusRes.json();
+        let list = [];
+        let j = { success: false }, bj = { success: false, data: [] }, statusJ = { success: false, data: {} };
+
+        if (participationOnly) {
+          const [partRes, bookmarksRes, statusRes] = await Promise.all([
+            fetch('/api/contests/by-participation?status=' + encodeURIComponent(fp.participationFilter)),
+            fetch('/api/bookmarks'),
+            fetch('/api/user/contest-status')
+          ]);
+          j = await partRes.json();
+          bj = await bookmarksRes.json();
+          statusJ = await statusRes.json();
+        } else if (bookmarkOnly) {
+          const [bookmarksContestsRes, bookmarksRes, statusRes] = await Promise.all([
+            fetch('/api/bookmarks/contests'),
+            fetch('/api/bookmarks'),
+            fetch('/api/user/contest-status')
+          ]);
+          j = await bookmarksContestsRes.json();
+          bj = await bookmarksRes.json();
+          statusJ = await statusRes.json();
+        } else {
+          const params = new URLSearchParams();
+          params.set('page', String(needsAll ? 1 : page));
+          params.set('limit', '10');
+          if (needsAll) params.set('all', '1');
+          if (fp.q) params.set('q', fp.q);
+          if (fp.category) params.set('category', fp.category);
+          if (fp.source) params.set('source', fp.source);
+          const [contestsRes, bookmarksRes, statusRes] = await Promise.all([
+            fetch('/api/contests?' + params.toString()),
+            fetch('/api/bookmarks'),
+            fetch('/api/user/contest-status')
+          ]);
+          j = await contestsRes.json();
+          bj = await bookmarksRes.json();
+          statusJ = await statusRes.json();
+        }
 
         if (bj.success && bj.data) {
           bookmarkSet = new Set(bj.data.map(x => (x.source || '') + ':' + (x.contest_id || '')));
@@ -1114,12 +1231,64 @@
         }
 
         if (j.success && j.data) {
-          let list = j.data || [];
-          if (needsAll) {
-            const makeKey = (s, c) => (s || '') + ':' + (c || '');
+          list = j.data || [];
+          if (participationOnly) {
+            const makeKey = (s, c) => (s || '') + ':' + String(c || '');
             const hasCheck = (row) => contentChecks.has(makeKey(row.source, row.id));
             if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
             else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
+            if (fp.q) {
+              const q = fp.q.toLowerCase();
+              list = list.filter(r =>
+                (r.title || '').toLowerCase().includes(q) ||
+                (r.host || '').toLowerCase().includes(q) ||
+                (r.category || '').toLowerCase().includes(q)
+              );
+            }
+            if (fp.category) list = list.filter(r => (r.category || '') === fp.category);
+            if (fp.source) list = list.filter(r => (r.source || '') === fp.source);
+            if (fp.bookmarkFilter === 'bookmarked') {
+              const isBookmarked = (row) => bookmarkSet.has(makeKey(row.source, row.id));
+              list = list.filter(isBookmarked);
+            }
+            allData = list;
+            totalDataCount = list.length;
+            currentPage = page;
+            const start = (page - 1) * PAGE_SIZE;
+            list = list.slice(start, start + PAGE_SIZE);
+          } else if (bookmarkOnly) {
+            const makeKey = (s, c) => (s || '') + ':' + String(c || '');
+            const hasCheck = (row) => contentChecks.has(makeKey(row.source, row.id));
+            if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
+            else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
+            if (fp.q) {
+              const q = fp.q.toLowerCase();
+              list = list.filter(r =>
+                (r.title || '').toLowerCase().includes(q) ||
+                (r.host || '').toLowerCase().includes(q) ||
+                (r.category || '').toLowerCase().includes(q)
+              );
+            }
+            if (fp.category) list = list.filter(r => (r.category || '') === fp.category);
+            if (fp.source) list = list.filter(r => (r.source || '') === fp.source);
+            if (fp.participationFilter === 'participate' || fp.participationFilter === 'pass') {
+              const makeKey = (s, c) => (s || '') + ':' + String(c || '');
+              const hasPartStatus = (row) => (participation[row.source + ':' + row.id] || '') === fp.participationFilter;
+              list = list.filter(hasPartStatus);
+            }
+            allData = list;
+            totalDataCount = list.length;
+            currentPage = page;
+            const start = (page - 1) * PAGE_SIZE;
+            list = list.slice(start, start + PAGE_SIZE);
+          } else if (needsAll) {
+            const makeKey = (s, c) => (s || '') + ':' + (c || '');
+            const hasCheck = (row) => contentChecks.has(makeKey(row.source, row.id));
+            const isBookmarked = (row) => bookmarkSet.has(makeKey(row.source, row.id));
+            const hasPartStatus = (row) => (participation[makeKey(row.source, row.id)] || '') === fp.participationFilter;
+            if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
+            else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
+            if (fp.participationFilter === 'participate' || fp.participationFilter === 'pass') list = list.filter(hasPartStatus);
             allData = list;
             totalDataCount = list.length;
             currentPage = page;
@@ -1585,45 +1754,156 @@
 
     function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
     function tr(s, len) { s = String(s || '-'); return s.length > (len || 40) ? s.slice(0, len) + '...' : (s || '-'); }
+
+    let startupBusinessData = [];
+    let startupAnnouncementsData = [];
+    let startupBusinessPage = 1;
+    let startupAnnouncementsPage = 1;
+    let startupContentChecks = new Set();
+    const STARTUP_PAGE_SIZE = 10;
+    const MAX_VISIBLE_PAGES = 10;
+
+    function renderStartupPagination(pagEl, prevBtn, nextBtn, numEl, data, page, setPage, renderFn) {
+      if (!pagEl || !data || data.length === 0) { if (pagEl) pagEl.style.display = 'none'; return; }
+      const totalPages = Math.ceil(data.length / STARTUP_PAGE_SIZE);
+      if (totalPages <= 1) { pagEl.style.display = 'none'; return; }
+      prevBtn.disabled = page <= 1;
+      nextBtn.disabled = page >= totalPages;
+      const block = Math.floor((page - 1) / MAX_VISIBLE_PAGES);
+      const startPg = block * MAX_VISIBLE_PAGES + 1;
+      const endPg = Math.min(startPg + MAX_VISIBLE_PAGES - 1, totalPages);
+      let html = '';
+      for (let i = startPg; i <= endPg; i++) {
+        html += i === page ? '<button type="button" class="active" disabled>' + i + '</button>' : '<button type="button" data-page="' + i + '">' + i + '</button>';
+      }
+      numEl.innerHTML = html;
+      numEl.querySelectorAll('button[data-page]').forEach(function(b) {
+        b.addEventListener('click', function() { setPage(parseInt(b.dataset.page)); renderFn(); });
+      });
+      prevBtn.onclick = function() { if (page > 1) { setPage(page - 1); renderFn(); } };
+      nextBtn.onclick = function() { if (page < totalPages) { setPage(page + 1); renderFn(); } };
+      pagEl.style.display = 'flex';
+    }
+
+    function renderStartupBusiness() {
+      const tbody = document.getElementById('startupBusinessBody');
+      if (!tbody) return;
+      const data = startupBusinessData;
+      const page = startupBusinessPage;
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="10" class="empty-state">등록된 통합지원사업이 없습니다.</td></tr>';
+        document.getElementById('startupBusinessPagination').style.display = 'none';
+        return;
+      }
+      const totalPages = Math.ceil(data.length / STARTUP_PAGE_SIZE);
+      const safePage = Math.min(Math.max(1, page), totalPages);
+      const start = (safePage - 1) * STARTUP_PAGE_SIZE;
+      const pageData = data.slice(start, start + STARTUP_PAGE_SIZE);
+      const key = function(r) { return 'business:' + (r.id || ''); };
+      tbody.innerHTML = pageData.map(function(row, idx) {
+        const no = start + idx + 1;
+        const t = row.title || '-'; const tg = row.target || '-'; const ct = row.content || '-'; const bd = row.bdgt || '-'; const ch = row.chrct || '-'; const ir = row.intrd || '-';
+        const checked = startupContentChecks.has(key(row));
+        const rowClass = checked ? ' class="row-startup-checked"' : '';
+        const checkBtn = checked ? '<button type="button" class="btn btn-action" disabled title="이미 확인함">확인완료</button>' : '<button type="button" class="btn btn-action btn-startup-content-check" data-item-type="business" data-item-id="' + esc(row.id || '') + '" title="내용확인">내용확인</button>';
+        const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
+        return '<tr' + rowClass + '><td>' + no + '</td><td>' + checkBtn + '</td><td>' + esc(row.biz_yr || '-') + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 50)) + '</td><td style="text-align:left" title="' + esc(tg) + '">' + esc(tr(tg, 40)) + '</td><td style="text-align:left" title="' + esc(ct) + '">' + esc(tr(ct, 40)) + '</td><td style="text-align:left" title="' + esc(bd) + '">' + esc(tr(bd, 30)) + '</td><td style="text-align:left" title="' + esc(ch) + '">' + esc(tr(ch, 35)) + '</td><td style="text-align:left" title="' + esc(ir) + '">' + esc(tr(ir, 35)) + '</td><td>' + link + '</td></tr>';
+      }).join('');
+      startupBusinessPage = safePage;
+      renderStartupPagination(
+        document.getElementById('startupBusinessPagination'),
+        document.getElementById('startupBusinessPrev'),
+        document.getElementById('startupBusinessNext'),
+        document.getElementById('startupBusinessPageNumbers'),
+        data, startupBusinessPage,
+        function(p) { startupBusinessPage = p; },
+        renderStartupBusiness
+      );
+    }
+
+    function renderStartupAnnouncements() {
+      const tbody = document.getElementById('startupAnnouncementsBody');
+      if (!tbody) return;
+      const data = startupAnnouncementsData;
+      const page = startupAnnouncementsPage;
+      const COLS = 17;
+      if (!data || data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="' + COLS + '" class="empty-state">등록된 지원사업 공고가 없습니다.</td></tr>';
+        document.getElementById('startupAnnouncementsPagination').style.display = 'none';
+        return;
+      }
+      const totalPages = Math.ceil(data.length / STARTUP_PAGE_SIZE);
+      const safePage = Math.min(Math.max(1, page), totalPages);
+      const start = (safePage - 1) * STARTUP_PAGE_SIZE;
+      const pageData = data.slice(start, start + STARTUP_PAGE_SIZE);
+      const fmt = function(d) { return d ? d.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '-'; };
+      const key = function(r) { return 'announcement:' + (r.id || ''); };
+      tbody.innerHTML = pageData.map(function(row, idx) {
+        const no = start + idx + 1;
+        const t = row.title || '-'; const intg = row.intg_nm || '-'; const org = row.org || '-'; const dprt = row.dprt || '-'; const contact = row.contact || '-'; const reg = row.region || '-'; const cl = row.clsfc || '-'; const sprv = row.sprv_inst || '-'; const aply = row.aply_trgt || '-'; const enyy = row.biz_enyy || '-'; const age = row.biz_trgt_age || '-';
+        const checked = startupContentChecks.has(key(row));
+        const rowClass = checked ? ' class="row-startup-checked"' : '';
+        const checkBtn = checked ? '<button type="button" class="btn btn-action" disabled title="이미 확인함">확인완료</button>' : '<button type="button" class="btn btn-action btn-startup-content-check" data-item-type="announcement" data-item-id="' + esc(row.id || '') + '" title="내용확인">내용확인</button>';
+        const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
+        return '<tr' + rowClass + '><td>' + checkBtn + '</td><td>' + no + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 45)) + '</td><td style="text-align:left" title="' + esc(intg) + '">' + esc(tr(intg, 35)) + '</td><td title="' + esc(org) + '">' + esc(tr(org, 25)) + '</td><td title="' + esc(dprt) + '">' + esc(tr(dprt, 20)) + '</td><td>' + esc(tr(contact, 25)) + '</td><td>' + esc(reg) + '</td><td title="' + esc(cl) + '">' + esc(tr(cl, 25)) + '</td><td>' + esc(sprv) + '</td><td>' + fmt(row.start_date) + '</td><td>' + fmt(row.end_date) + '</td><td>' + esc(row.rcrt_prgs || '-') + '</td><td title="' + esc(aply) + '">' + esc(tr(aply, 20)) + '</td><td>' + esc(enyy) + '</td><td title="' + esc(age) + '">' + esc(tr(age, 35)) + '</td><td>' + link + '</td></tr>';
+      }).join('');
+      startupAnnouncementsPage = safePage;
+      renderStartupPagination(
+        document.getElementById('startupAnnouncementsPagination'),
+        document.getElementById('startupAnnouncementsPrev'),
+        document.getElementById('startupAnnouncementsNext'),
+        document.getElementById('startupAnnouncementsPageNumbers'),
+        data, startupAnnouncementsPage,
+        function(p) { startupAnnouncementsPage = p; },
+        renderStartupAnnouncements
+      );
+    }
+
     function loadStartupBusiness() {
       const tbody = document.getElementById('startupBusinessBody');
       if (!tbody) return;
-      tbody.innerHTML = '<tr><td colspan="9" class="loading">로딩 중</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="loading">로딩 중</td></tr>';
+      document.getElementById('startupBusinessPagination').style.display = 'none';
       fetch('/api/startup/business')
         .then(r => r.json())
         .then(res => {
-          if (!res.success) { tbody.innerHTML = '<tr><td colspan="9">목록을 불러올 수 없습니다.</td></tr>'; return; }
-          const data = res.data || [];
-          if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="9">등록된 통합지원사업이 없습니다.</td></tr>'; return; }
-          tbody.innerHTML = data.map(function(row) {
-            const t = row.title || '-'; const tg = row.target || '-'; const ct = row.content || '-'; const bd = row.bdgt || '-'; const ch = row.chrct || '-'; const ir = row.intrd || '-'; const cat = row.category || '-';
-            const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
-            return '<tr><td>' + esc(row.biz_yr || '-') + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 50)) + '</td><td style="text-align:left" title="' + esc(cat) + '">' + esc(tr(cat, 25)) + '</td><td style="text-align:left" title="' + esc(tg) + '">' + esc(tr(tg, 40)) + '</td><td style="text-align:left" title="' + esc(ct) + '">' + esc(tr(ct, 40)) + '</td><td style="text-align:left" title="' + esc(bd) + '">' + esc(tr(bd, 30)) + '</td><td style="text-align:left" title="' + esc(ch) + '">' + esc(tr(ch, 35)) + '</td><td style="text-align:left" title="' + esc(ir) + '">' + esc(tr(ir, 35)) + '</td><td>' + link + '</td></tr>';
-          }).join('');
+          if (!res.success) { tbody.innerHTML = '<tr><td colspan="10" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; return; }
+          startupBusinessData = res.data || [];
+          startupBusinessPage = 1;
+          renderStartupBusiness();
         })
-        .catch(function() { tbody.innerHTML = '<tr><td colspan="9">목록을 불러올 수 없습니다.</td></tr>'; });
+        .catch(function() { tbody.innerHTML = '<tr><td colspan="10" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; });
     }
     function loadStartupAnnouncements() {
       const tbody = document.getElementById('startupAnnouncementsBody');
       if (!tbody) return;
-      tbody.innerHTML = '<tr><td colspan="7" class="loading">로딩 중</td></tr>';
+      const COLS = 17;
+      tbody.innerHTML = '<tr><td colspan="' + COLS + '" class="loading">로딩 중</td></tr>';
+      document.getElementById('startupAnnouncementsPagination').style.display = 'none';
       fetch('/api/startup/announcements')
         .then(r => r.json())
         .then(res => {
-          if (!res.success) { tbody.innerHTML = '<tr><td colspan="7">목록을 불러올 수 없습니다.</td></tr>'; return; }
-          const data = res.data || [];
-          if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="7">등록된 지원사업 공고가 없습니다.</td></tr>'; return; }
-          const fmt = function(d) { return d ? d.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '-'; };
-          tbody.innerHTML = data.map(function(row) {
-            const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
-            return '<tr><td class="title-cell" style="text-align:left" title="' + esc(row.title) + '">' + esc((row.title || '').slice(0, 40)) + ((row.title || '').length > 40 ? '...' : '') + '</td><td title="' + esc(row.org) + '">' + esc((row.org || '-').toString().slice(0, 20)) + ((row.org || '').length > 20 ? '...' : '') + '</td><td>' + esc(row.region || '-') + '</td><td>' + fmt(row.start_date) + '</td><td>' + fmt(row.end_date) + '</td><td>' + esc((row.clsfc || '-').toString().slice(0, 15)) + ((row.clsfc || '').length > 15 ? '...' : '') + '</td><td>' + link + '</td></tr>';
-          }).join('');
+          if (!res.success) { tbody.innerHTML = '<tr><td colspan="' + COLS + '" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; return; }
+          startupAnnouncementsData = res.data || [];
+          startupAnnouncementsPage = 1;
+          renderStartupAnnouncements();
         })
-        .catch(function() { tbody.innerHTML = '<tr><td colspan="7">목록을 불러올 수 없습니다.</td></tr>'; });
+        .catch(function() { tbody.innerHTML = '<tr><td colspan="17" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; });
     }
     function loadStartupData() {
-      loadStartupBusiness();
-      loadStartupAnnouncements();
+      fetch('/api/user/startup-status')
+        .then(r => r.json())
+        .then(function(j) {
+          if (j.success && j.data && j.data.content_checks) {
+            startupContentChecks = new Set(j.data.content_checks);
+          }
+          loadStartupBusiness();
+          loadStartupAnnouncements();
+        })
+        .catch(function() {
+          loadStartupBusiness();
+          loadStartupAnnouncements();
+        });
     }
 
     document.querySelectorAll('.nav-link[data-page]').forEach(a => {
@@ -1648,6 +1928,39 @@
       });
     });
 
+    document.addEventListener('click', async function(e) {
+      const btn = e.target.closest('.btn-startup-content-check');
+      if (btn && !btn.disabled) {
+        e.preventDefault();
+        e.stopPropagation();
+        const itemType = btn.dataset.itemType || '';
+        const itemId = btn.dataset.itemId || '';
+        if (!itemType || !itemId) return;
+        try {
+          const r = await fetch('/api/startup/content-check', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item_type: itemType, item_id: itemId })
+          });
+          const j = await r.json();
+          if (j.success) {
+            startupContentChecks.add(itemType + ':' + itemId);
+            btn.textContent = '확인완료';
+            btn.disabled = true;
+            btn.title = '이미 확인함';
+            btn.classList.remove('btn-startup-content-check');
+            const row = btn.closest('tr');
+            if (row) row.classList.add('row-startup-checked');
+            showToast('내용확인 완료');
+          } else {
+            showToast(j.error || '실패', 'error');
+          }
+        } catch (err) {
+          showToast('오류가 발생했습니다', 'error');
+        }
+      }
+    });
+
     btnPrev.addEventListener('click', () => goToPage(currentPage - 1));
     btnNext.addEventListener('click', () => goToPage(currentPage + 1));
 
@@ -1658,6 +1971,8 @@
     });
     document.getElementById('searchInput')?.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyFiltersAndSort(); });
     document.getElementById('checkFilterSelect')?.addEventListener('change', () => applyFiltersAndSort());
+    document.getElementById('participationFilterSelect')?.addEventListener('change', () => applyFiltersAndSort());
+    document.getElementById('bookmarkFilterCheck')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('categorySelect')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('sourceSelect')?.addEventListener('change', () => applyFiltersAndSort());
 
@@ -1674,6 +1989,17 @@
           loadContests(currentPage, false);
         }, 500);
       }).subscribe();
+      let startupDebounce = null;
+      const onStartupChange = () => {
+        if (startupDebounce) clearTimeout(startupDebounce);
+        startupDebounce = setTimeout(() => {
+          startupDebounce = null;
+          loadStartupBusiness();
+          loadStartupAnnouncements();
+        }, 500);
+      };
+      supabaseClient.channel('startup_business').on('postgres_changes', { event: '*', schema: 'public', table: 'startup_business' }, onStartupChange).subscribe();
+      supabaseClient.channel('startup_announcement').on('postgres_changes', { event: '*', schema: 'public', table: 'startup_announcement' }, onStartupChange).subscribe();
     }
   </script>
 </body>

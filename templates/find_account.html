@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+  <title>아이디/비밀번호 찾기 | Ntpercent</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <style>
+    @font-face {
+      font-family: 'Pretendard Variable';
+      src: url("{{ url_for('static', filename='font/PretendardVariable.ttf') }}") format('truetype');
+      font-weight: 100 900;
+      font-style: normal;
+    }
+    :root {
+      --main-purple: #6d28d9;
+      --main-purple-hover: #5b21b6;
+      --soft-purple: #ede9fe;
+      --text-dark: #212121;
+      --gray-muted: #9ca3af;
+      --bg-white: #ffffff;
+      --border-gray: #9ca3af;
+      --radius: 8px;
+      --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      font-family: var(--font);
+      background: url("{{ url_for('static', filename='images/background.jpg') }}") center / cover no-repeat fixed;
+      color: var(--text-dark);
+      font-weight: 500;
+      min-height: 100vh;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+    .find-wrap {
+      width: 100%;
+      max-width: 400px;
+    }
+    .find-card {
+      width: 100%;
+      background: var(--bg-white);
+      border-radius: 16px;
+      padding: 40px 32px;
+      box-shadow: 0 4px 24px rgba(109, 40, 217, 0.12);
+    }
+    .find-card h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      color: var(--text-dark);
+      text-align: center;
+      margin-bottom: 12px;
+    }
+    .find-card p.desc {
+      font-size: 0.9rem;
+      color: var(--gray-muted);
+      text-align: center;
+      margin-bottom: 24px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 0.9rem;
+      font-weight: 500;
+      color: var(--text-dark);
+      margin-bottom: 8px;
+    }
+    .form-group input {
+      width: 100%;
+      padding: 14px 16px;
+      font-family: var(--font);
+      font-size: 0.95rem;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus {
+      border-color: var(--main-purple);
+      box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.15);
+    }
+    .find-form {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 14px 24px;
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      background: var(--main-purple);
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-submit:hover {
+      background: var(--main-purple-hover);
+    }
+    .find-footer {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 0.9rem;
+      color: var(--gray-muted);
+    }
+    .find-footer a {
+      color: var(--main-purple);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .find-footer a:hover {
+      text-decoration: underline;
+    }
+    .find-flash {
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      font-size: 0.9rem;
+      border-radius: var(--radius);
+      text-align: center;
+    }
+    .find-flash.error {
+      color: #b91c1c;
+      background: #fef2f2;
+    }
+    .find-flash.success {
+      color: #166534;
+      background: #f0fdf4;
+    }
+    .find-tabs {
+      display: flex;
+      gap: 0;
+      margin-bottom: 24px;
+      border-bottom: 2px solid #e5e7eb;
+    }
+    .find-tab {
+      flex: 1;
+      padding: 12px 16px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--gray-muted);
+      background: transparent;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .find-tab:hover {
+      color: var(--main-purple);
+    }
+    .find-tab.active {
+      color: var(--main-purple);
+      border-bottom-color: var(--main-purple);
+    }
+    .find-tab-panel {
+      display: none;
+    }
+    .find-tab-panel.active {
+      display: block;
+    }
+    .find-id-desc {
+      font-size: 0.9rem;
+      color: var(--gray-muted);
+      line-height: 1.6;
+      text-align: center;
+      padding: 20px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="find-wrap">
+    <div class="find-card">
+      <h2>아이디/비밀번호 찾기</h2>
+      <div class="find-tabs">
+        <button type="button" class="find-tab {{ 'active' if active_tab == 'id' else '' }}" data-tab="id">아이디 찾기</button>
+        <button type="button" class="find-tab {{ 'active' if active_tab == 'password' else '' }}" data-tab="password">비밀번호 찾기</button>
+      </div>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, msg in messages %}
+            <div class="find-flash {{ category or 'success' }}">{{ msg }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <div id="panel-id" class="find-tab-panel {{ 'active' if active_tab == 'id' else '' }}">
+        <p class="desc">가입 시 사용한 닉네임을 입력하면 아이디(이메일)를 확인할 수 있습니다.</p>
+        <form class="find-form" action="{{ url_for('find_account_page') }}" method="POST">
+          <input type="hidden" name="tab" value="id">
+          <div class="form-group">
+            <label for="nickname">닉네임</label>
+            <input type="text" id="nickname" name="nickname" placeholder="닉네임 입력" required autocomplete="username">
+          </div>
+          <button type="submit" class="btn-submit">아이디 찾기</button>
+        </form>
+        <p class="find-id-desc">닉네임을 모르시면 관리자에게 문의해 주세요.</p>
+      </div>
+      <div id="panel-password" class="find-tab-panel {{ 'active' if active_tab == 'password' else '' }}">
+        <p class="desc">가입 시 사용한 이메일을 입력하면 비밀번호 재설정 링크를 보내드립니다.</p>
+        <form class="find-form" action="{{ url_for('find_account_page') }}" method="POST">
+          <input type="hidden" name="tab" value="password">
+          <div class="form-group">
+            <label for="email">이메일</label>
+            <input type="email" id="email" name="email" placeholder="example@email.com" required autocomplete="email">
+          </div>
+          <button type="submit" class="btn-submit">비밀번호 재설정 메일 받기</button>
+        </form>
+      </div>
+      <p class="find-footer">
+        <a href="{{ url_for('login_page') }}">로그인으로 돌아가기</a>
+      </p>
+    </div>
+  </div>
+  <script>
+    (function() {
+      var tabs = document.querySelectorAll('.find-tab');
+      var panels = document.querySelectorAll('.find-tab-panel');
+      tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          var target = tab.dataset.tab;
+          tabs.forEach(function(t) { t.classList.remove('active'); });
+          panels.forEach(function(p) {
+            p.classList.toggle('active', p.id === 'panel-' + target);
+          });
+          tab.classList.add('active');
+        });
+      });
+    })();
+  </script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 /* 공용 네비게이션 스타일 */
 .navbar {
   border-bottom: 1px solid var(--border-gray);
-  background: var(--bg-white);
+  background-color: #ffffff;
   position: sticky;
   top: 0;
   z-index: 100;
@@ -15,6 +15,11 @@
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
 }
+.navbar-logo-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
 .navbar-logo {
   display: flex;
   align-items: center;
@@ -24,6 +29,30 @@
   height: 36px;
   width: auto;
   object-fit: contain;
+}
+.navbar-logo img.logo-large {
+  height: 72px;
+}
+.logo-switcher {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--border-gray, #d1d5db);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--gray-muted, #9ca3af);
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+.logo-switcher:hover {
+  color: var(--main-purple, #6d28d9);
+  border-color: var(--main-purple, #6d28d9);
+  background: var(--soft-purple, #ede9fe);
 }
 .navbar-nav {
   display: flex;

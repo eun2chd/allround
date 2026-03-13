@@ -126,6 +126,8 @@
     color: var(--gray-muted);
   }
   .sidebar-users .user-status.online { color: #22c55e; font-weight: 600; }
+  .sidebar-users .user-status.status-gray { color: var(--gray-muted); }
+  .sidebar-users .user-status.status-gray .status-dot { background: var(--gray-muted); }
   .sidebar-users .status-dot {
     width: 6px;
     height: 6px;
@@ -186,6 +188,9 @@
   const CACHE_TTL = 20 * 60 * 1000;  // 20분
 
   function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+  const ONLINE_THRESHOLD_MIN = 30;
+  const ONLINE_THRESHOLD_MS = ONLINE_THRESHOLD_MIN * 60 * 1000;
+
   function formatTimeAgo(isoStr) {
     if (!isoStr) return '';
     const date = new Date(isoStr.replace('Z', '+00:00'));
@@ -197,6 +202,11 @@
     if (diffSec < 2592000) return Math.floor(diffSec / 86400) + '일 전';
     return Math.floor(diffSec / 2592000) + '달 전';
   }
+  function isWithin30Min(lastSeen) {
+    if (!lastSeen) return false;
+    const date = new Date(lastSeen.replace ? lastSeen.replace('Z', '+00:00') : lastSeen);
+    return (Date.now() - date.getTime()) < ONLINE_THRESHOLD_MS;
+  }
   function renderUsers(data, currentId) {
     if (!data || data.length === 0) {
       listEl.innerHTML = '<div class="user-item" style="color:var(--gray-muted);font-size:0.8rem;justify-content:center;">표시할 사용자가 없습니다.</div>';
@@ -206,10 +216,11 @@
       const name = escapeHtml(u.nickname || '회원');
       const imgStyle = u.profile_url ? "background-image:url('" + u.profile_url.replace(/'/g, "\\'") + "')" : '';
       const initial = (u.nickname || '?').charAt(0);
-      const statusClass = u.online ? 'online' : 'offline';
+      const within30 = isWithin30Min(u.last_seen);
+      const statusClass = within30 ? 'online' : 'offline';
       const ago = formatTimeAgo(u.last_seen);
-      const statusText = u.online ? (ago ? ago + ' 접속' : '온라인') : (ago ? ago + ' 오프라인' : '오프라인');
-      const statusLineClass = u.online ? 'user-status online' : 'user-status';
+      const statusText = within30 ? (ago ? ago + ' 접속' : '온라인') : (ago ? ago + ' 오프라인' : '오프라인');
+      const statusLineClass = within30 ? 'user-status online' : 'user-status status-gray';
       const me = u.id === currentId ? ' (나)' : '';
       const statusMsg = (u.status_message || u.statusMessage || '').trim();
       const statusMsgHtml = statusMsg ? '<div class="user-status-msg">' + escapeHtml(statusMsg) + '</div>' : '';
