@@ -5,6 +5,7 @@ allforyoung 웹 테이블 뷰어
 """
 
 import logging
+import os
 import traceback
 import time
 import uuid as uuid_module
@@ -35,7 +36,7 @@ logging.basicConfig(
 logger = logging.getLogger("allyoung")
 
 app = Flask(__name__)
-app.secret_key = "allyoung-dev-secret-change-in-production"
+app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "allyoung-dev-secret-change-in-production"
 
 
 @app.context_processor
@@ -3111,4 +3112,6 @@ def _api_contest_content(source: str, contest_id: str):
 
 
 if __name__ == "__main__":
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get("PORT", 5000))
+    debug = os.environ.get("FLASK_ENV") != "production"
+    app.run(host="0.0.0.0", debug=debug, port=port)
