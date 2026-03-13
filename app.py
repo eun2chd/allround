@@ -4,8 +4,8 @@ allforyoung 웹 테이블 뷰어
 - 크롤링 데이터를 Supabase contests 테이블에서 조회 (Realtime 구독)
 """
 
-import logging
 import os
+import logging
 import traceback
 import time
 import uuid as uuid_module
