@@ -761,7 +761,137 @@ VALUES (2025, '우리 팀', '공모전 수상 목표 달성 팀', 2000);
 
 ---
 
+## 창업 (K-Startup)
 
+창업진흥원 K-Startup API 2종 조회 후 저장.
+- **getBusinessInformation**: 통합공고 지원사업 정보 → `startup_business`
+- **getAnnouncementInformation**: 지원사업 공고 정보 → `startup_announcement`
+
+---
+
+### 18. startup_business (통합공고 지원사업 정보)
+
+getBusinessInformation API. detl_pg_url 내 `id` 파라미터로 중복 판단.
+
+```sql
+CREATE TABLE IF NOT EXISTS startup_business (
+    id TEXT PRIMARY KEY,                        -- detl_pg_url의 id 파라미터 (예: 171421)
+    supt_biz_titl_nm TEXT,                     -- 지원사업명
+    biz_category_cd TEXT,                      -- 카테고리코드 (예: cmrczn_Tab1)
+    biz_yr TEXT,                               -- 사업연도 (예: 2026)
+    biz_supt_trgt_info TEXT,                   -- 지원대상
+    biz_supt_ctnt TEXT,                        -- 지원내용
+    biz_supt_bdgt_info TEXT,                   -- 예산/지원규모
+    supt_biz_chrct TEXT,                       -- 지원사업특징
+    supt_biz_intrd_info TEXT,                  -- 지원사업소개
+    detl_pg_url TEXT,                          -- 상세페이지 URL
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_startup_business_yr ON startup_business(biz_yr);
+CREATE INDEX IF NOT EXISTS idx_startup_business_category ON startup_business(biz_category_cd);
+```
+
+- **id**: URL `?id=171421` 에서 추출한 값. 동일 id면 upsert(업데이트) 처리
+- **source**: 고정 `kstartup` (단일 API 출처)
+
+---
+
+### 19. startup_announcement (지원사업 공고 정보)
+
+getAnnouncementInformation API. pbanc_sn(공고일련번호)로 중복 판단.
+
+```sql
+CREATE TABLE IF NOT EXISTS startup_announcement (
+    pbanc_sn TEXT PRIMARY KEY,                 -- 공고일련번호 (예: 176686)
+    biz_pbanc_nm TEXT,                         -- 공고명
+    intg_pbanc_biz_nm TEXT,                    -- 통합공고명
+    pbanc_ntrp_nm TEXT,                        -- 공고기관명
+    biz_prch_dprt_nm TEXT,                     -- 담당부서명
+    prch_cnpl_no TEXT,                         -- 담당연락처
+    supt_regin TEXT,                           -- 지원지역 (예: 서울, 전남)
+    supt_biz_clsfc TEXT,                       -- 지원사업분류 (예: 시설ㆍ공간ㆍ보육, 사업화)
+    sprv_inst TEXT,                            -- 주관기관 (예: 공공기관, 민간)
+    pbanc_rcpt_bgng_dt TEXT,                   -- 접수시작일 (YYYYMMDD)
+    pbanc_rcpt_end_dt TEXT,                    -- 접수마감일 (YYYYMMDD)
+    rcrt_prgs_yn TEXT,                         -- 모집진행여부 (Y/N)
+    intg_pbanc_yn TEXT,                        -- 통합공고여부 (Y/N)
+    pbanc_ctnt TEXT,                           -- 공고내용
+    aply_trgt TEXT,                            -- 신청대상 (예: 대학생, 일반기업)
+    aply_trgt_ctnt TEXT,                       -- 신청대상내용
+    aply_excl_trgt_ctnt TEXT,                  -- 신청제외대상
+    biz_enyy TEXT,                             -- 창업기간 (예: 1년미만, 3년미만)
+    biz_trgt_age TEXT,                         -- 대상연령 (예: 만 20세 이상 ~ 만 39세 이하)
+    detl_pg_url TEXT,                          -- 상세페이지 URL
+    biz_aply_url TEXT,                         -- 신청 URL
+    biz_gdnc_url TEXT,                         -- 가이드 URL
+    aply_mthd_onli_rcpt_istc TEXT,             -- 온라인접수 안내
+    aply_mthd_eml_rcpt_istc TEXT,              -- 이메일접수 안내
+    aply_mthd_fax_rcpt_istc TEXT,              -- 팩스접수 안내
+    aply_mthd_vst_rcpt_istc TEXT,              -- 방문접수 안내
+    aply_mthd_pssr_rcpt_istc TEXT,             -- 우편접수 안내
+    aply_mthd_etc_istc TEXT,                   -- 기타접수 안내
+    prfn_matr TEXT,                            -- 참고사항
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_startup_announcement_rcpt_end ON startup_announcement(pbanc_rcpt_end_dt);
+CREATE INDEX IF NOT EXISTS idx_startup_announcement_regin ON startup_announcement(supt_regin);
+CREATE INDEX IF NOT EXISTS idx_startup_announcement_clsfc ON startup_announcement(supt_biz_clsfc);
+```
+
+- **pbanc_sn**: 공고 일련번호. 동일하면 upsert(업데이트) 처리
+
+**데이터 수집 규칙**:
+- startup_business: detl_pg_url에서 `id` 파라미터 추출 → id가 PK. 동일 id면 update
+- startup_announcement: pbanc_sn이 PK. 동일 pbanc_sn이면 update
+
+---
+
+### 20. startup_content_checks (창업 내용확인)
+
+창업 지원사업/공고 내용확인 버튼 클릭 시 기록. 참가/패스는 내용확인 후에만 활성화.
+경험치/티어 미반영.
+
+```sql
+CREATE TABLE IF NOT EXISTS startup_content_checks (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    item_type TEXT NOT NULL CHECK (item_type IN ('business', 'announcement')),
+    item_id TEXT NOT NULL,
+    checked_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, item_type, item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_startup_content_checks_user ON startup_content_checks(user_id);
+CREATE INDEX IF NOT EXISTS idx_startup_content_checks_item ON startup_content_checks(item_type, item_id);
+```
+
+- `item_type`: 'business' = startup_business, 'announcement' = startup_announcement
+- `item_id`: startup_business.id 또는 startup_announcement.pbanc_sn
+
+---
+
+### 21. startup_participation (창업 참가/패스)
+
+행 없음 = 미결정. `participate` = 참가, `pass` = 패스. 경험치/티어 미반영.
+
+```sql
+CREATE TABLE IF NOT EXISTS startup_participation (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    item_type TEXT NOT NULL CHECK (item_type IN ('business', 'announcement')),
+    item_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('participate', 'pass')),
+    updated_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, item_type, item_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_startup_participation_user ON startup_participation(user_id);
+CREATE INDEX IF NOT EXISTS idx_startup_participation_item ON startup_participation(item_type, item_id);
+```
+
+---
 
 ## ER 관계
 
@@ -784,6 +914,12 @@ contests (source, id)
 
 notifications (id)
     └── notification_user_state (N:M) ── user_id ──> auth.users
+
+startup_business (id)
+startup_announcement (pbanc_sn)
+    │
+    ├── startup_content_checks (N:M) ── user_id ──> auth.users
+    └── startup_participation (N:M) ── user_id ──> auth.users
 ```
 
 ---

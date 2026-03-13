@@ -1651,6 +1651,81 @@ def api_notifications_delete_all():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/startup/business")
+def api_startup_business():
+    """통합공고 지원사업 목록 (startup_business)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("startup_business").select(
+            "id, supt_biz_titl_nm, biz_category_cd, biz_yr, biz_supt_trgt_info, biz_supt_ctnt, "
+            "biz_supt_bdgt_info, supt_biz_chrct, supt_biz_intrd_info, detl_pg_url"
+        ).order("biz_yr", desc=True).order("id", desc=True).execute()
+        rows = []
+        for x in (r.data or []):
+            url = (x.get("detl_pg_url") or "").strip()
+            if url and not url.startswith("http"):
+                url = f"https://{url}"
+            rows.append({
+                "id": x.get("id"),
+                "title": x.get("supt_biz_titl_nm"),
+                "category": x.get("biz_category_cd"),
+                "biz_yr": x.get("biz_yr"),
+                "target": x.get("biz_supt_trgt_info"),
+                "content": x.get("biz_supt_ctnt"),
+                "bdgt": x.get("biz_supt_bdgt_info"),
+                "chrct": x.get("supt_biz_chrct"),
+                "intrd": x.get("supt_biz_intrd_info"),
+                "url": url or None,
+            })
+        return jsonify({"success": True, "data": rows})
+    except Exception as e:
+        logger.error("api/startup/business 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/startup/announcements")
+def api_startup_announcements():
+    """지원사업 공고 목록 (startup_announcement)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("startup_announcement").select(
+            "pbanc_sn, biz_pbanc_nm, intg_pbanc_biz_nm, pbanc_ntrp_nm, biz_prch_dprt_nm, prch_cnpl_no, "
+            "supt_regin, supt_biz_clsfc, sprv_inst, pbanc_rcpt_bgng_dt, pbanc_rcpt_end_dt, "
+            "rcrt_prgs_yn, aply_trgt, biz_enyy, biz_trgt_age, detl_pg_url"
+        ).order("pbanc_rcpt_end_dt", desc=True).execute()
+        rows = []
+        for x in (r.data or []):
+            url = (x.get("detl_pg_url") or "").strip()
+            if url and not url.startswith("http"):
+                url = f"https://{url}"
+            rows.append({
+                "id": x.get("pbanc_sn"),
+                "title": x.get("biz_pbanc_nm"),
+                "intg_nm": x.get("intg_pbanc_biz_nm"),
+                "org": x.get("pbanc_ntrp_nm"),
+                "dprt": x.get("biz_prch_dprt_nm"),
+                "contact": x.get("prch_cnpl_no"),
+                "region": x.get("supt_regin"),
+                "clsfc": x.get("supt_biz_clsfc"),
+                "sprv_inst": x.get("sprv_inst"),
+                "start_date": x.get("pbanc_rcpt_bgng_dt"),
+                "end_date": x.get("pbanc_rcpt_end_dt"),
+                "rcrt_prgs": x.get("rcrt_prgs_yn"),
+                "aply_trgt": x.get("aply_trgt"),
+                "biz_enyy": x.get("biz_enyy"),
+                "biz_trgt_age": x.get("biz_trgt_age"),
+                "url": url or None,
+            })
+        return jsonify({"success": True, "data": rows})
+    except Exception as e:
+        logger.error("api/startup/announcements 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/notices")
 def api_notices():
     """공지사항 목록 조회 (로그인 필수). 고정공지 먼저, 최신순"""

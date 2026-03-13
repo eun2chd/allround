@@ -561,6 +561,23 @@
       gap: 6px;
     }
     .filter-bar .filter-group select { min-width: 100px; }
+    .startup-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
+    .startup-tab {
+      padding: 10px 20px;
+      border: 1px solid var(--border-gray);
+      background: #fff;
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--text-dark);
+    }
+    .startup-tab:hover { background: var(--soft-purple); border-color: var(--main-purple); color: var(--main-purple); }
+    .startup-tab.active { background: var(--main-purple); border-color: var(--main-purple); color: #fff; }
+    .page-header .startup-exp-notice {
+      width: 100%; margin: 4px 0 0 0; font-size: 0.8rem; color: var(--gray-muted); font-weight: 500;
+    }
     @media (max-width: 1200px) {
       .sidebar-team { display: none; }
       .container { margin-left: 0; }
@@ -641,8 +658,75 @@
     </div>
     </div>
 
-    <div id="pageWavity" class="page-placeholder" style="display:none">
-      여기는 창업관련 크롤링 데이터화면입니다
+    <div id="pageWavity" style="display:none">
+      <header class="page-header">
+        <h1><span>창업</span> 지원사업</h1>
+        <p class="startup-exp-notice">* 해당 창업은 경험치 지급에 포함되지 않으니 참고하시기 바랍니다. *</p>
+        <div class="page-meta">
+          <div class="page-meta-info">
+            <span class="countdown" id="startupCountdown">(데이터는 10분마다 업데이트·다음 갱신까지 10:00)</span>
+            <span class="datetime" id="startupDateTime">-</span>
+          </div>
+        </div>
+      </header>
+      <div class="startup-tabs">
+        <button type="button" class="startup-tab active" data-tab="business">통합지원사업</button>
+        <button type="button" class="startup-tab" data-tab="announcements">지원사업 공고</button>
+      </div>
+      <div id="startupTabBusiness" class="startup-tab-panel">
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="min-width:70px">사업연도</th>
+                  <th style="min-width:150px">지원사업명</th>
+                  <th style="min-width:90px">카테고리코드</th>
+                  <th style="min-width:140px">지원대상</th>
+                  <th style="min-width:140px">지원내용</th>
+                  <th style="min-width:100px">예산/지원규모</th>
+                  <th style="min-width:120px">지원사업특징</th>
+                  <th style="min-width:120px">지원사업소개</th>
+                  <th style="min-width:70px">상세</th>
+                </tr>
+              </thead>
+              <tbody id="startupBusinessBody">
+                <tr><td colspan="9" class="loading">로딩 중</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div id="startupTabAnnouncements" class="startup-tab-panel" style="display:none">
+        <div class="card">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="min-width:140px">공고명</th>
+                  <th style="min-width:120px">통합공고명</th>
+                  <th style="min-width:100px">공고기관명</th>
+                  <th style="min-width:80px">담당부서</th>
+                  <th style="min-width:90px">담당연락처</th>
+                  <th style="min-width:70px">지원지역</th>
+                  <th style="min-width:100px">지원사업분류</th>
+                  <th style="min-width:80px">주관기관</th>
+                  <th style="min-width:75px">접수시작</th>
+                  <th style="min-width:75px">접수마감</th>
+                  <th style="min-width:70px">모집진행</th>
+                  <th style="min-width:90px">신청대상</th>
+                  <th style="min-width:80px">창업기간</th>
+                  <th style="min-width:120px">대상연령</th>
+                  <th style="min-width:70px">상세</th>
+                </tr>
+              </thead>
+              <tbody id="startupAnnouncementsBody">
+                <tr><td colspan="15" class="loading">로딩 중</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -726,6 +810,63 @@
     updateDateTime();
     setInterval(updateDateTime, 1000);
     startCountdown();
+
+    const REFRESH_INTERVAL_STARTUP_SEC = 10 * 60;
+    const STORAGE_KEY_STARTUP = 'countdown_next_refresh_startup';
+    let startupCountdownSec = REFRESH_INTERVAL_STARTUP_SEC;
+    let startupCountdownTimer = null;
+    const startupCountdownEl = document.getElementById('startupCountdown');
+    const startupDateTimeEl = document.getElementById('startupDateTime');
+    function getStoredRemainingSecStartup() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY_STARTUP);
+        if (!stored) return null;
+        const nextMs = parseInt(stored, 10);
+        const remaining = Math.ceil((nextMs - Date.now()) / 1000);
+        if (remaining > 0 && remaining <= REFRESH_INTERVAL_STARTUP_SEC) return remaining;
+      } catch (e) { /* ignore */ }
+      return null;
+    }
+    function storeNextRefreshStartup() {
+      try {
+        localStorage.setItem(STORAGE_KEY_STARTUP, String(Date.now() + REFRESH_INTERVAL_STARTUP_SEC * 1000));
+      } catch (e) { /* ignore */ }
+    }
+    function updateStartupDateTime() {
+      if (startupDateTimeEl) {
+        startupDateTimeEl.textContent = new Date().toLocaleString('ko-KR', {
+          year: 'numeric', month: '2-digit', day: '2-digit',
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          hour12: false
+        });
+      }
+    }
+    function startStartupCountdown() {
+      if (startupCountdownTimer) clearInterval(startupCountdownTimer);
+      const stored = getStoredRemainingSecStartup();
+      startupCountdownSec = stored !== null ? stored : REFRESH_INTERVAL_STARTUP_SEC;
+      if (stored === null) storeNextRefreshStartup();
+      function fmt() {
+        const m = Math.floor(Math.max(0, startupCountdownSec) / 60);
+        const s = Math.max(0, startupCountdownSec) % 60;
+        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+      }
+      function updateStartupCountdown() {
+        if (startupCountdownEl) startupCountdownEl.textContent = `(데이터는 10분마다 업데이트·다음 갱신까지 ${fmt()})`;
+      }
+      updateStartupCountdown();
+      startupCountdownTimer = setInterval(() => {
+        startupCountdownSec--;
+        if (startupCountdownSec <= 0) {
+          startupCountdownSec = REFRESH_INTERVAL_STARTUP_SEC;
+          storeNextRefreshStartup();
+        }
+        updateStartupCountdown();
+      }, 1000);
+    }
+    updateStartupDateTime();
+    setInterval(updateStartupDateTime, 1000);
+    startStartupCountdown();
 
     let allData = [];
     let filteredData = [];
@@ -1442,6 +1583,49 @@
       else window.open(url, '_blank');
     });
 
+    function esc(s) { return String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function tr(s, len) { s = String(s || '-'); return s.length > (len || 40) ? s.slice(0, len) + '...' : (s || '-'); }
+    function loadStartupBusiness() {
+      const tbody = document.getElementById('startupBusinessBody');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="9" class="loading">로딩 중</td></tr>';
+      fetch('/api/startup/business')
+        .then(r => r.json())
+        .then(res => {
+          if (!res.success) { tbody.innerHTML = '<tr><td colspan="9">목록을 불러올 수 없습니다.</td></tr>'; return; }
+          const data = res.data || [];
+          if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="9">등록된 통합지원사업이 없습니다.</td></tr>'; return; }
+          tbody.innerHTML = data.map(function(row) {
+            const t = row.title || '-'; const tg = row.target || '-'; const ct = row.content || '-'; const bd = row.bdgt || '-'; const ch = row.chrct || '-'; const ir = row.intrd || '-'; const cat = row.category || '-';
+            const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
+            return '<tr><td>' + esc(row.biz_yr || '-') + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 50)) + '</td><td style="text-align:left" title="' + esc(cat) + '">' + esc(tr(cat, 25)) + '</td><td style="text-align:left" title="' + esc(tg) + '">' + esc(tr(tg, 40)) + '</td><td style="text-align:left" title="' + esc(ct) + '">' + esc(tr(ct, 40)) + '</td><td style="text-align:left" title="' + esc(bd) + '">' + esc(tr(bd, 30)) + '</td><td style="text-align:left" title="' + esc(ch) + '">' + esc(tr(ch, 35)) + '</td><td style="text-align:left" title="' + esc(ir) + '">' + esc(tr(ir, 35)) + '</td><td>' + link + '</td></tr>';
+          }).join('');
+        })
+        .catch(function() { tbody.innerHTML = '<tr><td colspan="9">목록을 불러올 수 없습니다.</td></tr>'; });
+    }
+    function loadStartupAnnouncements() {
+      const tbody = document.getElementById('startupAnnouncementsBody');
+      if (!tbody) return;
+      tbody.innerHTML = '<tr><td colspan="7" class="loading">로딩 중</td></tr>';
+      fetch('/api/startup/announcements')
+        .then(r => r.json())
+        .then(res => {
+          if (!res.success) { tbody.innerHTML = '<tr><td colspan="7">목록을 불러올 수 없습니다.</td></tr>'; return; }
+          const data = res.data || [];
+          if (data.length === 0) { tbody.innerHTML = '<tr><td colspan="7">등록된 지원사업 공고가 없습니다.</td></tr>'; return; }
+          const fmt = function(d) { return d ? d.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '-'; };
+          tbody.innerHTML = data.map(function(row) {
+            const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
+            return '<tr><td class="title-cell" style="text-align:left" title="' + esc(row.title) + '">' + esc((row.title || '').slice(0, 40)) + ((row.title || '').length > 40 ? '...' : '') + '</td><td title="' + esc(row.org) + '">' + esc((row.org || '-').toString().slice(0, 20)) + ((row.org || '').length > 20 ? '...' : '') + '</td><td>' + esc(row.region || '-') + '</td><td>' + fmt(row.start_date) + '</td><td>' + fmt(row.end_date) + '</td><td>' + esc((row.clsfc || '-').toString().slice(0, 15)) + ((row.clsfc || '').length > 15 ? '...' : '') + '</td><td>' + link + '</td></tr>';
+          }).join('');
+        })
+        .catch(function() { tbody.innerHTML = '<tr><td colspan="7">목록을 불러올 수 없습니다.</td></tr>'; });
+    }
+    function loadStartupData() {
+      loadStartupBusiness();
+      loadStartupAnnouncements();
+    }
+
     document.querySelectorAll('.nav-link[data-page]').forEach(a => {
       a.addEventListener('click', (e) => {
         e.preventDefault();
@@ -1449,7 +1633,18 @@
         document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
         a.classList.add('active');
         document.getElementById('pageAllyoung').style.display = page === 'allyoung' ? 'block' : 'none';
-        document.getElementById('pageWavity').style.display = page === 'wavity' ? 'block' : 'none';
+        const wavityEl = document.getElementById('pageWavity');
+        wavityEl.style.display = page === 'wavity' ? 'block' : 'none';
+        if (page === 'wavity') loadStartupData();
+      });
+    });
+    document.querySelectorAll('.startup-tab').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        const tab = btn.dataset.tab;
+        document.querySelectorAll('.startup-tab').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        document.getElementById('startupTabBusiness').style.display = tab === 'business' ? 'block' : 'none';
+        document.getElementById('startupTabAnnouncements').style.display = tab === 'announcements' ? 'block' : 'none';
       });
     });
 
