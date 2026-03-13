@@ -350,6 +350,14 @@ def bookmarks_page():
     return render_template("bookmarks.html")
 
 
+@app.route("/notices")
+def notices_page():
+    """공지사항 페이지"""
+    if not session.get("logged_in"):
+        return redirect(url_for("login_page"))
+    return render_template("notices.html")
+
+
 @app.route("/mypage")
 def mypage():
     """내 마이페이지로 리다이렉트"""
@@ -452,9 +460,36 @@ def _grant_exp(supabase, user_id: str, activity_type: str, source: str, contest_
             "contest_id": contest_id,
             "exp_amount": exp_amount,
         }).execute()
-        prof = supabase.table("profiles").select("total_exp").eq("id", user_id).limit(1).execute()
-        cur = int((prof.data or [{}])[0].get("total_exp") or 0)
-        supabase.table("profiles").update({"total_exp": cur + exp_amount}).eq("id", user_id).execute()
+        prof = supabase.table("profiles").select("total_exp, nickname").eq("id", user_id).limit(1).execute()
+        prof_row = (prof.data or [{}])[0]
+        cur = int(prof_row.get("total_exp") or 0)
+        new_total = cur + exp_amount
+        old_level = _compute_level_from_exp(supabase, cur)
+        new_level = _compute_level_from_exp(supabase, new_total)
+        _, old_tier_name, old_tier_level = _get_tier_from_level(old_level)
+        _, new_tier_name, new_tier_level = _get_tier_from_level(new_level)
+        supabase.table("profiles").update({"total_exp": new_total}).eq("id", user_id).execute()
+        if new_tier_level > old_tier_level and new_tier_level >= 1:
+            try:
+                nickname = (prof_row.get("nickname") or "").strip() or "회원"
+                notif = supabase.table("notifications").insert({
+                    "type": "tier",
+                    "source": "티어달성",
+                    "count": 1,
+                    "message": f"{nickname}님이 {new_tier_name} 티어를 달성했습니다!",
+                }).execute()
+                if notif.data and len(notif.data) > 0:
+                    notif_id = notif.data[0].get("id")
+                    if notif_id:
+                        members = supabase.table("profiles").select("id").execute()
+                        states = [
+                            {"user_id": m["id"], "notification_id": notif_id, "read": False, "deleted": False}
+                            for m in (members.data or [])
+                        ]
+                        if states:
+                            supabase.table("notification_user_state").insert(states).execute()
+            except Exception as notif_err:
+                logger.warning("티어달성 알림 생성 실패: %s", notif_err)
         return exp_amount
     except Exception as e:
         logger.warning("exp_events 지급 실패: %s", e)
@@ -1613,6 +1648,155 @@ def api_notifications_delete_all():
         return jsonify({"success": True})
     except Exception as e:
         logger.error("api/notifications delete-all 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/notices")
+def api_notices():
+    """공지사항 목록 조회 (로그인 필수). 고정공지 먼저, 최신순"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("notices").select(
+            "id, title, body, author_id, is_pinned, created_at, updated_at"
+        ).order("is_pinned", desc=True).order("created_at", desc=True).execute()
+        rows = r.data or []
+        for row in rows:
+            if row.get("author_id"):
+                try:
+                    pr = supabase.table("profiles").select("nickname").eq("id", row["author_id"]).limit(1).execute()
+                    row["author_nickname"] = pr.data[0]["nickname"] if pr.data else None
+                except Exception:
+                    row["author_nickname"] = None
+            else:
+                row["author_nickname"] = None
+        return jsonify({"success": True, "data": rows})
+    except Exception as e:
+        logger.error("api/notices 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/notices", methods=["POST"])
+def api_notices_create():
+    """공지사항 작성 (관리자 전용)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    if not _is_admin():
+        return jsonify({"success": False, "error": "admin_only"}), 403
+    data = request.get_json() or {}
+    title = (data.get("title") or "").strip()
+    if not title:
+        return jsonify({"success": False, "error": "제목을 입력해 주세요."}), 400
+    body = (data.get("body") or "").strip()
+    is_pinned = bool(data.get("is_pinned"))
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        row = supabase.table("notices").insert({
+            "title": title,
+            "body": body or None,
+            "author_id": user_id,
+            "is_pinned": is_pinned,
+        }).execute()
+        inserted = row.data[0] if row.data else None
+        # 공지사항 작성 시 전체 유저에게 알림
+        try:
+            notif = supabase.table("notifications").insert({
+                "type": "notice",
+                "source": "공지사항",
+                "count": 1,
+                "message": f"새 공지사항: {title}",
+            }).execute()
+            if notif.data and len(notif.data) > 0:
+                notif_id = notif.data[0].get("id")
+                if notif_id:
+                    members = supabase.table("profiles").select("id").execute()
+                    states = [
+                        {"user_id": m["id"], "notification_id": notif_id, "read": False, "deleted": False}
+                        for m in (members.data or [])
+                    ]
+                    if states:
+                        supabase.table("notification_user_state").insert(states).execute()
+        except Exception as notif_err:
+            logger.warning("공지사항 알림 생성 실패: %s", notif_err)
+        return jsonify({"success": True, "data": inserted})
+    except Exception as e:
+        logger.error("api/notices POST 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/notices/<notice_id>", methods=["PATCH"])
+def api_notice_update(notice_id):
+    """공지사항 수정 (관리자 전용)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    if not _is_admin():
+        return jsonify({"success": False, "error": "admin_only"}), 403
+    data = request.get_json() or {}
+    title = (data.get("title") or "").strip()
+    if not title:
+        return jsonify({"success": False, "error": "제목을 입력해 주세요."}), 400
+    body = (data.get("body") or "").strip()
+    is_pinned = bool(data.get("is_pinned"))
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("notices").update({
+            "title": title,
+            "body": body or None,
+            "is_pinned": is_pinned,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("id", notice_id).execute()
+        if not r.data:
+            return jsonify({"success": False, "error": "not_found"}), 404
+        return jsonify({"success": True, "data": r.data[0]})
+    except Exception as e:
+        logger.error("api/notices PATCH 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/notices/<notice_id>", methods=["DELETE"])
+def api_notice_delete(notice_id):
+    """공지사항 삭제 (관리자 전용)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    if not _is_admin():
+        return jsonify({"success": False, "error": "admin_only"}), 403
+    try:
+        supabase = get_supabase_admin_client()
+        supabase.table("notices").delete().eq("id", notice_id).execute()
+        return jsonify({"success": True})
+    except Exception as e:
+        logger.error("api/notices DELETE 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/notices/<notice_id>")
+def api_notice_detail(notice_id):
+    """공지사항 상세 조회"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "unauthorized"}), 401
+    try:
+        supabase = get_supabase_admin_client()
+        r = supabase.table("notices").select(
+            "id, title, body, author_id, is_pinned, created_at, updated_at"
+        ).eq("id", notice_id).limit(1).execute()
+        if not r.data:
+            return jsonify({"success": False, "error": "not_found"}), 404
+        row = r.data[0]
+        if row.get("author_id"):
+            try:
+                pr = supabase.table("profiles").select("nickname").eq("id", row["author_id"]).limit(1).execute()
+                row["author_nickname"] = pr.data[0]["nickname"] if pr.data else None
+            except Exception:
+                row["author_nickname"] = None
+        else:
+            row["author_nickname"] = None
+        return jsonify({"success": True, "data": row})
+    except Exception as e:
+        logger.error("api/notices/<id> 오류: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

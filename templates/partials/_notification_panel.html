@@ -306,13 +306,13 @@
     updateNavDot(unreadCount);
     listEl.innerHTML = items.map(function(n) {
       var cls = n.read ? '' : ' unread';
-      var iconSrc = n.type === 'insert' ? NOTI_ICON_INSERT : (n.type === 'status' ? NOTI_ICON_STATUS : NOTI_ICON_UPDATE);
+      var iconSrc = n.type === 'insert' ? NOTI_ICON_INSERT : (n.type === 'status' ? NOTI_ICON_STATUS : (n.type === 'notice' ? NOTI_ICON_INSERT : (n.type === 'tier' ? NOTI_ICON_STATUS : NOTI_ICON_UPDATE)));
       var timeStr = formatTimeAgo(n.created_at);
       var readDisabled = n.read ? ' disabled' : '';
       var readBtn = '<button type="button" class="noti-read-btn" data-id="' + escapeHtml(n.id) + '" title="읽음"' + readDisabled + '>읽음</button>';
       var deleteBtn = '<button type="button" class="noti-delete-btn" data-id="' + escapeHtml(n.id) + '" title="삭제">삭제</button>';
       var actions = '<div class="noti-actions">' + readBtn + deleteBtn + '</div>';
-      return '<div class="notification-item' + cls + '" data-id="' + escapeHtml(n.id) + '">' +
+      return '<div class="notification-item' + cls + '" data-id="' + escapeHtml(n.id) + '" data-type="' + escapeHtml(n.type || '') + '">' +
         '<div class="noti-icon"><img src="' + escapeHtml(iconSrc) + '" alt=""></div>' +
         '<div class="noti-content">' +
           '<div class="noti-title">' + escapeHtml(n.message || '알림') + '</div>' +
@@ -337,6 +337,16 @@
         fetch('/api/notifications/' + encodeURIComponent(id) + '/delete', { method: 'POST' }).then(function(r) { return r.json(); }).then(function(j) {
           if (j.success) { showNotiToast('알림을 삭제하였습니다'); loadNotifications(); }
         });
+      });
+    });
+    listEl.querySelectorAll('.notification-item').forEach(function(item) {
+      item.addEventListener('click', function(ev) {
+        if (ev.target.closest('.noti-read-btn, .noti-delete-btn')) return;
+        var type = item.dataset.type;
+        if (type === 'notice') {
+          closePanel();
+          window.location.href = '/notices';
+        }
       });
     });
   }

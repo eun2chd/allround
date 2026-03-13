@@ -50,6 +50,7 @@
       if (!isInternalLink(href)) return;
       if (a.hasAttribute('target') && a.target === '_blank') return;
       if (a.hasAttribute('data-page')) return;
+      if (a.hasAttribute('data-skip-loading')) return;
       showLoading();
     });
   }

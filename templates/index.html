@@ -1442,7 +1442,7 @@
       else window.open(url, '_blank');
     });
 
-    document.querySelectorAll('.nav-link').forEach(a => {
+    document.querySelectorAll('.nav-link[data-page]').forEach(a => {
       a.addEventListener('click', (e) => {
         e.preventDefault();
         const page = a.dataset.page;

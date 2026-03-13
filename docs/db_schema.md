@@ -551,10 +551,10 @@ CREATE INDEX IF NOT EXISTS idx_notifications_source ON notifications(source);
 - `id`: BIGSERIAL 순번 (INSERT 시 생략, 자동 할당)
 - `type`: 'insert' (신규 추가) | 'update' (업데이트) | 'status' (상태메시지 변경)
 
-**기존 DB에 status 타입 추가**:
+**기존 DB에 status, notice, tier 타입 추가**:
 ```sql
 ALTER TABLE notifications DROP CONSTRAINT IF EXISTS notifications_type_check;
-ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN ('insert', 'update', 'status'));
+ALTER TABLE notifications ADD CONSTRAINT notifications_type_check CHECK (type IN ('insert', 'update', 'status', 'notice', 'tier'));
 ```
 - `source`: 출처 ('요즘것들', '위비티' 등)
 - `count`: 해당 건수
@@ -593,6 +593,32 @@ ALTER TABLE notification_user_state ADD CONSTRAINT notification_user_state_user_
 **알람 전달**: 크롤 함수가 notification 생성 시, `profiles`에서 `role='member'`인 유저의 `profiles.id`를 `user_id`로 사용하여 `notification_user_state` 행 생성
 
 **Realtime**: 알람 목록 실시간 갱신 시 `ALTER PUBLICATION supabase_realtime ADD TABLE notifications;` 실행
+
+---
+
+### 15-1. notices (공지사항)
+
+관리자(admin)가 작성하는 공지사항. 모든 로그인 유저가 조회 가능.
+
+```sql
+CREATE TABLE IF NOT EXISTS notices (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    title TEXT NOT NULL,
+    body TEXT,
+    author_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    is_pinned BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_notices_created ON notices(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notices_pinned ON notices(is_pinned) WHERE is_pinned = true;
+```
+
+- `title`: 제목
+- `body`: 본문 (HTML 또는 Markdown 지원 가능)
+- `author_id`: 작성자(관리자) user_id
+- `is_pinned`: 상단 고정 여부 (true면 목록 상단 표시)
 
 ---
 
