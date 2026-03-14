@@ -14,5 +14,4 @@ jobs:
           curl -sS -X POST \
             -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" \
             -H "Content-Type: application/json" \
-            -d '{"full":true}' \
             "${{ secrets.SUPABASE_URL }}/functions/v1/crawl-kstartup"

@@ -882,11 +882,37 @@ CREATE INDEX IF NOT EXISTS idx_startup_announcement_clsfc ON startup_announcemen
 
 - **pbanc_sn**: 공고 일련번호. 동일하면 upsert(업데이트) 처리
 
-**crawl_state (테이블 13)** 에 진행 페이지 저장: `source='kstartup_business'`, `source='kstartup_announcement'` → `next_page`
+**kstartup_crawl_state (테이블 21)** 에 진행 페이지 저장: `business_next_page`, `announcement_next_page`
 
 **데이터 수집 규칙**:
 - startup_business: detl_pg_url에서 `id` 파라미터 추출 → id가 PK. 동일 id면 update
 - startup_announcement: pbanc_sn이 PK. 동일 pbanc_sn이면 update
+
+---
+
+### 21. kstartup_crawl_state (K-Startup 크롤링 진행 페이지 추적)
+
+K-Startup 크롤링 전용 진행 페이지 추적 테이블. `crawl_state`와 독립적으로 관리.
+
+```sql
+CREATE TABLE IF NOT EXISTS kstartup_crawl_state (
+  id INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),  -- 항상 1개 row만 유지
+  business_next_page INTEGER NOT NULL DEFAULT 1,     -- 통합지원사업 다음 페이지
+  announcement_next_page INTEGER NOT NULL DEFAULT 1, -- 지원사업 공고 다음 페이지
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- 초기 데이터 삽입 (없을 경우만)
+INSERT INTO kstartup_crawl_state (id, business_next_page, announcement_next_page)
+VALUES (1, 1, 1)
+ON CONFLICT (id) DO NOTHING;
+```
+
+- **id**: 항상 1 (단일 row만 유지)
+- **business_next_page**: 통합지원사업 다음 크롤할 페이지
+- **announcement_next_page**: 지원사업 공고 다음 크롤할 페이지
+- **updated_at**: 마지막 업데이트 시각
+- Edge Function이 SERVICE_ROLE_KEY로 읽기/쓰기 (RLS 없음)
 
 ---
 

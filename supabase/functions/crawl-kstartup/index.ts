@@ -1,7 +1,7 @@
 // Supabase Edge Function: K-Startup API 수집 → startup_business, startup_announcement upsert
-// 호출당 1~2페이지만 수집 후 저장. crawl_state로 진행 페이지 기록, 반복 호출로 끝까지 수집.
+// 호출당 1페이지만 수집 후 저장 (10개 아이템). kstartup_crawl_state로 진행 페이지 기록, 반복 호출로 끝까지 수집.
 //
-// 호출: full=1 → page 1~2만 수집 (state 무시), 기본 → crawl_state 다음 페이지 1~2장
+// 호출: full=1 → page 1만 수집 (state 무시), 기본 → kstartup_crawl_state 다음 페이지 1장
 // Secret: K_START_UP_SERVICE (공공데이터 인증키)
 //
 // npx supabase functions deploy crawl-kstartup --no-verify-jwt
@@ -10,7 +10,7 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const BASE_URL = "https://apis.data.go.kr/B552735/kisedKstartupService01";
-const PAGES_PER_CALL = 2;
+const PAGES_PER_CALL = 1; // 한 번 실행에 1페이지(10개 아이템)만 수집
 const PER_PAGE = 10;
 const SOURCE = "K-Startup";
 
@@ -74,8 +74,14 @@ function parsePagination(xml: string): { currentCount: number; perPage: number; 
 
 function extractIdFromUrl(url: string): string | null {
   if (!url) return null;
-  const m = url.match(/[?&]id=(\d+)/) || url.match(/id=(\d+)/);
-  return m ? m[1] : null;
+  // XML 엔티티 디코딩 후 id 추출 (&amp; -> &)
+  const decoded = url.replace(/&amp;/g, "&").replace(/&#38;/g, "&");
+  // ?id= 또는 &id= 패턴으로 추출 (가장 명확한 패턴 우선)
+  const m = decoded.match(/[?&]id=(\d+)/);
+  if (m) return m[1];
+  // ?id= 패턴이 없으면 id= 패턴 시도 (하지만 이건 덜 정확함)
+  const m2 = decoded.match(/id=(\d+)/);
+  return m2 ? m2[1] : null;
 }
 
 async function fetchApi(
@@ -114,21 +120,34 @@ interface BusinessRow {
 }
 
 function mapBusinessItem(col: Record<string, string>): BusinessRow | null {
-  const detlPgUrl = col.detl_pg_url || "";
-  const id = extractIdFromUrl(detlPgUrl) || col.id || "";
-  if (!id) return null;
+  // XML 엔티티 디코딩
+  const detlPgUrlRaw = col.detl_pg_url || "";
+  const detlPgUrl = decodeXmlEntities(detlPgUrlRaw);
+  
+  // detl_pg_url에서 id 추출 (예: ?id=171421)
+  const idFromUrl = extractIdFromUrl(detlPgUrl);
+  
+  // col.id는 페이지 내 순번이므로 사용하지 않음
+  const id = idFromUrl || "";
+  
+  if (!id) {
+    console.warn(`[crawl-kstartup] mapBusinessItem: id 추출 실패, detl_pg_url="${detlPgUrlRaw.substring(0, 100)}", 추출시도결과="${idFromUrl}"`);
+    return null;
+  }
+  
   let url = detlPgUrl.trim();
   if (url && !url.startsWith("http")) url = `https://${url}`;
+  
   return {
     id,
-    supt_biz_titl_nm: col.supt_biz_titl_nm || null,
-    biz_category_cd: col.biz_category_cd || null,
-    biz_yr: col.biz_yr || null,
-    biz_supt_trgt_info: col.biz_supt_trgt_info || null,
-    biz_supt_ctnt: col.biz_supt_ctnt || null,
-    biz_supt_bdgt_info: col.biz_supt_bdgt_info || null,
-    supt_biz_chrct: col.supt_biz_chrct || null,
-    supt_biz_intrd_info: col.supt_biz_intrd_info || null,
+    supt_biz_titl_nm: decodeXmlEntities(col.supt_biz_titl_nm || "") || null,
+    biz_category_cd: decodeXmlEntities(col.biz_category_cd || "") || null,
+    biz_yr: decodeXmlEntities(col.biz_yr || "") || null,
+    biz_supt_trgt_info: decodeXmlEntities(col.biz_supt_trgt_info || "") || null,
+    biz_supt_ctnt: decodeXmlEntities(col.biz_supt_ctnt || "") || null,
+    biz_supt_bdgt_info: decodeXmlEntities(col.biz_supt_bdgt_info || "") || null,
+    supt_biz_chrct: decodeXmlEntities(col.supt_biz_chrct || "") || null,
+    supt_biz_intrd_info: decodeXmlEntities(col.supt_biz_intrd_info || "") || null,
     detl_pg_url: url || null,
   };
 }
@@ -146,6 +165,7 @@ async function fetchBusinessPages(
 
   const all: BusinessRow[] = [];
   const seen = new Set<string>();
+  const pageIds: Record<number, string[]> = {}; // 페이지별 ID 추적
 
   for (let p = startPage; p <= endPage; p++) {
     const pageXml = p === startPage ? xml : await fetchApi("getBusinessInformation01", serviceKey, p, PER_PAGE);
@@ -155,15 +175,59 @@ async function fetchBusinessPages(
       break;
     }
     const items = parseColItems(pageXml);
+    let filtered = 0;
+    const pageIdList: string[] = [];
+    
     for (const col of items) {
       const row = mapBusinessItem(col);
+      if (!row) {
+        filtered++;
+        if (filtered <= 3) {
+          const detlPgUrl = col.detl_pg_url || "";
+          const decodedUrl = decodeXmlEntities(detlPgUrl);
+          const extractedId = extractIdFromUrl(decodedUrl);
+          console.warn(`[crawl-kstartup] 통합지원사업 page ${p} 필터링된 항목: detl_pg_url="${detlPgUrl.substring(0, 100)}", 추출시도결과="${extractedId}", col.id="${col.id}"`);
+        }
+        continue;
+      }
+      pageIdList.push(row.id);
       if (row && !seen.has(row.id)) {
         seen.add(row.id);
         all.push(row);
+      } else if (seen.has(row.id)) {
+        // 어떤 페이지에서 이미 수집했는지 찾기
+        let foundInPage = -1;
+        for (const [pageNum, ids] of Object.entries(pageIds)) {
+          if (ids.includes(row.id)) {
+            foundInPage = parseInt(pageNum);
+            break;
+          }
+        }
+        console.warn(`[crawl-kstartup] 통합지원사업 page ${p} 중복 ID 스킵: ${row.id} (이미 page ${foundInPage > 0 ? foundInPage : '이전'}에서 수집됨)`);
       }
     }
-    console.log(`[crawl-kstartup] 통합지원사업 page ${p}/${endPage}: items=${items.length} 누적=${all.length}`);
+    
+    pageIds[p] = pageIdList;
+    console.log(`[crawl-kstartup] 통합지원사업 page ${p}/${endPage}: items=${items.length} 필터링=${filtered} 수집ID=${pageIdList.length}개 (샘플: ${pageIdList.slice(0, 3).join(", ")}) 누적=${all.length}`);
+    
     if (p < endPage) await new Promise((r) => setTimeout(r, 200));
+  }
+  
+  // 페이지별 ID 비교 로그
+  if (Object.keys(pageIds).length > 1) {
+    const pages = Object.keys(pageIds).map(Number).sort((a, b) => a - b);
+    for (let i = 1; i < pages.length; i++) {
+      const prevPage = pages[i - 1];
+      const currPage = pages[i];
+      const prevIds = new Set(pageIds[prevPage]);
+      const currIds = new Set(pageIds[currPage]);
+      const overlap = pageIds[currPage].filter(id => prevIds.has(id));
+      if (overlap.length > 0) {
+        console.warn(`[crawl-kstartup] 통합지원사업 page ${prevPage}과 ${currPage} ID 겹침: ${overlap.length}개 (샘플: ${overlap.slice(0, 5).join(", ")})`);
+      } else {
+        console.log(`[crawl-kstartup] 통합지원사업 page ${prevPage}과 ${currPage} ID 겹침 없음 (정상)`);
+      }
+    }
   }
   return { rows: all, lastPage };
 }
@@ -259,14 +323,23 @@ async function fetchAnnouncementPages(
       break;
     }
     const items = parseColItems(pageXml);
+    let filtered = 0;
     for (const col of items) {
       const row = mapAnnouncementItem(col);
+      if (!row) {
+        filtered++;
+        continue;
+      }
       if (row && !seen.has(row.pbanc_sn)) {
         seen.add(row.pbanc_sn);
         all.push(row);
       }
     }
-    console.log(`[crawl-kstartup] 지원사업 공고 page ${p}/${endPage}: items=${items.length} 누적=${all.length}`);
+    if (filtered > 0) {
+      console.log(`[crawl-kstartup] 지원사업 공고 page ${p}/${endPage}: items=${items.length} 필터링=${filtered} 누적=${all.length}`);
+    } else {
+      console.log(`[crawl-kstartup] 지원사업 공고 page ${p}/${endPage}: items=${items.length} 누적=${all.length}`);
+    }
     if (p < endPage) await new Promise((r) => setTimeout(r, 200));
   }
   return { rows: all, lastPage };
@@ -286,39 +359,73 @@ Deno.serve(async (req) => {
     );
   }
 
+  const supabase = createClient(supabaseUrl, supabaseKey);
+
+  // 1. forceFull 체크 (전체 수집 모드)
   let forceFull = false;
+  let urlParamFull = false;
+  let bodyFull = false;
   try {
     const url = new URL(req.url);
-    forceFull = url.searchParams.get("full") === "1" || url.searchParams.get("full") === "true";
-    if (req.method === "POST" && !forceFull) {
+    urlParamFull = url.searchParams.get("full") === "1" || url.searchParams.get("full") === "true";
+    if (req.method === "POST") {
       const body = await req.json().catch(() => ({}));
-      forceFull = body?.full === true || body?.full === 1;
+      bodyFull = body?.full === true || body?.full === 1;
     }
-  } catch {
-    /* ignore */
+    forceFull = urlParamFull || bodyFull;
+    console.log(`[crawl-kstartup] forceFull 체크: URL파라미터=${urlParamFull}, Body=${bodyFull}, 최종=${forceFull}`);
+  } catch (e) {
+    console.error(`[crawl-kstartup] forceFull 체크 중 에러:`, e);
+    // ignore
   }
 
-  const supabase = createClient(supabaseUrl, supabaseKey);
+  console.log(`[crawl-kstartup] ===== 실행 시작 ===== forceFull=${forceFull}`);
 
   try {
     const serviceKey = getServiceKey();
 
+    // 2. crawl_state에서 다음 페이지 조회 (forceFull이 아닐 때만)
     let bizStartPage = 1;
     let annStartPage = 1;
+    
+    console.log(`[crawl-kstartup] [1단계] 시작: forceFull=${forceFull}`);
+    
     if (!forceFull) {
-      try {
-        const { data: bizState } = await supabase.from("crawl_state").select("next_page").eq("source", SOURCE_BIZ).maybeSingle();
-        const { data: annState } = await supabase.from("crawl_state").select("next_page").eq("source", SOURCE_ANN).maybeSingle();
-        bizStartPage = Math.max(1, bizState?.next_page ?? 1);
-        annStartPage = Math.max(1, annState?.next_page ?? 1);
-      } catch {
-        console.log("[crawl-kstartup] crawl_state 조회 실패, page 1부터 시작");
+      console.log(`[crawl-kstartup] [1단계] kstartup_crawl_state 조회 중...`);
+      const { data: state, error: stateErr } = await supabase
+        .from("kstartup_crawl_state")
+        .select("business_next_page, announcement_next_page")
+        .eq("id", 1)
+        .maybeSingle();
+      
+      console.log(`[crawl-kstartup] [1단계] 조회 결과: state=${state ? JSON.stringify(state) : 'null'}, error=${stateErr ? JSON.stringify(stateErr) : 'null'}`);
+      
+      if (stateErr) {
+        console.error(`[crawl-kstartup] [1단계] ❌ kstartup_crawl_state 조회 실패:`, JSON.stringify(stateErr));
+        console.log(`[crawl-kstartup] [1단계] 기본값 사용: page 1부터 시작`);
+        bizStartPage = 1;
+        annStartPage = 1;
+      } else if (!state) {
+        console.warn(`[crawl-kstartup] [1단계] ⚠️ kstartup_crawl_state 데이터 없음 (id=1 row 없음)`);
+        console.log(`[crawl-kstartup] [1단계] 기본값 사용: page 1부터 시작`);
+        bizStartPage = 1;
+        annStartPage = 1;
+      } else {
+        console.log(`[crawl-kstartup] [1단계] ✅ kstartup_crawl_state 조회 성공`);
+        bizStartPage = Math.max(1, state.business_next_page ?? 1);
+        annStartPage = Math.max(1, state.announcement_next_page ?? 1);
+        console.log(`[crawl-kstartup] [1단계] 다음 페이지 결정: 통합지원사업 page ${bizStartPage}, 공고 page ${annStartPage}`);
       }
-      console.log(`[crawl-kstartup] 실행 시작: 통합지원사업 page ${bizStartPage}부터, 공고 page ${annStartPage}부터 (각 ${PAGES_PER_CALL}장)`);
     } else {
-      console.log(`[crawl-kstartup] 실행 시작: full=1 → page 1~${PAGES_PER_CALL} 고정`);
+      console.log(`[crawl-kstartup] [1단계] forceFull=true → page 1부터 시작 (kstartup_crawl_state 무시)`);
+      bizStartPage = 1;
+      annStartPage = 1;
     }
+    
+    console.log(`[crawl-kstartup] [1단계] 최종 결정: bizStartPage=${bizStartPage}, annStartPage=${annStartPage}`);
 
+    // 3. API에서 데이터 수집
+    console.log(`[crawl-kstartup] [2단계] API 수집 시작: 통합지원사업 page ${bizStartPage} (${PAGES_PER_CALL}페이지, ${PER_PAGE}개 아이템), 공고 page ${annStartPage} (${PAGES_PER_CALL}페이지, ${PER_PAGE}개 아이템)`);
     const [businessResult, announcementResult] = await Promise.all([
       fetchBusinessPages(serviceKey, bizStartPage, PAGES_PER_CALL),
       fetchAnnouncementPages(serviceKey, annStartPage, PAGES_PER_CALL),
@@ -326,76 +433,128 @@ Deno.serve(async (req) => {
 
     const businessRows = businessResult.rows;
     const announcementRows = announcementResult.rows;
-    console.log(`[crawl-kstartup] API 수집 완료: startup_business=${businessRows.length}건, startup_announcement=${announcementRows.length}건`);
+    console.log(`[crawl-kstartup] [2단계] API 수집 완료: startup_business=${businessRows.length}건, startup_announcement=${announcementRows.length}건`);
 
     let bizUpsert = 0;
     let annUpsert = 0;
     let bizNew = 0;
     let annNew = 0;
 
+    // 4. DB 저장/업데이트
     if (businessRows.length > 0) {
-      console.log(`[crawl-kstartup] startup_business 저장 시작: ${businessRows.length}건`);
+      console.log(`[crawl-kstartup] [3단계] startup_business 저장 시작: ${businessRows.length}건`);
       const bizIds = businessRows.map((r) => r.id);
+      
+      // 기존 데이터 확인
       const { data: existingBiz } = await supabase
         .from("startup_business")
         .select("id")
         .in("id", bizIds);
+      
       const existingBizSet = new Set((existingBiz ?? []).map((r) => r.id));
       bizNew = businessRows.filter((r) => !existingBizSet.has(r.id)).length;
       const bizUpdate = businessRows.length - bizNew;
-      console.log(`[crawl-kstartup] startup_business 기존 조회: ${existingBizSet.size}건 중 신규=${bizNew}건, 업데이트=${bizUpdate}건`);
+      
+      console.log(`[crawl-kstartup] [3단계] startup_business: 수집=${bizIds.length}건, 신규=${bizNew}건, 업데이트=${bizUpdate}건`);
+      if (bizNew > 0) {
+        const newIds = businessRows.filter((r) => !existingBizSet.has(r.id)).map((r) => r.id).slice(0, 5);
+        console.log(`[crawl-kstartup] [3단계] startup_business 신규 ID: ${newIds.join(", ")}`);
+      }
 
-      const { error: bizErr } = await supabase.from("startup_business").upsert(businessRows, {
-        onConflict: "id",
-        ignoreDuplicates: false,
-      });
-      if (bizErr) throw new Error(`startup_business upsert: ${bizErr.message}`);
+      // 저장/업데이트 (없으면 저장, 있으면 업데이트)
+      const { error: bizErr } = await supabase
+        .from("startup_business")
+        .upsert(businessRows, {
+          onConflict: "id",
+          ignoreDuplicates: false,
+        });
+      
+      if (bizErr) {
+        console.error(`[crawl-kstartup] [3단계] startup_business 저장 실패:`, bizErr);
+        throw new Error(`startup_business upsert: ${bizErr.message}`);
+      }
+      
       bizUpsert = businessRows.length;
-      console.log(`[crawl-kstartup] startup_business upsert 완료: ${bizUpsert}건 (신규 ${bizNew}, 업데이트 ${bizUpdate})`);
+      console.log(`[crawl-kstartup] [3단계] startup_business 저장 완료: ${bizUpsert}건 (신규 ${bizNew}, 업데이트 ${bizUpdate})`);
     } else {
-      console.log(`[crawl-kstartup] startup_business 저장할 데이터 없음, 스킵`);
+      console.log(`[crawl-kstartup] [3단계] startup_business 저장할 데이터 없음`);
     }
 
     if (announcementRows.length > 0) {
-      console.log(`[crawl-kstartup] startup_announcement 저장 시작: ${announcementRows.length}건`);
+      console.log(`[crawl-kstartup] [3단계] startup_announcement 저장 시작: ${announcementRows.length}건`);
       const annIds = announcementRows.map((r) => r.pbanc_sn);
+      
+      // 기존 데이터 확인
       const { data: existingAnn } = await supabase
         .from("startup_announcement")
         .select("pbanc_sn")
         .in("pbanc_sn", annIds);
+      
       const existingAnnSet = new Set((existingAnn ?? []).map((r) => r.pbanc_sn));
       annNew = announcementRows.filter((r) => !existingAnnSet.has(r.pbanc_sn)).length;
       const annUpdate = announcementRows.length - annNew;
-      console.log(`[crawl-kstartup] startup_announcement 기존 조회: ${existingAnnSet.size}건 중 신규=${annNew}건, 업데이트=${annUpdate}건`);
+      
+      console.log(`[crawl-kstartup] [3단계] startup_announcement: 수집=${annIds.length}건, 신규=${annNew}건, 업데이트=${annUpdate}건`);
+      if (annNew > 0) {
+        const newIds = announcementRows.filter((r) => !existingAnnSet.has(r.pbanc_sn)).map((r) => r.pbanc_sn).slice(0, 5);
+        console.log(`[crawl-kstartup] [3단계] startup_announcement 신규 pbanc_sn: ${newIds.join(", ")}`);
+      }
 
-      const { error: annErr } = await supabase.from("startup_announcement").upsert(announcementRows, {
-        onConflict: "pbanc_sn",
-        ignoreDuplicates: false,
-      });
-      if (annErr) throw new Error(`startup_announcement upsert: ${annErr.message}`);
+      // 저장/업데이트 (없으면 저장, 있으면 업데이트)
+      const { error: annErr } = await supabase
+        .from("startup_announcement")
+        .upsert(announcementRows, {
+          onConflict: "pbanc_sn",
+          ignoreDuplicates: false,
+        });
+      
+      if (annErr) {
+        console.error(`[crawl-kstartup] [3단계] startup_announcement 저장 실패:`, annErr);
+        throw new Error(`startup_announcement upsert: ${annErr.message}`);
+      }
+      
       annUpsert = announcementRows.length;
-      console.log(`[crawl-kstartup] startup_announcement upsert 완료: ${annUpsert}건 (신규 ${annNew}, 업데이트 ${annUpdate})`);
+      console.log(`[crawl-kstartup] [3단계] startup_announcement 저장 완료: ${annUpsert}건 (신규 ${annNew}, 업데이트 ${annUpdate})`);
     } else {
-      console.log(`[crawl-kstartup] startup_announcement 저장할 데이터 없음, 스킵`);
+      console.log(`[crawl-kstartup] [3단계] startup_announcement 저장할 데이터 없음`);
     }
 
+    // 5. kstartup_crawl_state 업데이트 (다음 실행 시 다음 페이지부터 시작하도록)
+    // 마지막 페이지 도달 시 1로 리셋
     const bizNextPage =
       bizStartPage + PAGES_PER_CALL > businessResult.lastPage ? 1 : bizStartPage + PAGES_PER_CALL;
     const annNextPage =
       annStartPage + PAGES_PER_CALL > announcementResult.lastPage ? 1 : annStartPage + PAGES_PER_CALL;
-    try {
-      await supabase.from("crawl_state").upsert(
-        [
-          { source: SOURCE_BIZ, next_page: bizNextPage, updated_at: new Date().toISOString() },
-          { source: SOURCE_ANN, next_page: annNextPage, updated_at: new Date().toISOString() },
-        ],
-        { onConflict: "source" }
-      );
-      console.log(
-        `[crawl-kstartup] crawl_state 업데이트: 통합지원사업 다음 page=${bizNextPage}, 공고 다음 page=${annNextPage}`
-      );
-    } catch (stateErr) {
-      console.warn("[crawl-kstartup] crawl_state 저장 실패:", stateErr);
+    
+    if (bizNextPage === 1 && bizStartPage + PAGES_PER_CALL > businessResult.lastPage) {
+      console.log(`[crawl-kstartup] [4단계] ✅ 통합지원사업 마지막 페이지 도달 (${businessResult.lastPage}페이지) → 다음 실행부터 page 1부터 다시 시작`);
+    }
+    if (annNextPage === 1 && annStartPage + PAGES_PER_CALL > announcementResult.lastPage) {
+      console.log(`[crawl-kstartup] [4단계] ✅ 지원사업 공고 마지막 페이지 도달 (${announcementResult.lastPage}페이지) → 다음 실행부터 page 1부터 다시 시작`);
+    }
+    
+    console.log(`[crawl-kstartup] [4단계] kstartup_crawl_state 업데이트: 통합지원사업 ${bizStartPage} → ${bizNextPage}, 공고 ${annStartPage} → ${annNextPage}`);
+    
+    const updateData = {
+      id: 1,
+      business_next_page: bizNextPage,
+      announcement_next_page: annNextPage,
+      updated_at: new Date().toISOString(),
+    };
+    console.log(`[crawl-kstartup] [4단계] 업데이트 데이터:`, JSON.stringify(updateData));
+    
+    const { data: updatedState, error: stateErr } = await supabase
+      .from("kstartup_crawl_state")
+      .upsert(updateData, { onConflict: "id" })
+      .select();
+    
+    if (stateErr) {
+      console.error(`[crawl-kstartup] [4단계] ❌ kstartup_crawl_state 업데이트 실패:`, JSON.stringify(stateErr));
+    } else {
+      console.log(`[crawl-kstartup] [4단계] ✅ kstartup_crawl_state 업데이트 완료`);
+      if (updatedState && updatedState.length > 0) {
+        console.log(`[crawl-kstartup] [4단계] 업데이트 후 상태:`, JSON.stringify(updatedState[0]));
+      }
     }
 
     const totalNew = bizNew + annNew;
@@ -436,7 +595,9 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[crawl-kstartup] 실행 완료: startup_business=${bizUpsert}건, startup_announcement=${annUpsert}건 다음 biz=${bizNextPage} ann=${annNextPage}`);
+    console.log(`[crawl-kstartup] ===== 실행 완료 =====`);
+    console.log(`[crawl-kstartup] 결과: startup_business=${bizUpsert}건 (신규 ${bizNew}), startup_announcement=${annUpsert}건 (신규 ${annNew})`);
+    console.log(`[crawl-kstartup] 다음 실행: 통합지원사업 page ${bizNextPage}, 공고 page ${annNextPage}`);
     return new Response(
       JSON.stringify({
         success: true,

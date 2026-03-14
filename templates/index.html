@@ -786,8 +786,8 @@
             <table>
               <thead>
                 <tr>
-                  <th style="min-width:80px">내용확인</th>
                   <th style="min-width:50px">No</th>
+                  <th style="min-width:80px">내용확인</th>
                   <th style="min-width:200px">공고명</th>
                   <th style="min-width:180px">통합공고명</th>
                   <th style="min-width:140px">공고기관명</th>
@@ -1845,7 +1845,7 @@
         const rowClass = checked ? ' class="row-startup-checked"' : '';
         const checkBtn = checked ? '<button type="button" class="btn btn-action" disabled title="이미 확인함">확인완료</button>' : '<button type="button" class="btn btn-action btn-startup-content-check" data-item-type="announcement" data-item-id="' + esc(row.id || '') + '" title="내용확인">내용확인</button>';
         const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
-        return '<tr' + rowClass + '><td>' + checkBtn + '</td><td>' + no + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 45)) + '</td><td style="text-align:left" title="' + esc(intg) + '">' + esc(tr(intg, 35)) + '</td><td title="' + esc(org) + '">' + esc(tr(org, 25)) + '</td><td title="' + esc(dprt) + '">' + esc(tr(dprt, 20)) + '</td><td>' + esc(tr(contact, 25)) + '</td><td>' + esc(reg) + '</td><td title="' + esc(cl) + '">' + esc(tr(cl, 25)) + '</td><td>' + esc(sprv) + '</td><td>' + fmt(row.start_date) + '</td><td>' + fmt(row.end_date) + '</td><td>' + esc(row.rcrt_prgs || '-') + '</td><td title="' + esc(aply) + '">' + esc(tr(aply, 20)) + '</td><td>' + esc(enyy) + '</td><td title="' + esc(age) + '">' + esc(tr(age, 35)) + '</td><td>' + link + '</td></tr>';
+        return '<tr' + rowClass + '><td>' + no + '</td><td>' + checkBtn + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 45)) + '</td><td style="text-align:left" title="' + esc(intg) + '">' + esc(tr(intg, 35)) + '</td><td title="' + esc(org) + '">' + esc(tr(org, 25)) + '</td><td title="' + esc(dprt) + '">' + esc(tr(dprt, 20)) + '</td><td>' + esc(tr(contact, 25)) + '</td><td>' + esc(reg) + '</td><td title="' + esc(cl) + '">' + esc(tr(cl, 25)) + '</td><td>' + esc(sprv) + '</td><td>' + fmt(row.start_date) + '</td><td>' + fmt(row.end_date) + '</td><td>' + esc(row.rcrt_prgs || '-') + '</td><td title="' + esc(aply) + '">' + esc(tr(aply, 20)) + '</td><td>' + esc(enyy) + '</td><td title="' + esc(age) + '">' + esc(tr(age, 35)) + '</td><td>' + link + '</td></tr>';
       }).join('');
       startupAnnouncementsPage = safePage;
       renderStartupPagination(
