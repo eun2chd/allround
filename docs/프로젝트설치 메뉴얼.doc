@@ -1,0 +1,52 @@
+요즘것들  공고 모음 (allround)
+allforyoung.com의 공모전 및 대외활동 정보를 크롤링하여 웹 테이블로 제공하는 대시보드 프로젝트입니다.
+그외 k-startup 창업 공고 를 가져와 데이터를 수집하여 정보를 제공합니다.
+
+
+주요 기능
+테이블 뷰: D-day, 제목, 주관사, 카테고리별 공고 정보 제공
+
+실시간 크롤링: 페이지 범위(1~10) 설정 및 최신 데이터 갱신 버튼
+사용자 관리: 사이드바를 통한 가입 유저의 접속/오프라인 상태 표시
+데이터 관리: SQLite 및 Supabase를 활용한 신규 공고 적재
+
+설치 및 실행 환경
+권장 환경: Python 3.11 ~ 3.12 (3.14 버전은 호환성 이슈 발생 가능)
+필수 요구사항: Microsoft Visual C++ 14.0 이상 (C++ 빌드 툴)
+
+1. 의존성 설치
+Windows 환경의 인코딩 오류(UnicodeDecodeError) 방지를 위해 UTF-8 모드로 실행합니다.
+Bash
+export PYTHONUTF8=1
+pip install -r requirements.txt
+2. 실행
+Bash
+python app.py
+접속 주소: http://127.0.0.1:5000
+
+트러블슈팅 요약
+1. 라이브러리 빌드 에러
+문제: pyroaring, pyiceberg 설치 중 C++ 컴파일러 부재로 에러 발생
+원인: 해당 패키지들은 C 확장 모듈을 포함하고 있어 컴파일러가 필수임
+해결: Microsoft Visual C++ Build Tools 설치 후 재시도
+
+2. 인코딩 에러 (UnicodeDecodeError)
+문제: pip install 시 requirements.txt를 읽지 못함
+원인: Windows 기본 인코딩(CP949)과 파일 인코딩(UTF-8) 불일치
+해결: export PYTHONUTF8=1 설정을 통해 파이썬을 UTF-8 모드로 강제 구동
+
+3. 모듈 미설치 에러
+문제: ModuleNotFoundError: No module named 'dotenv'
+원인: 환경 변수 관리를 위한 python-dotenv 패키지 누락
+해결: python -m pip install python-dotenv 실행
+
+
+
+프로젝트 구조
+Plaintext
+allyoung/
+├── app.py           # Flask 웹 서버 및 라우팅
+├── crawler.py       # HTML 파싱 및 데이터 수집 로직
+├── requirements.txt # 의존성 라이브러리 목록
+└── templates/
+    └── index.html   # 대시보드 UI (테이블 및 사이드바)

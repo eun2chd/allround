@@ -1,78 +1,276 @@
-# 요즘것들 공고 모음
+#Ntpercent 공모전 대시보드
 
-[allforyoung.com](https://www.allforyoung.com) 공모전/대외활동 정보를 크롤링해 웹 테이블로 보여주는 대시보드입니다.
+allforyoung.com과 wevity.com의 공모전 및 대외활동 정보를 크롤링하여 한눈에 확인하고 관리할 수 있는 웹 기반 대시보드입니다.
 
-## 설치
+## 주요 기능
 
-```bash
-cd allyoung
+### 공고 관리
+- 공고 테이블 뷰: 수집된 공고를 D-day, 제목, 주최/주관, 카테고리별로 정렬하여 표시
+- 실시간 크롤링: Supabase Edge Function을 통한 자동 크롤링 (30분마다)
+- 중복 방지 저장: Supabase 데이터베이스를 사용하여 기존 데이터는 유지하고 신규 공고만 추가
+- 다중 소스 지원: 요즘것들(allforyoung.com), 위비티(wevity.com) 크롤링
+
+### 사용자 기능
+- Supabase 인증: 이메일/비밀번호 기반 회원가입 및 로그인
+- 프로필 관리: 닉네임, 프로필 이미지, 상태 메시지, 해시태그 설정
+- 즐겨찾기: 공고를 폴더별로 분류하여 저장 및 관리
+- 참가 관리: 공모전 참가 신청 및 상세 정보 관리
+- 대표작 관리: 포트폴리오 이미지 업로드 및 순서 조정
+
+### 협업 기능
+- 팀 관리: 팀 생성, 멤버 초대, 팀 프로필 설정
+- 실시간 접속 상태: 오른쪽 사이드바를 통해 가입된 사용자의 실시간 접속/오프라인 상태 확인
+- 알림 시스템: 공고 업데이트, 팀 활동 등 실시간 알림
+
+### 기타 기능
+- 피드백/오류 신고: 사용자 피드백 및 오류 신고 기능
+- 공지사항: 관리자 공지사항 작성 및 관리
+- 창업 정보: K-Startup 공고 및 창업 정보 수집
+
+## 기술 스택
+
+Backend
+- Language: Python 3.11 ~ 3.12 (권장)
+- Framework: Flask (Web Server)
+- Database: Supabase (PostgreSQL, Auth, Storage, Realtime)
+- Library: 
+  - BeautifulSoup4 (Crawling)
+  - python-dotenv (환경 변수 관리)
+  - supabase-py (Supabase 클라이언트)
+  - pandas (데이터 처리)
+  - Pillow (이미지 처리)
+
+Frontend
+- Template Engine: Jinja2 (Flask 기본)
+- CSS: 커스텀 CSS (Pretendard 폰트 사용)
+- JavaScript: Vanilla JS (Realtime 구독, 동적 UI)
+
+Infrastructure
+- 크롤링: Supabase Edge Functions (TypeScript)
+- 스케줄링: GitHub Actions (30분마다 자동 크롤링)
+- 배포: Render, Railway, Fly.io 등 지원 (Procfile 포함)
+
+설치 및 실행 방법
+
+### 1. 사전 요구사항
+이 프로젝트는 다음 도구가 설치되어 있어야 합니다:
+
+- Python 3.11+
+- Supabase 프로젝트 (Auth, Database, Storage 사용)
+- Git (프로젝트 클론용)
+
+### 2. 프로젝트 복제 및 이동
+bash
+git clone <repository-url>
+cd allround
+
+3. 가상 환경 생성 및 활성화
+
+bash
+# Windows
+python -m venv venv
+venv\Scripts\activate
+
+macOS/Linux
+python3 -m venv venv
+source venv/bin/activate
+
+4. 패키지 설치
+
+Windows 환경에서 인코딩 오류(UnicodeDecodeError)를 방지하기 위해 UTF-8 모드를 활성화한 후 설치합니다.
+
+bash
+# Windows (PowerShell)
+$env:PYTHONUTF8=1
 pip install -r requirements.txt
+
+# Windows (CMD)
+set PYTHONUTF8=1
+pip install -r requirements.txt
+
+# macOS/Linux
+pip install -r requirements.txt
+
+# 만약 dotenv 에러가 발생한다면 별도 설치
+python -m pip install python-dotenv
+
+
+### 5. 환경 변수 설정
+
+프로젝트 루트에 .env 파일을 생성하고 다음 변수들을 설정합니다:
+
+env
+# Supabase 설정 (필수)
+VITE_NTP_SUPABASE_URL=https://your-project.supabase.co
+VITE_NTP_SUPABASE_ANON_KEY=your-anon-key
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key
+
+# Flask 설정 (필수)
+FLASK_SECRET_KEY=your-secret-key-32-chars-minimum
+
+# 데이터베이스 (선택)
+VITE_NTP_DATABASE_URL=your-database-url
+VITE_NTP_DATABASE_DIRECT_URL=your-direct-database-url
+
+
+SECRET_KEY 생성 예시:
+```bash
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
-❌ 이전
 
-pip 동작:
+6. Supabase 데이터베이스 설정
 
-requirements.txt 읽기
-→ OS 기본 인코딩 사용
-→ Windows 기본 = cp949
-→ 파일 실제 = UTF-8
-→ 디코딩 실패 → UnicodeDecodeError
-✅ 이번
-export PYTHONUTF8=1
+1. Supabase Dashboard → SQL Editor에서 `docs/db_schema.md` 참고하여 테이블 생성
+2. Storage 버킷 설정:
+   - `docs/프로필_이미지_Storage_설정.md`
+   - `docs/대표작_이미지_Storage_설정.md`
+   - `docs/참가_상세_문서_Storage_설정.md`
+   - `docs/팀_프로필_이미지_Storage_설정.md`
 
-이게 하는 일:
+7. 크롤링 설정 (선택)
 
-Python 프로세스 전체를 UTF-8 모드로 강제 실행
+자동 크롤링을 사용하려면:
 
-그러면 pip 내부 동작이 이렇게 바뀜:
+1. Edge Function 배포: `docs/크롤링_설정.md` 참고
+2. GitHub Actions 설정: Repository Secrets에 Supabase 관련 키 추가
 
-requirements.txt 읽기
-→ 기본 인코딩 = UTF-8
-→ 파일 실제 = UTF-8
-→ 정상 파싱
-→ 설치 진행
+### 8. 실행
 
-그래서 성공.
-
-export PYTHONUTF8=1
-pip install -r requirements.txt
-12341234!
-## 실행
-
-```bash
+bash
 python app.py
+
+
+브라우저에서 `http://127.0.0.1:5000` 접속
+
+프로젝트 구조
+
+allround/
+├── app.py                    # Flask 웹 서버 및 라우팅 로직
+├── config.py                 # 환경 변수 및 Supabase 설정
+├── crawler.py                # BeautifulSoup 기반 HTML 파싱 및 수집기
+├── view_raw_html.py          # HTML 디버깅용 유틸리티
+├── requirements.txt          # 프로젝트 의존성 라이브러리 목록
+├── Procfile                  # 배포 플랫폼용 프로세스 설정
+├── templates/                # Jinja2 템플릿 파일
+│   ├── index.html            # 메인 대시보드 UI
+│   ├── login.html            # 로그인 페이지
+│   ├── signup.html           # 회원가입 페이지
+│   ├── mypage.html           # 마이페이지
+│   ├── bookmarks.html        # 즐겨찾기 페이지
+│   ├── feedback.html         # 피드백 페이지
+│   └── partials/             # 공통 컴포넌트
+│       ├── _navbar.html      # 네비게이션 바
+│       ├── _sidebar_users.html # 사용자 사이드바
+│       ├── _sidebar_team.html # 팀 사이드바
+│       └── ...
+├── static/                   # 정적 파일
+│   ├── css/                  # 스타일시트
+│   ├── js/                   # JavaScript 파일
+│   ├── images/               # 이미지 파일
+│   └── font/                 # 폰트 파일
+├── supabase/                 # Supabase 관련 파일
+│   ├── functions/            # Edge Functions
+│   │   ├── crawl-contests/   # 요즘것들 크롤링 함수
+│   │   ├── crawl-wevity/     # 위비티 크롤링 함수
+│   │   └── crawl-kstartup/   # K-Startup 크롤링 함수
+│   └── migrations/           # 데이터베이스 마이그레이션
+└── docs/                     # 문서
+    ├── db_schema.md          # 데이터베이스 스키마
+    ├── 크롤링_설정.md        # 크롤링 설정 가이드
+    ├── 배포가이드.md         # 배포 가이드
+    ├── 접속상태_설명.md      # 실시간 유저 상태 시스템 설명
+    └── ...
 ```
 
-브라우저에서 http://127.0.0.1:5000 접속
+주요 API 엔드포인트
 
-## 기능
+### 인증
+- `POST /login` - 로그인
+- `POST /signup` - 회원가입
+- `POST /logout` - 로그아웃
+- `POST /reset-password` - 비밀번호 재설정
 
-- **테이블 뷰**: 수집된 공고를 D-day, 제목, 주최/주관, 카테고리로 표시
-- **접속 유저**: 오른쪽 사이드바에 가입된 사용자 목록 + 접속 중/오프라인 표시 (자세한 설명: [docs/접속상태_설명.md](docs/접속상태_설명.md))
-- **새로고침**: 버튼 클릭 시 크롤링 실행, 최신 데이터 반영
-- **페이지 선택**: 1~10페이지 크롤링 범위 설정
-- **데이터 저장**: SQLite에 저장되어 새로고침 시 신규 공고만 추가
+공고
+- `GET /api/contests` - 공고 목록 조회
+- `GET /api/contests/<source>/<contest_id>/content` - 공고 상세 내용
+- `POST /api/contests/<source>/<contest_id>/participation` - 참가 신청
 
-발생했던 문제와 해결 과정
-1. 왜 안 됐나요? (원인)
-원인: app.py 코드 내에서 .env 파일을 읽어오기 위한 **python-dotenv**라는 라이브러리를 사용하도록 설정되어 있었는데, 정작 PC(파이썬 환경)에는 이 라이브러리가 설치되어 있지 않았습니다.
+### 즐겨찾기
+- `GET /api/bookmarks` - 즐겨찾기 목록
+- `POST /api/bookmarks/toggle` - 즐겨찾기 추가/제거
+- `GET /api/bookmarks/folders` - 폴더 목록
+- `POST /api/bookmarks/folders` - 폴더 생성
 
-증상: ModuleNotFoundError: No module named 'dotenv'라는 에러 메시지와 함께 실행이 중단되었습니다.
+### 사용자
+- `GET /api/me` - 현재 사용자 정보
+- `GET /api/users` - 사용자 목록 (접속 상태 포함)
+- `POST /api/profile/update-image` - 프로필 이미지 업데이트
 
-2. 어떻게 해결했나요? (조치)
-python -m pip install python-dotenv 명령어를 통해 부족했던 부품(라이브러리)을 설치했습니다.
+### 팀
+- `GET /api/team/settings` - 팀 설정 조회
+- `POST /api/team/settings` - 팀 생성/수정
+- `GET /api/team/members` - 팀 멤버 목록
 
-설치 과정에서 나온 WARNING은 "명령어 실행 파일 경로가 등록되지 않았다"는 뜻이지만, 라이브러리를 코드에서 사용하는 데는 지장이 없으니 지금은 무시하셔도 됩니다.
+# 트러블슈팅 (Troubleshooting)
 
-## 구조
+### 1. pip install 중 UnicodeDecodeError 발생 시
 
+원인: Windows 기본 인코딩(CP949)과 파일 인코딩 불일치
+
+해결: 
+```bash
+# PowerShell
+$env:PYTHONUTF8=1
+pip install -r requirements.txt
+
+# CMD
+set PYTHONUTF8=1
+pip install -r requirements.txt
 ```
-allyoung/
-├── app.py          # Flask 웹 서버
-├── crawler.py      # 크롤러 (HTML 파싱)
-├── requirements.txt
-├── templates/
-│   └── index.html  # 테이블 UI
-# data/ 제거됨 (Supabase contests 사용)
+
+### 2. ModuleNotFoundError: No module named 'dotenv'
+
+원인: 일부 환경에서 의존성 누락
+
+해결: 
+```bash
+pip install python-dotenv
 ```
-# allround
+
+### 3. Supabase 연결 오류
+
+원인: 환경 변수 미설정 또는 잘못된 키
+
+해결: 
+- `.env` 파일이 프로젝트 루트에 있는지 확인
+- `VITE_NTP_SUPABASE_URL`, `VITE_NTP_SUPABASE_ANON_KEY` 값 확인
+- Supabase Dashboard → Settings → API에서 키 복사
+
+### 4. 로그인 후 접속 상태가 표시되지 않음
+
+원인: `presence` 테이블 미생성 또는 `SUPABASE_SERVICE_ROLE_KEY` 미설정
+
+해결: 
+- `docs/db_schema.md` 참고하여 `presence` 테이블 생성
+- `.env`에 `SUPABASE_SERVICE_ROLE_KEY` 설정
+
+### 5. 크롤링이 동작하지 않음
+
+원인: Edge Function 미배포 또는 GitHub Actions 미설정
+
+해결: 
+- `docs/크롤링_설정.md` 참고하여 Edge Function 배포
+- GitHub Actions Secrets 설정 확인
+
+추가 문서
+
+- [데이터베이스 스키마](docs/db_schema.md)
+- [크롤링 설정 가이드](docs/크롤링_설정.md)
+- [배포 가이드](docs/배포가이드.md)
+- [접속 상태 시스템 설명](docs/접속상태_설명.md)
+- [창업/K-Startup 수집 설계](docs/창업_K-Startup_수집_설계.md)
+
+라이선스
+
+이 프로젝트의 라이선스 정보를 여기에 추가하세요.
+참고: 이 프로젝트는 allforyoung.com과 wevity.com의 공모전 정보를 수집하여 제공합니다. 크롤링 시 해당 사이트의 이용약관을 준수해주세요.
