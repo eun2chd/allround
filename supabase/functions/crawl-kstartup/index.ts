@@ -91,17 +91,27 @@ async function fetchApi(
   numOfRows: number
 ): Promise<string> {
   // ServiceKey는 공공데이터포털에서 이미 URL 인코딩된 값으로 발급됨. encodeURIComponent 시 이중 인코딩 → 401 발생
-  const url = `${BASE_URL}/${apiName}?ServiceKey=${serviceKey}&pageNo=${pageNo}&numOfRows=${numOfRows}`;
-  console.log(`[crawl-kstartup] API 요청: ${apiName} pageNo=${pageNo} numOfRows=${numOfRows}`);
+  // API 파라미터명: page (pageNo 아님), numOfRows
+  const url = `${BASE_URL}/${apiName}?ServiceKey=${serviceKey}&page=${pageNo}&numOfRows=${numOfRows}`;
+  console.log(`[crawl-kstartup] 🔵 API 요청: ${apiName} pageNo=${pageNo} numOfRows=${numOfRows}`);
+  console.log(`[crawl-kstartup] 🔵 요청 URL: ${url.replace(serviceKey, 'SERVICE_KEY_HIDDEN')}`);
   const res = await fetch(url, {
     headers: { Accept: "application/xml, text/xml, */*" },
   });
   const body = await res.text();
   if (!res.ok) {
-    console.error(`[crawl-kstartup] API 실패: ${apiName} HTTP ${res.status}`, body.slice(0, 500));
+    console.error(`[crawl-kstartup] ❌ API 실패: ${apiName} HTTP ${res.status}`, body.slice(0, 500));
     throw new Error(`API ${apiName} HTTP ${res.status}`);
   }
-  console.log(`[crawl-kstartup] API 응답: ${apiName} pageNo=${pageNo} HTTP ${res.status} body=${body.length}bytes`);
+  
+  // 응답에서 실제 페이지 번호 확인
+  const pageMatch = body.match(/<page>(\d+)<\/page>/);
+  const actualPage = pageMatch ? parseInt(pageMatch[1], 10) : null;
+  if (actualPage !== null && actualPage !== pageNo) {
+    console.error(`[crawl-kstartup] ⚠️⚠️⚠️ API 페이지 불일치: 요청 pageNo=${pageNo}, 응답 실제 page=${actualPage}`);
+  }
+  
+  console.log(`[crawl-kstartup] 🟢 API 응답: ${apiName} 요청pageNo=${pageNo} 응답page=${actualPage ?? 'N/A'} HTTP ${res.status} body=${body.length}bytes`);
   return body;
 }
 
@@ -169,7 +179,11 @@ async function fetchBusinessPages(
 
   for (let p = startPage; p <= endPage; p++) {
     const pageXml = p === startPage ? xml : await fetchApi("getBusinessInformation01", serviceKey, p, PER_PAGE);
-    const { currentCount } = parsePagination(pageXml);
+    const { currentCount, page: actualPage } = parsePagination(pageXml);
+    console.log(`[crawl-kstartup] 통합지원사업 page ${p} 요청 → API 응답 실제 page: ${actualPage}`);
+    if (p !== actualPage) {
+      console.warn(`[crawl-kstartup] ⚠️ 통합지원사업 page ${p} 요청했는데 API가 page ${actualPage} 반환!`);
+    }
     if (currentCount === 0) {
       console.log(`[crawl-kstartup] 통합지원사업 page ${p}: currentCount=0, 중단`);
       break;
@@ -317,7 +331,11 @@ async function fetchAnnouncementPages(
 
   for (let p = startPage; p <= endPage; p++) {
     const pageXml = p === startPage ? xml : await fetchApi("getAnnouncementInformation01", serviceKey, p, PER_PAGE);
-    const { currentCount } = parsePagination(pageXml);
+    const { currentCount, page: actualPage } = parsePagination(pageXml);
+    console.log(`[crawl-kstartup] 지원사업 공고 page ${p} 요청 → API 응답 실제 page: ${actualPage}`);
+    if (p !== actualPage) {
+      console.warn(`[crawl-kstartup] ⚠️ 지원사업 공고 page ${p} 요청했는데 API가 page ${actualPage} 반환!`);
+    }
     if (currentCount === 0) {
       console.log(`[crawl-kstartup] 지원사업 공고 page ${p}: currentCount=0, 중단`);
       break;
@@ -442,23 +460,43 @@ Deno.serve(async (req) => {
 
     // 4. DB 저장/업데이트
     if (businessRows.length > 0) {
-      console.log(`[crawl-kstartup] [3단계] startup_business 저장 시작: ${businessRows.length}건`);
+      console.log(`[crawl-kstartup] [3단계] startup_business 저장 시작: ${businessRows.length}건 (page ${bizStartPage}에서 수집)`);
       const bizIds = businessRows.map((r) => r.id);
+      console.log(`[crawl-kstartup] [3단계] 수집한 ID 전체 (page ${bizStartPage}): ${bizIds.join(", ")}`);
       
       // 기존 데이터 확인
-      const { data: existingBiz } = await supabase
+      const { data: existingBiz, error: existingBizErr } = await supabase
         .from("startup_business")
         .select("id")
         .in("id", bizIds);
       
+      if (existingBizErr) {
+        console.error(`[crawl-kstartup] [3단계] 기존 데이터 조회 실패:`, existingBizErr);
+      }
+      
       const existingBizSet = new Set((existingBiz ?? []).map((r) => r.id));
-      bizNew = businessRows.filter((r) => !existingBizSet.has(r.id)).length;
-      const bizUpdate = businessRows.length - bizNew;
+      const existingBizIds = Array.from(existingBizSet);
+      
+      // DB 전체 레코드 수 확인
+      const { count: totalBizCount } = await supabase
+        .from("startup_business")
+        .select("*", { count: "exact", head: true });
+      
+      console.log(`[crawl-kstartup] [3단계] DB 전체 레코드 수: ${totalBizCount ?? 0}건`);
+      console.log(`[crawl-kstartup] [3단계] DB에 존재하는 ID (요청한 ${bizIds.length}개 중): ${existingBizIds.length > 0 ? existingBizIds.join(", ") : "없음"} (${existingBizIds.length}개)`);
+      
+      const newBizIds = businessRows.filter((r) => !existingBizSet.has(r.id)).map((r) => r.id);
+      const updateBizIds = businessRows.filter((r) => existingBizSet.has(r.id)).map((r) => r.id);
+      
+      bizNew = newBizIds.length;
+      const bizUpdate = updateBizIds.length;
       
       console.log(`[crawl-kstartup] [3단계] startup_business: 수집=${bizIds.length}건, 신규=${bizNew}건, 업데이트=${bizUpdate}건`);
       if (bizNew > 0) {
-        const newIds = businessRows.filter((r) => !existingBizSet.has(r.id)).map((r) => r.id).slice(0, 5);
-        console.log(`[crawl-kstartup] [3단계] startup_business 신규 ID: ${newIds.join(", ")}`);
+        console.log(`[crawl-kstartup] [3단계] ✅ 신규 ID: ${newBizIds.join(", ")}`);
+      }
+      if (bizUpdate > 0) {
+        console.log(`[crawl-kstartup] [3단계] 🔄 업데이트 ID: ${updateBizIds.join(", ")}`);
       }
 
       // 저장/업데이트 (없으면 저장, 있으면 업데이트)
@@ -481,23 +519,43 @@ Deno.serve(async (req) => {
     }
 
     if (announcementRows.length > 0) {
-      console.log(`[crawl-kstartup] [3단계] startup_announcement 저장 시작: ${announcementRows.length}건`);
+      console.log(`[crawl-kstartup] [3단계] startup_announcement 저장 시작: ${announcementRows.length}건 (page ${annStartPage}에서 수집)`);
       const annIds = announcementRows.map((r) => r.pbanc_sn);
+      console.log(`[crawl-kstartup] [3단계] 수집한 pbanc_sn 전체 (page ${annStartPage}): ${annIds.join(", ")}`);
       
       // 기존 데이터 확인
-      const { data: existingAnn } = await supabase
+      const { data: existingAnn, error: existingAnnErr } = await supabase
         .from("startup_announcement")
         .select("pbanc_sn")
         .in("pbanc_sn", annIds);
       
+      if (existingAnnErr) {
+        console.error(`[crawl-kstartup] [3단계] 기존 데이터 조회 실패:`, existingAnnErr);
+      }
+      
       const existingAnnSet = new Set((existingAnn ?? []).map((r) => r.pbanc_sn));
-      annNew = announcementRows.filter((r) => !existingAnnSet.has(r.pbanc_sn)).length;
-      const annUpdate = announcementRows.length - annNew;
+      const existingAnnIds = Array.from(existingAnnSet);
+      
+      // DB 전체 레코드 수 확인
+      const { count: totalAnnCount } = await supabase
+        .from("startup_announcement")
+        .select("*", { count: "exact", head: true });
+      
+      console.log(`[crawl-kstartup] [3단계] DB 전체 레코드 수: ${totalAnnCount ?? 0}건`);
+      console.log(`[crawl-kstartup] [3단계] DB에 존재하는 pbanc_sn (요청한 ${annIds.length}개 중): ${existingAnnIds.length > 0 ? existingAnnIds.join(", ") : "없음"} (${existingAnnIds.length}개)`);
+      
+      const newAnnIds = announcementRows.filter((r) => !existingAnnSet.has(r.pbanc_sn)).map((r) => r.pbanc_sn);
+      const updateAnnIds = announcementRows.filter((r) => existingAnnSet.has(r.pbanc_sn)).map((r) => r.pbanc_sn);
+      
+      annNew = newAnnIds.length;
+      const annUpdate = updateAnnIds.length;
       
       console.log(`[crawl-kstartup] [3단계] startup_announcement: 수집=${annIds.length}건, 신규=${annNew}건, 업데이트=${annUpdate}건`);
       if (annNew > 0) {
-        const newIds = announcementRows.filter((r) => !existingAnnSet.has(r.pbanc_sn)).map((r) => r.pbanc_sn).slice(0, 5);
-        console.log(`[crawl-kstartup] [3단계] startup_announcement 신규 pbanc_sn: ${newIds.join(", ")}`);
+        console.log(`[crawl-kstartup] [3단계] ✅ 신규 pbanc_sn: ${newAnnIds.join(", ")}`);
+      }
+      if (annUpdate > 0) {
+        console.log(`[crawl-kstartup] [3단계] 🔄 업데이트 pbanc_sn: ${updateAnnIds.join(", ")}`);
       }
 
       // 저장/업데이트 (없으면 저장, 있으면 업데이트)

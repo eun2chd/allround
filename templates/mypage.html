@@ -912,7 +912,9 @@
     <!-- 요약 대시보드 (DB 연동) -->
     <section class="dashboard-summary">
       <div class="summary-card">
-        <div class="summary-icon trophy">🏆</div>
+        <div class="summary-icon trophy">
+          <img src="{{ url_for('static', filename='images/awards.png') }}" alt="수상" style="width: 32px; height: 32px; object-fit: contain;">
+        </div>
         <div>
           <div class="summary-value">{{ awards_total|default(0) }}건</div>
           <div class="summary-label">수상</div>
@@ -924,14 +926,18 @@
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-icon money">💰</div>
+        <div class="summary-icon money">
+          <img src="{{ url_for('static', filename='images/salary.png') }}" alt="상금" style="width: 32px; height: 32px; object-fit: contain;">
+        </div>
         <div>
           <div class="summary-value">{{ prize_total|default('0') }}원</div>
           <div class="summary-label">상금</div>
         </div>
       </div>
       <div class="summary-card">
-        <div class="summary-icon rocket">🚀</div>
+        <div class="summary-icon rocket">
+          <img src="{{ url_for('static', filename='images/challenge.png') }}" alt="도전" style="width: 32px; height: 32px; object-fit: contain;">
+        </div>
         <div>
           <div class="summary-value">{{ participate_count|default(0) }}건</div>
           <div class="summary-label">도전</div>
@@ -1251,7 +1257,7 @@
           </div>
         </div>
         <div class="form-group" id="participationDetailDocUploadGroup">
-          <label>제출물 <span class="required">*</span> <span id="participationDetailDocUploadLabel">등록</span></label>
+          <label>제출물 <span class="required"></span> <span id="participationDetailDocUploadLabel">등록</span></label>
           <input type="file" id="participationDetailDocFile" accept=".pdf,.doc,.docx,.hwp,.ppt,.pptx,.xls,.xlsx,.zip,.txt" class="participation-doc-file-input">
         </div>
         <div class="participation-detail-actions">
