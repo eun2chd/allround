@@ -136,13 +136,76 @@ python -c "import secrets; print(secrets.token_hex(32))"
 
 ### 8. 실행
 
-bash
+```bash
 python app.py
-
+```
 
 브라우저에서 `http://127.0.0.1:5000` 접속
 
-프로젝트 구조
+### 9. 배포 전 테스트 (Gunicorn)
+
+배포 플랫폼(Render / Railway / Fly.io)에서는 Flask를 직접 실행하지 않고 WSGI 서버로 실행합니다. 배포 환경과 동일하게 로컬에서 먼저 실행 테스트를 진행합니다.
+
+#### 9.1 Gunicorn 설치
+
+`requirements.txt`에 이미 포함되어 있지만, 혹시 모르니 확인:
+
+```bash
+pip install gunicorn
+```
+
+#### 9.2 서버 실행
+
+프로젝트 루트에서 실행:
+
+```bash
+gunicorn -w 4 -b 0.0.0.0:5000 app:app
+```
+
+**명령어 옵션 설명:**
+
+| 옵션 | 설명 |
+|------|------|
+| `-w 4` | worker 4개 (동시 처리 프로세스 수) |
+| `-b 0.0.0.0:5000` | bind address (모든 네트워크 인터페이스에서 접속 가능) |
+| `app:app` | `app.py` 파일 안의 `app` 객체 |
+
+**예시 구조:**
+```
+project/
+ ├── app.py          # app = Flask(__name__)
+ ├── requirements.txt
+ └── templates/
+```
+
+#### 9.3 브라우저 접속
+
+`http://localhost:5000` 접속하여 다음을 확인:
+
+- ✅ 메인 페이지 로드
+- ✅ Supabase 연결
+- ✅ 로그인 페이지 정상 표시
+
+#### 9.4 정상 실행 로그 예시
+
+```
+[INFO] Starting gunicorn
+[INFO] Listening at: http://0.0.0.0:5000
+[INFO] Using worker: sync
+[INFO] Booting worker
+```
+
+#### ✅ 완료 조건
+
+다음 3개를 모두 확인해야 합니다:
+
+1. ✅ gunicorn 실행 성공
+2. ✅ localhost:5000 접속 가능
+3. ✅ 서버 에러 없음
+
+**참고**: 배포 플랫폼에서는 `Procfile`의 설정에 따라 자동으로 gunicorn이 실행됩니다. 로컬 테스트를 통해 배포 전에 문제를 미리 확인할 수 있습니다.
+
+## 프로젝트 구조
 
 allround/
 ├── app.py                    # Flask 웹 서버 및 라우팅 로직
@@ -262,11 +325,31 @@ pip install python-dotenv
 - `docs/크롤링_설정.md` 참고하여 Edge Function 배포
 - GitHub Actions Secrets 설정 확인
 
+### 6. Gunicorn 실행 오류
+
+원인: gunicorn 미설치 또는 포트 충돌
+
+해결: 
+```bash
+# gunicorn 설치 확인
+pip install gunicorn
+
+# 포트가 이미 사용 중인 경우 다른 포트 사용
+gunicorn -w 4 -b 0.0.0.0:8000 app:app
+
+# 또는 Windows에서 gunicorn이 동작하지 않는 경우
+# Windows는 gunicorn을 지원하지 않으므로 배포 환경에서만 사용
+# 로컬 개발은 python app.py 사용
+```
+
+**참고**: Windows에서는 gunicorn이 제대로 동작하지 않을 수 있습니다. 로컬 개발은 `python app.py`를 사용하고, 배포 전 테스트는 Linux/macOS 환경 또는 Docker를 사용하는 것을 권장합니다.
+
 추가 문서
 
 - [데이터베이스 스키마](docs/db_schema.md)
 - [크롤링 설정 가이드](docs/크롤링_설정.md)
 - [배포 가이드](docs/배포가이드.md)
+- [리다이렉트 URL 설정](docs/리다이렉트_URL_설정.md) - Supabase 리다이렉트 URL 전체 목록
 - [접속 상태 시스템 설명](docs/접속상태_설명.md)
 - [창업/K-Startup 수집 설계](docs/창업_K-Startup_수집_설계.md)
 
