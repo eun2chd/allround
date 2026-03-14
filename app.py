@@ -824,10 +824,11 @@ def api_update_profile_image():
             file_options={"content-type": content_type, "upsert": "true"},
         )
         url_result = supabase.storage.from_(PROFILE_BUCKET).get_public_url(file_path)
-        profile_url = url_result
-        email = session.get("email")
-        r = supabase.table("profiles").update({"profile_url": profile_url}).eq("email", email).execute()
-        if r.data or True:
+        profile_url = str(url_result) if url_result else ""
+        if not profile_url:
+            return jsonify({"success": False, "error": "이미지 URL 생성 실패"}), 500
+        r = supabase.table("profiles").update({"profile_url": profile_url}).eq("id", user_id).execute()
+        if r.data:
             session["profile_url"] = profile_url
             return jsonify({"success": True, "profile_url": profile_url})
         return jsonify({"success": False, "error": "프로필 업데이트 실패"}), 400
