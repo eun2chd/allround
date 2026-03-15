@@ -3099,18 +3099,41 @@ def api_contest_content(source, contest_id):
 
 
 def _api_contest_content(source: str, contest_id: str):
+    """DB에서 공모전 상세 정보 조회 (content 컬럼 사용)"""
     try:
         source_clean = (source or "").strip()
-        logger.info("공모전 상세 조회 시도: source=%s, contest_id=%s", source_clean, contest_id)
-        if source_clean == "위비티":
-            detail = crawl_wevity_detail(contest_id)
-        else:
-            detail = crawl_post_detail(contest_id)
-        if detail:
-            logger.info("공모전 상세 조회 성공: source=%s, contest_id=%s", source_clean, contest_id)
-            return jsonify({"success": True, "data": detail})
-        logger.warning("공모전 상세 조회 실패 (크롤링 결과 없음): source=%s, contest_id=%s", source_clean, contest_id)
-        return jsonify({"success": False, "error": "상세 내용을 가져올 수 없습니다."}), 404
+        logger.info("공모전 상세 조회 시도 (DB): source=%s, contest_id=%s", source_clean, contest_id)
+        
+        supabase = get_supabase_admin_client()
+        r = supabase.table("contests").select(
+            "id, title, host, category, url, content, d_day"
+        ).eq("source", source_clean).eq("id", contest_id).limit(1).execute()
+        
+        if not r.data or len(r.data) == 0:
+            logger.warning("공모전 상세 조회 실패 (DB에 없음): source=%s, contest_id=%s", source_clean, contest_id)
+            return jsonify({"success": False, "error": "상세 내용을 가져올 수 없습니다."}), 404
+        
+        row = r.data[0]
+        content = row.get("content") or ""
+        
+        # 프론트엔드가 기대하는 구조로 변환
+        detail = {
+            "id": str(row.get("id", contest_id)),
+            "url": row.get("url", ""),
+            "title": row.get("title", ""),
+            "host": row.get("host", ""),
+            "category": row.get("category", ""),
+            "apply_period": "",  # DB에 없으면 빈 값
+            "body": content,  # content 컬럼을 body로 매핑 (HTML 형식)
+            "apply_url": "",  # DB에 없으면 빈 값
+            "images": [],  # DB에 없으면 빈 배열
+            "has_content": bool(content),  # 본문 존재 여부
+        }
+        
+        logger.info("공모전 상세 조회 성공 (DB): source=%s, contest_id=%s, has_content=%s", 
+                   source_clean, contest_id, bool(content))
+        return jsonify({"success": True, "data": detail})
+        
     except Exception as e:
         logger.error("공모전 상세 조회 오류: source=%s, contest_id=%s, error=%s, traceback=%s", 
                      source_clean, contest_id, str(e), traceback.format_exc())

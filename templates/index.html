@@ -425,9 +425,120 @@
       max-height: 320px;
       overflow-y: auto;
       font-size: 0.9rem;
-      white-space: pre-wrap;
       line-height: 1.6;
       text-align: left;
+    }
+    .detail-body-html {
+      color: var(--text-dark);
+      word-wrap: break-word;
+      overflow-wrap: break-word;
+    }
+    .detail-body-html * {
+      max-width: 100%;
+    }
+    .detail-body-html p {
+      margin: 0 0 12px 0;
+      line-height: 1.7;
+    }
+    .detail-body-html p:last-child {
+      margin-bottom: 0;
+    }
+    .detail-body-html h1, .detail-body-html h2, .detail-body-html h3, .detail-body-html h4, .detail-body-html h5, .detail-body-html h6 {
+      margin: 16px 0 12px 0;
+      font-weight: 700;
+      line-height: 1.4;
+      color: var(--text-dark);
+    }
+    .detail-body-html h1 { font-size: 1.3rem; }
+    .detail-body-html h2 { font-size: 1.2rem; }
+    .detail-body-html h3 { font-size: 1.1rem; }
+    .detail-body-html h4 { font-size: 1rem; }
+    .detail-body-html ul, .detail-body-html ol {
+      margin: 12px 0;
+      padding-left: 24px;
+    }
+    .detail-body-html li {
+      margin: 6px 0;
+      line-height: 1.6;
+    }
+    .detail-body-html img {
+      max-width: 100%;
+      height: auto;
+      border-radius: 8px;
+      margin: 12px 0;
+      display: block;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .detail-body-html img:hover {
+      opacity: 0.9;
+    }
+    .detail-body-html a {
+      color: var(--main-purple);
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .detail-body-html a:hover {
+      text-decoration: underline;
+    }
+    .detail-body-html table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 12px 0;
+      font-size: 0.9rem;
+    }
+    .detail-body-html table th,
+    .detail-body-html table td {
+      padding: 8px 12px;
+      border: 1px solid var(--border-gray);
+      text-align: left;
+    }
+    .detail-body-html table th {
+      background: var(--soft-purple);
+      font-weight: 600;
+    }
+    .detail-body-html blockquote {
+      margin: 12px 0;
+      padding: 12px 16px;
+      border-left: 4px solid var(--main-purple);
+      background: var(--soft-purple);
+      font-style: italic;
+    }
+    .detail-body-html code {
+      background: var(--soft-purple);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.85em;
+    }
+    .detail-body-html pre {
+      background: var(--soft-purple);
+      padding: 12px;
+      border-radius: 8px;
+      overflow-x: auto;
+      margin: 12px 0;
+    }
+    .detail-body-html pre code {
+      background: none;
+      padding: 0;
+    }
+    .detail-body-html hr {
+      border: none;
+      border-top: 1px solid var(--border-gray);
+      margin: 16px 0;
+    }
+    .detail-body-html strong, .detail-body-html b {
+      font-weight: 700;
+      color: var(--text-dark);
+    }
+    .detail-body-html em, .detail-body-html i {
+      font-style: italic;
+    }
+    .detail-no-content {
+      padding: 20px;
+      text-align: center;
+      color: var(--gray-muted);
+      font-size: 0.9rem;
     }
     .detail-row .detail-footer {
       padding: 12px 20px;
@@ -533,11 +644,15 @@
       border: 1px solid rgba(109, 40, 217, 0.2);
     }
     .filter-bar .filter-search {
-      flex: 1;
-      min-width: 160px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 200px;
+      max-width: 400px;
     }
     .filter-bar .filter-search input {
-      width: 100%;
+      flex: 1;
+      min-width: 0;
       font-family: var(--font);
       font-size: 0.88rem;
       padding: 8px 12px;
@@ -545,6 +660,27 @@
       border-radius: var(--radius);
       background: var(--bg-white);
       color: var(--text-dark);
+    }
+    .filter-bar .filter-search button {
+      font-family: var(--font);
+      font-size: 0.88rem;
+      font-weight: 500;
+      padding: 8px 20px;
+      border: none;
+      border-radius: var(--radius);
+      background: var(--main-purple);
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    .filter-bar .filter-search button:hover {
+      background: var(--main-purple-hover);
+      transform: translateY(-1px);
+    }
+    .filter-bar .filter-search button:active {
+      transform: translateY(0);
     }
     .filter-bar input::placeholder { color: var(--gray-muted); }
     .filter-bar input:focus,
@@ -666,6 +802,7 @@
     <div class="filter-bar" id="filterBar" style="display:none">
       <div class="filter-search">
         <input type="text" id="searchInput" placeholder="제목, 주최·주관 검색" autocomplete="off">
+        <button type="button" id="searchButton">검색</button>
       </div>
       <div class="filter-divider"></div>
       <div class="filter-row">
@@ -1419,7 +1556,71 @@
           if (d.images && d.images.length > 0) {
             imgHtml = '<div class="detail-images">' + d.images.map(u => '<img src="' + escapeHtml(u) + '" alt="" loading="lazy" class="detail-img">').join('') + '</div>';
           }
-          inner.innerHTML = (meta.length ? '<div class="detail-meta">' + meta.join(' | ') + '</div>' : '') + imgHtml + escapeHtml(d.body || '(내용 없음)');
+          
+          // 본문이 있으면 HTML로 표시, 없으면 안내 메시지
+          let bodyHtml = '';
+          if (d.has_content && d.body) {
+            // HTML 본문을 파싱하고 정리
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = d.body;
+            
+            // 이미지에 클릭 이벤트 추가
+            const images = tempDiv.querySelectorAll('img');
+            images.forEach(img => {
+              img.style.maxWidth = '100%';
+              img.style.height = 'auto';
+              img.style.cursor = 'pointer';
+              img.onclick = function() {
+                openImgModal(img.src);
+              };
+              // 상대 경로를 절대 경로로 변환
+              const originalSrc = img.getAttribute('src');
+              if (originalSrc) {
+                // 절대 URL이 아니고 (http://, https://, data:, blob: 등이 아닌 경우)
+                if (!originalSrc.match(/^(https?:\/\/|data:|blob:)/i)) {
+                  const baseUrl = d.url ? new URL(d.url).origin : '';
+                  if (baseUrl) {
+                    // /로 시작하면 그대로 붙이고, 아니면 /를 추가
+                    if (originalSrc.startsWith('/')) {
+                      img.src = baseUrl + originalSrc;
+                    } else {
+                      img.src = baseUrl + '/' + originalSrc;
+                    }
+                  }
+                }
+              }
+            });
+            
+            // 링크에 target="_blank" 추가
+            const links = tempDiv.querySelectorAll('a');
+            links.forEach(link => {
+              if (!link.target) {
+                link.target = '_blank';
+                link.rel = 'noopener noreferrer';
+              }
+            });
+            
+            // 불필요한 스타일 제거 (인라인 스타일은 유지하되, 너무 큰 폰트나 레이아웃 깨지는 것만 조정)
+            const allElements = tempDiv.querySelectorAll('*');
+            allElements.forEach(el => {
+              // 너무 큰 폰트 크기 제한
+              const fontSize = window.getComputedStyle(el).fontSize;
+              if (parseInt(fontSize) > 24) {
+                el.style.fontSize = '1.1rem';
+              }
+              // 너무 넓은 요소 제한
+              if (el.style.width && parseInt(el.style.width) > 800) {
+                el.style.maxWidth = '100%';
+                el.style.width = 'auto';
+              }
+            });
+            
+            bodyHtml = '<div class="detail-body-html">' + tempDiv.innerHTML + '</div>';
+          } else {
+            bodyHtml = '<div class="detail-no-content">본문 정보가 없습니다. 원문 링크를 통해 확인해주세요.</div>';
+          }
+          
+          inner.innerHTML = (meta.length ? '<div class="detail-meta">' + meta.join(' | ') + '</div>' : '') + imgHtml + bodyHtml;
           footer.innerHTML = '<a href="' + escapeHtml(d.url) + '" target="_blank" rel="noopener" class="btn btn-primary">원문 보기</a>' + (d.apply_url ? ' <a href="' + escapeHtml(d.apply_url) + '" target="_blank" rel="noopener" class="btn btn-primary">지원하기</a>' : '');
         } else {
           inner.innerHTML = '<div class="detail-loading">' + (j.error || '내용을 불러올 수 없습니다.') + '</div>';
@@ -1970,6 +2171,9 @@
       searchDebounce = setTimeout(() => { searchDebounce = null; applyFiltersAndSort(); }, 300);
     });
     document.getElementById('searchInput')?.addEventListener('keyup', (e) => { if (e.key === 'Enter') applyFiltersAndSort(); });
+    document.getElementById('searchButton')?.addEventListener('click', () => {
+      applyFiltersAndSort();
+    });
     document.getElementById('checkFilterSelect')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('participationFilterSelect')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('bookmarkFilterCheck')?.addEventListener('change', () => applyFiltersAndSort());

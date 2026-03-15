@@ -31,6 +31,7 @@ interface ContestRow {
   host: string;
   url: string;
   category: string;
+  content?: string;  // 본문
   created_at?: string;
   first_seen_at?: string | null;
   updated_at: string;
@@ -84,6 +85,60 @@ function parseContestPage(html: string, _page: number): ContestRow[] {
   });
 
   return results;
+}
+
+async function crawlPostDetail(postId: string): Promise<string | null> {
+  const url = `${BASE_URL}/posts/${postId}`;
+  try {
+    await new Promise((r) => setTimeout(r, 500)); // 딜레이
+    const res = await fetch(url, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+        "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Accept-Encoding": "gzip, deflate, br",
+        Referer: "https://www.allforyoung.com/",
+        Connection: "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+      },
+    });
+    if (!res.ok) {
+      if (res.status === 403) {
+        console.error(`403 차단: ${url}`);
+        return null;
+      }
+      throw new Error(`HTTP ${res.status}`);
+    }
+    const html = await res.text();
+    const $ = load(html);
+    
+    // 본문 추출 (HTML 형식)
+    let article = $("article").first();
+    if (article.length === 0) {
+      article = $("main").first();
+      if (article.length === 0) {
+        article = $("body");
+      }
+    }
+    
+    // prose, markdown, content 클래스 찾기
+    let prose = article.find(".prose, .markdown, .content").first();
+    if (prose.length === 0) prose = article;
+    
+    // 불필요한 요소 제거
+    prose.find("script, style, nav, header, footer, aside, .ad, .ads, [class*='ad']").remove();
+    
+    // HTML 형식으로 반환 (최대 50000자)
+    let htmlContent = prose.html() || "";
+    if (htmlContent.length > 50000) {
+      htmlContent = htmlContent.slice(0, 50000);
+    }
+    
+    return htmlContent || null;
+  } catch (e) {
+    console.error(`상세 크롤링 실패 ${postId}:`, e);
+    return null;
+  }
 }
 
 async function crawlPages(maxPages: number): Promise<ContestRow[]> {
@@ -169,16 +224,41 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 기존 레코드 조회 → created_at, first_seen_at 유지 (신규만 생성 시점 설정)
+    // 기존 레코드 조회 → created_at, first_seen_at, content 유지
     const ids = [...new Set(contests.map((c) => c.id))];
     const { data: existing } = await supabase
       .from("contests")
-      .select("id, created_at, first_seen_at")
+      .select("id, created_at, first_seen_at, content")
       .eq("source", SOURCE)
       .in("id", ids);
     const existingMap = new Map(
-      (existing ?? []).map((r) => [r.id, { created_at: r.created_at, first_seen_at: r.first_seen_at }])
+      (existing ?? []).map((r) => [r.id, { 
+        created_at: r.created_at, 
+        first_seen_at: r.first_seen_at,
+        content: r.content 
+      }])
     );
+
+    // 상세 페이지 크롤링 (content가 비어있으면 크롤링, 있으면 기존 값 유지)
+    console.log(`상세 페이지 크롤링 시작: ${contests.length}건`);
+    for (const contest of contests) {
+      const ex = existingMap.get(contest.id);
+      // content가 없거나 비어있으면 크롤링해서 채우기 (insert)
+      // content가 이미 있으면 크롤링하지 않고 기존 값 유지 (update)
+      if (!ex?.content || (typeof ex.content === 'string' && ex.content.trim() === '')) {
+        const content = await crawlPostDetail(contest.id);
+        if (content) {
+          contest.content = content;
+        } else {
+          // 크롤링 실패해도 빈 문자열로 저장 (다음에 다시 시도)
+          contest.content = '';
+        }
+        await new Promise((r) => setTimeout(r, 300)); // 요청 간 딜레이
+      } else {
+        // 기존 content 유지 (update)
+        contest.content = ex.content;
+      }
+    }
 
     const now = new Date().toISOString();
     const rowsToUpsert = contests.map((c) => {
