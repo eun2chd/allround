@@ -37,6 +37,12 @@ CREATE TRIGGER update_profiles_modtime
 
 - profile_url, status_message 등 추가 컬럼은 필요 시 ALTER
 
+**프로필 이미지 및 상태메시지 컬럼 추가**:
+```sql
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS profile_url TEXT;
+ALTER TABLE profiles ADD COLUMN IF NOT EXISTS status_message TEXT;
+```
+
 **레벨/티어 컬럼 추가 (마이페이지 성장 시스템)**:
 ```sql
 ALTER TABLE profiles ADD COLUMN IF NOT EXISTS level INTEGER NOT NULL DEFAULT 1;
@@ -422,7 +428,26 @@ CREATE INDEX IF NOT EXISTS idx_contest_content_checks_contest ON contest_content
 
 ---
 
-### 12. contest_participation (참가/패스)
+### 12. contest_hides (공모전 숨김 처리)
+
+각 사용자가 개인적으로 공모전을 숨김 처리할 수 있는 기능.
+
+```sql
+CREATE TABLE IF NOT EXISTS contest_hides (
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    source TEXT NOT NULL,
+    contest_id TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    PRIMARY KEY (user_id, source, contest_id),
+    FOREIGN KEY (source, contest_id) REFERENCES contests(source, id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_contest_hides_user ON contest_hides(user_id);
+CREATE INDEX IF NOT EXISTS idx_contest_hides_contest ON contest_hides(source, contest_id);
+```
+
+---
+
+### 13. contest_participation (참가/패스)
 
 행 없음 = 미결정. `participate` = 참가, `pass` = 패스
 

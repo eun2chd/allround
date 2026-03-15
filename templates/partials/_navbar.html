@@ -26,9 +26,18 @@
         <a href="#" class="nav-btn-icon" id="navNotificationBtn" title="알림" role="button"><img src="{{ url_for('static', filename='images/notification.png') }}" alt="알림"></a>
         <span class="nav-notification-dot" id="navNotificationDot" style="display:none;"></span>
       </span>
-      <a href="{{ url_for('mypage') }}" class="nav-btn-mypage">마이페이지</a>
-      <a href="{{ url_for('bookmarks_page') }}" class="nav-btn-bookmarks">즐겨찾기</a>
-      <a href="{{ url_for('logout') }}" class="nav-btn-logout">로그아웃</a>
+      <div class="nav-menu-group">
+        <a href="{{ url_for('mypage') }}" class="nav-btn-menu nav-btn-mypage">마이페이지</a>
+        <div class="nav-dropdown">
+          <button type="button" class="nav-btn-menu nav-dropdown-toggle">더보기</button>
+          <div class="nav-dropdown-menu">
+            <a href="{{ url_for('bookmarks_page') }}" class="nav-dropdown-item">즐겨찾기</a>
+            <a href="{{ url_for('hidden_page') }}" class="nav-dropdown-item" data-skip-loading>숨긴 공모전</a>
+            <div class="nav-dropdown-divider"></div>
+            <a href="{{ url_for('logout') }}" class="nav-dropdown-item nav-dropdown-item-danger">로그아웃</a>
+          </div>
+        </div>
+      </div>
     </div>
     {% else %}
     <div class="navbar-nav"></div>
@@ -68,5 +77,23 @@
     var useLogo2 = el.src.indexOf('logo2') === -1;
     applyLogo(useLogo2);
   });
+  
+  // 드롭다운 메뉴 토글
+  var dropdownToggle = document.querySelector('.nav-dropdown-toggle');
+  var dropdown = document.querySelector('.nav-dropdown');
+  if (dropdownToggle && dropdown) {
+    dropdownToggle.addEventListener('click', function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropdown.classList.toggle('active');
+    });
+    
+    // 외부 클릭 시 드롭다운 닫기
+    document.addEventListener('click', function(e) {
+      if (!dropdown.contains(e.target)) {
+        dropdown.classList.remove('active');
+      }
+    });
+  }
 })();
 </script>

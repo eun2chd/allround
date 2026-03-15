@@ -981,125 +981,114 @@
     const countdownEl = document.getElementById('countdown');
     const dateTimeEl = document.getElementById('currentDateTime');
 
-    const REFRESH_INTERVAL_SEC = 30 * 60;
-    const STORAGE_KEY = 'countdown_next_refresh';
-    let countdownSec = REFRESH_INTERVAL_SEC;
-    let countdownTimer = null;
+    // 공통 카운트다운 유틸리티 함수 (중복 코드 제거)
+    function createCountdown(config) {
+      const {
+        intervalSec,
+        storageKey,
+        countdownEl,
+        dateTimeEl,
+        formatText
+      } = config;
+      
+      let countdownSec = intervalSec;
+      let countdownTimer = null;
 
-    function getStoredRemainingSec() {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY);
-        if (!stored) return null;
-        const nextMs = parseInt(stored, 10);
-        const remaining = Math.ceil((nextMs - Date.now()) / 1000);
-        if (remaining > 0 && remaining <= REFRESH_INTERVAL_SEC) return remaining;
-      } catch (e) { /* ignore */ }
-      return null;
-    }
-    function storeNextRefresh() {
-      try {
-        localStorage.setItem(STORAGE_KEY, String(Date.now() + REFRESH_INTERVAL_SEC * 1000));
-      } catch (e) { /* ignore */ }
-    }
-
-    function updateDateTime() {
-      if (dateTimeEl) {
-        const now = new Date();
-        dateTimeEl.textContent = now.toLocaleString('ko-KR', {
-          year: 'numeric', month: '2-digit', day: '2-digit',
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
-          hour12: false
-        });
+      function getStoredRemainingSec() {
+        try {
+          const stored = localStorage.getItem(storageKey);
+          if (!stored) return null;
+          const nextMs = parseInt(stored, 10);
+          const remaining = Math.ceil((nextMs - Date.now()) / 1000);
+          if (remaining > 0 && remaining <= intervalSec) return remaining;
+        } catch (e) { /* ignore */ }
+        return null;
       }
-    }
 
-    function startCountdown() {
-      if (countdownTimer) clearInterval(countdownTimer);
-      const stored = getStoredRemainingSec();
-      countdownSec = stored !== null ? stored : REFRESH_INTERVAL_SEC;
-      if (stored === null) storeNextRefresh();
-      function fmt() {
-        const m = Math.floor(Math.max(0, countdownSec) / 60);
-        const s = Math.max(0, countdownSec) % 60;
+      function storeNextRefresh() {
+        try {
+          localStorage.setItem(storageKey, String(Date.now() + intervalSec * 1000));
+        } catch (e) { /* ignore */ }
+      }
+
+      function updateDateTime() {
+        if (dateTimeEl) {
+          const now = new Date();
+          dateTimeEl.textContent = now.toLocaleString('ko-KR', {
+            year: 'numeric', month: '2-digit', day: '2-digit',
+            hour: '2-digit', minute: '2-digit', second: '2-digit',
+            hour12: false
+          });
+        }
+      }
+
+      function formatTime(seconds) {
+        const m = Math.floor(Math.max(0, seconds) / 60);
+        const s = Math.max(0, seconds) % 60;
         return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
       }
-      if (countdownEl) countdownEl.textContent = `(다음 갱신까지 ${fmt()})`;
-      countdownTimer = setInterval(() => {
-        countdownSec--;
-        if (countdownSec <= 0) {
-          countdownSec = REFRESH_INTERVAL_SEC;
-          storeNextRefresh();
+
+      function updateCountdown() {
+        if (countdownEl) {
+          const text = formatText ? formatText(formatTime(countdownSec)) : `(다음 갱신까지 ${formatTime(countdownSec)})`;
+          countdownEl.textContent = text;
         }
-        if (countdownEl) countdownEl.textContent = `(다음 갱신까지 ${fmt()})`;
-      }, 1000);
+      }
+
+      function start() {
+        if (countdownTimer) clearInterval(countdownTimer);
+        const stored = getStoredRemainingSec();
+        countdownSec = stored !== null ? stored : intervalSec;
+        if (stored === null) storeNextRefresh();
+        updateCountdown();
+        countdownTimer = setInterval(() => {
+          countdownSec--;
+          if (countdownSec <= 0) {
+            countdownSec = intervalSec;
+            storeNextRefresh();
+          }
+          updateCountdown();
+        }, 1000);
+      }
+
+      // 초기화
+      updateDateTime();
+      if (dateTimeEl) {
+        setInterval(updateDateTime, 1000);
+      }
+      start();
+
+      return { start, updateDateTime };
     }
 
-    updateDateTime();
-    setInterval(updateDateTime, 1000);
-    startCountdown();
+    // 공모전 카운트다운 (30분)
+    createCountdown({
+      intervalSec: 30 * 60,
+      storageKey: 'countdown_next_refresh',
+      countdownEl: countdownEl,
+      dateTimeEl: dateTimeEl,
+      formatText: (time) => `(다음 갱신까지 ${time})`
+    });
 
-    const REFRESH_INTERVAL_STARTUP_SEC = 10 * 60;
-    const STORAGE_KEY_STARTUP = 'countdown_next_refresh_startup';
-    let startupCountdownSec = REFRESH_INTERVAL_STARTUP_SEC;
-    let startupCountdownTimer = null;
+    // 스타트업 공고 카운트다운 (10분)
     const startupCountdownEl = document.getElementById('startupCountdown');
     const startupDateTimeEl = document.getElementById('startupDateTime');
-    function getStoredRemainingSecStartup() {
-      try {
-        const stored = localStorage.getItem(STORAGE_KEY_STARTUP);
-        if (!stored) return null;
-        const nextMs = parseInt(stored, 10);
-        const remaining = Math.ceil((nextMs - Date.now()) / 1000);
-        if (remaining > 0 && remaining <= REFRESH_INTERVAL_STARTUP_SEC) return remaining;
-      } catch (e) { /* ignore */ }
-      return null;
+    if (startupCountdownEl || startupDateTimeEl) {
+      createCountdown({
+        intervalSec: 10 * 60,
+        storageKey: 'countdown_next_refresh_startup',
+        countdownEl: startupCountdownEl,
+        dateTimeEl: startupDateTimeEl,
+        formatText: (time) => `(데이터는 10분마다 업데이트·다음 갱신까지 ${time})`
+      });
     }
-    function storeNextRefreshStartup() {
-      try {
-        localStorage.setItem(STORAGE_KEY_STARTUP, String(Date.now() + REFRESH_INTERVAL_STARTUP_SEC * 1000));
-      } catch (e) { /* ignore */ }
-    }
-    function updateStartupDateTime() {
-      if (startupDateTimeEl) {
-        startupDateTimeEl.textContent = new Date().toLocaleString('ko-KR', {
-          year: 'numeric', month: '2-digit', day: '2-digit',
-          hour: '2-digit', minute: '2-digit', second: '2-digit',
-          hour12: false
-        });
-      }
-    }
-    function startStartupCountdown() {
-      if (startupCountdownTimer) clearInterval(startupCountdownTimer);
-      const stored = getStoredRemainingSecStartup();
-      startupCountdownSec = stored !== null ? stored : REFRESH_INTERVAL_STARTUP_SEC;
-      if (stored === null) storeNextRefreshStartup();
-      function fmt() {
-        const m = Math.floor(Math.max(0, startupCountdownSec) / 60);
-        const s = Math.max(0, startupCountdownSec) % 60;
-        return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
-      }
-      function updateStartupCountdown() {
-        if (startupCountdownEl) startupCountdownEl.textContent = `(데이터는 10분마다 업데이트·다음 갱신까지 ${fmt()})`;
-      }
-      updateStartupCountdown();
-      startupCountdownTimer = setInterval(() => {
-        startupCountdownSec--;
-        if (startupCountdownSec <= 0) {
-          startupCountdownSec = REFRESH_INTERVAL_STARTUP_SEC;
-          storeNextRefreshStartup();
-        }
-        updateStartupCountdown();
-      }, 1000);
-    }
-    updateStartupDateTime();
-    setInterval(updateStartupDateTime, 1000);
-    startStartupCountdown();
 
     let allData = [];
     let filteredData = [];
     let totalDataCount = 0;
     let currentPage = 1;
     let bookmarkSet = new Set();
+    let hideSet = new Set();
     let contentChecks = new Set();
     let participation = {};
     let commentedSet = new Set();
@@ -1211,6 +1200,7 @@
       const bookmarkedKey = (s, c) => (s || '') + ':' + (c || '');
       const isBookmarked = (r) => bookmarkSet.has(bookmarkedKey(r.source, r.id));
       const hasCommented = (r) => commentedSet.has(bookmarkedKey(r.source, r.id));
+      const isHidden = (r) => hideSet.has(bookmarkedKey(r.source, r.id));
       tableBody.innerHTML = pageData.map((row, idx) => {
         const no = start + idx + 1;
         const isViewed = hasCommented(row);
@@ -1247,6 +1237,7 @@
               <button type="button" class="btn btn-action btn-content-check" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}"${contentChecked ? ' disabled title="이미 확인함"' : ' title="클릭 시 댓글 자동 작성: 공모전 내용확인 완료"'}>${btnCheckText}</button>
               <button type="button" class="btn btn-action btn-participate${btnPartActive}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}"${contentChecked ? '' : ' disabled'} title="${contentChecked ? '참가 (댓글: 공모전 참가)' : '내용확인 후 활성화'}">참가</button>
               <button type="button" class="btn btn-action btn-pass${btnPassActive}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}"${contentChecked ? '' : ' disabled'} title="${contentChecked ? '패스 (댓글: 공모전 패스)' : '내용확인 후 활성화'}">패스</button>
+              <button type="button" class="btn btn-action btn-hide" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}" title="${isHidden(row) ? '숨김 해제' : '숨김 처리'}">${isHidden(row) ? '숨김 해제' : '숨김'}</button>
             </td>
           </tr>
         `;
@@ -1342,9 +1333,10 @@
           statusJ = await statusRes.json();
         } else {
           const params = new URLSearchParams();
-          params.set('page', String(needsAll ? 1 : page));
+          // 숨김 처리 필터링을 위해 all 모드로 전체 데이터 가져오기
+          params.set('page', '1');
           params.set('limit', '10');
-          if (needsAll) params.set('all', '1');
+          params.set('all', '1');
           if (fp.q) params.set('q', fp.q);
           if (fp.category) params.set('category', fp.category);
           if (fp.source) params.set('source', fp.source);
@@ -1365,6 +1357,7 @@
           contentChecks = new Set(statusJ.data.content_checks || []);
           participation = statusJ.data.participation || {};
           commentedSet = new Set(statusJ.data.commented || []);
+          hideSet = new Set(statusJ.data.hides || []);
         }
 
         if (j.success && j.data) {
@@ -1372,6 +1365,9 @@
           if (participationOnly) {
             const makeKey = (s, c) => (s || '') + ':' + String(c || '');
             const hasCheck = (row) => contentChecks.has(makeKey(row.source, row.id));
+            const isHidden = (row) => hideSet.has(makeKey(row.source, row.id));
+            // 숨김 처리된 항목 필터링
+            list = list.filter(r => !isHidden(r));
             if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
             else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
             if (fp.q) {
@@ -1396,6 +1392,9 @@
           } else if (bookmarkOnly) {
             const makeKey = (s, c) => (s || '') + ':' + String(c || '');
             const hasCheck = (row) => contentChecks.has(makeKey(row.source, row.id));
+            const isHidden = (row) => hideSet.has(makeKey(row.source, row.id));
+            // 숨김 처리된 항목 필터링
+            list = list.filter(r => !isHidden(r));
             if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
             else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
             if (fp.q) {
@@ -1423,6 +1422,9 @@
             const hasCheck = (row) => contentChecks.has(makeKey(row.source, row.id));
             const isBookmarked = (row) => bookmarkSet.has(makeKey(row.source, row.id));
             const hasPartStatus = (row) => (participation[makeKey(row.source, row.id)] || '') === fp.participationFilter;
+            const isHidden = (row) => hideSet.has(makeKey(row.source, row.id));
+            // 숨김 처리된 항목 필터링
+            list = list.filter(r => !isHidden(r));
             if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
             else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
             if (fp.participationFilter === 'participate' || fp.participationFilter === 'pass') list = list.filter(hasPartStatus);
@@ -1432,9 +1434,16 @@
             const start = (page - 1) * PAGE_SIZE;
             list = list.slice(start, start + PAGE_SIZE);
           } else {
-            allData = list;
-            totalDataCount = j.total ?? list.length;
-            currentPage = j.page || page;
+            // 일반 목록 조회 시에도 숨김 처리된 항목 필터링
+            const makeKey = (s, c) => (s || '') + ':' + (c || '');
+            const isHidden = (row) => hideSet.has(makeKey(row.source, row.id));
+            // all 모드로 전체 데이터를 가져왔으므로 필터링 후 클라이언트 사이드 페이지네이션
+            const filteredList = list.filter(r => !isHidden(r));
+            allData = filteredList;
+            totalDataCount = filteredList.length;
+            currentPage = page;
+            const start = (page - 1) * PAGE_SIZE;
+            list = filteredList.slice(start, start + PAGE_SIZE);
           }
           document.getElementById('filterBar').style.display = 'flex';
           const catSel = document.getElementById('categorySelect');
@@ -1936,6 +1945,49 @@
         }
         return;
       }
+      const hideBtn = e.target.closest('.btn-hide');
+      if (hideBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const source = hideBtn.dataset.source || '요즘것들';
+        const contestId = hideBtn.dataset.contestId || '';
+        if (!contestId) return;
+        const key = source + ':' + contestId;
+        const isCurrentlyHidden = hideSet.has(key);
+        try {
+          const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/hide', {
+            method: isCurrentlyHidden ? 'DELETE' : 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const j = await r.json();
+          if (j.success) {
+            if (isCurrentlyHidden) {
+              hideSet.delete(key);
+              hideBtn.textContent = '숨김';
+              hideBtn.title = '숨김 처리';
+              showToast('숨김 해제했습니다');
+            } else {
+              hideSet.add(key);
+              hideBtn.textContent = '숨김 해제';
+              hideBtn.title = '숨김 해제';
+              showToast('숨김 처리했습니다');
+              // 숨김 처리된 행 제거
+              const row = hideBtn.closest('tr');
+              if (row && !row.classList.contains('detail-row')) {
+                row.remove();
+                // 테이블이 비어있으면 빈 상태 표시
+                const remainingRows = tableBody.querySelectorAll('tr[data-id]');
+                if (remainingRows.length === 0) {
+                  loadContests(currentPage, false);
+                }
+              }
+            }
+          }
+        } catch (err) {
+          showToast('오류가 발생했습니다', 'error');
+        }
+        return;
+      }
       const img = e.target.closest('img.detail-img');
       if (img) {
         e.preventDefault();
@@ -1960,13 +2012,15 @@
     let startupAnnouncementsData = [];
     let startupBusinessPage = 1;
     let startupAnnouncementsPage = 1;
+    let startupBusinessTotal = 0;
+    let startupAnnouncementsTotal = 0;
     let startupContentChecks = new Set();
     const STARTUP_PAGE_SIZE = 10;
     const MAX_VISIBLE_PAGES = 10;
 
-    function renderStartupPagination(pagEl, prevBtn, nextBtn, numEl, data, page, setPage, renderFn) {
-      if (!pagEl || !data || data.length === 0) { if (pagEl) pagEl.style.display = 'none'; return; }
-      const totalPages = Math.ceil(data.length / STARTUP_PAGE_SIZE);
+    function renderStartupPagination(pagEl, prevBtn, nextBtn, numEl, total, page, setPage, loadFn) {
+      if (!pagEl || !total || total === 0) { if (pagEl) pagEl.style.display = 'none'; return; }
+      const totalPages = Math.ceil(total / STARTUP_PAGE_SIZE);
       if (totalPages <= 1) { pagEl.style.display = 'none'; return; }
       prevBtn.disabled = page <= 1;
       nextBtn.disabled = page >= totalPages;
@@ -1979,10 +2033,14 @@
       }
       numEl.innerHTML = html;
       numEl.querySelectorAll('button[data-page]').forEach(function(b) {
-        b.addEventListener('click', function() { setPage(parseInt(b.dataset.page)); renderFn(); });
+        b.addEventListener('click', function() { 
+          const newPage = parseInt(b.dataset.page);
+          setPage(newPage);
+          loadFn(newPage); // 페이지네이션 지원: 서버에서 데이터 로드
+        });
       });
-      prevBtn.onclick = function() { if (page > 1) { setPage(page - 1); renderFn(); } };
-      nextBtn.onclick = function() { if (page < totalPages) { setPage(page + 1); renderFn(); } };
+      prevBtn.onclick = function() { if (page > 1) { setPage(page - 1); loadFn(page - 1); } };
+      nextBtn.onclick = function() { if (page < totalPages) { setPage(page + 1); loadFn(page + 1); } };
       pagEl.style.display = 'flex';
     }
 
@@ -1996,13 +2054,11 @@
         document.getElementById('startupBusinessPagination').style.display = 'none';
         return;
       }
-      const totalPages = Math.ceil(data.length / STARTUP_PAGE_SIZE);
-      const safePage = Math.min(Math.max(1, page), totalPages);
-      const start = (safePage - 1) * STARTUP_PAGE_SIZE;
-      const pageData = data.slice(start, start + STARTUP_PAGE_SIZE);
+      // 페이지네이션 지원: 서버에서 이미 페이지네이션된 데이터를 받음
+      const pageData = data;
       const key = function(r) { return 'business:' + (r.id || ''); };
       tbody.innerHTML = pageData.map(function(row, idx) {
-        const no = start + idx + 1;
+        const no = (page - 1) * STARTUP_PAGE_SIZE + idx + 1;
         const t = row.title || '-'; const tg = row.target || '-'; const ct = row.content || '-'; const bd = row.bdgt || '-'; const ch = row.chrct || '-'; const ir = row.intrd || '-';
         const checked = startupContentChecks.has(key(row));
         const rowClass = checked ? ' class="row-startup-checked"' : '';
@@ -2010,15 +2066,14 @@
         const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
         return '<tr' + rowClass + '><td>' + no + '</td><td>' + checkBtn + '</td><td>' + esc(row.biz_yr || '-') + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 50)) + '</td><td style="text-align:left" title="' + esc(tg) + '">' + esc(tr(tg, 40)) + '</td><td style="text-align:left" title="' + esc(ct) + '">' + esc(tr(ct, 40)) + '</td><td style="text-align:left" title="' + esc(bd) + '">' + esc(tr(bd, 30)) + '</td><td style="text-align:left" title="' + esc(ch) + '">' + esc(tr(ch, 35)) + '</td><td style="text-align:left" title="' + esc(ir) + '">' + esc(tr(ir, 35)) + '</td><td>' + link + '</td></tr>';
       }).join('');
-      startupBusinessPage = safePage;
       renderStartupPagination(
         document.getElementById('startupBusinessPagination'),
         document.getElementById('startupBusinessPrev'),
         document.getElementById('startupBusinessNext'),
         document.getElementById('startupBusinessPageNumbers'),
-        data, startupBusinessPage,
+        startupBusinessTotal, startupBusinessPage,
         function(p) { startupBusinessPage = p; },
-        renderStartupBusiness
+        loadStartupBusiness
       );
     }
 
@@ -2033,14 +2088,12 @@
         document.getElementById('startupAnnouncementsPagination').style.display = 'none';
         return;
       }
-      const totalPages = Math.ceil(data.length / STARTUP_PAGE_SIZE);
-      const safePage = Math.min(Math.max(1, page), totalPages);
-      const start = (safePage - 1) * STARTUP_PAGE_SIZE;
-      const pageData = data.slice(start, start + STARTUP_PAGE_SIZE);
+      // 페이지네이션 지원: 서버에서 이미 페이지네이션된 데이터를 받음
+      const pageData = data;
       const fmt = function(d) { return d ? d.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '-'; };
       const key = function(r) { return 'announcement:' + (r.id || ''); };
       tbody.innerHTML = pageData.map(function(row, idx) {
-        const no = start + idx + 1;
+        const no = (page - 1) * STARTUP_PAGE_SIZE + idx + 1;
         const t = row.title || '-'; const intg = row.intg_nm || '-'; const org = row.org || '-'; const dprt = row.dprt || '-'; const contact = row.contact || '-'; const reg = row.region || '-'; const cl = row.clsfc || '-'; const sprv = row.sprv_inst || '-'; const aply = row.aply_trgt || '-'; const enyy = row.biz_enyy || '-'; const age = row.biz_trgt_age || '-';
         const checked = startupContentChecks.has(key(row));
         const rowClass = checked ? ' class="row-startup-checked"' : '';
@@ -2048,45 +2101,48 @@
         const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
         return '<tr' + rowClass + '><td>' + no + '</td><td>' + checkBtn + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 45)) + '</td><td style="text-align:left" title="' + esc(intg) + '">' + esc(tr(intg, 35)) + '</td><td title="' + esc(org) + '">' + esc(tr(org, 25)) + '</td><td title="' + esc(dprt) + '">' + esc(tr(dprt, 20)) + '</td><td>' + esc(tr(contact, 25)) + '</td><td>' + esc(reg) + '</td><td title="' + esc(cl) + '">' + esc(tr(cl, 25)) + '</td><td>' + esc(sprv) + '</td><td>' + fmt(row.start_date) + '</td><td>' + fmt(row.end_date) + '</td><td>' + esc(row.rcrt_prgs || '-') + '</td><td title="' + esc(aply) + '">' + esc(tr(aply, 20)) + '</td><td>' + esc(enyy) + '</td><td title="' + esc(age) + '">' + esc(tr(age, 35)) + '</td><td>' + link + '</td></tr>';
       }).join('');
-      startupAnnouncementsPage = safePage;
       renderStartupPagination(
         document.getElementById('startupAnnouncementsPagination'),
         document.getElementById('startupAnnouncementsPrev'),
         document.getElementById('startupAnnouncementsNext'),
         document.getElementById('startupAnnouncementsPageNumbers'),
-        data, startupAnnouncementsPage,
+        startupAnnouncementsTotal, startupAnnouncementsPage,
         function(p) { startupAnnouncementsPage = p; },
-        renderStartupAnnouncements
+        loadStartupAnnouncements
       );
     }
 
-    function loadStartupBusiness() {
+    function loadStartupBusiness(page = 1) {
       const tbody = document.getElementById('startupBusinessBody');
       if (!tbody) return;
       tbody.innerHTML = '<tr><td colspan="10" class="loading">로딩 중</td></tr>';
       document.getElementById('startupBusinessPagination').style.display = 'none';
-      fetch('/api/startup/business')
+      // 페이지네이션 지원 (백엔드 최적화)
+      fetch('/api/startup/business?page=' + encodeURIComponent(page) + '&limit=' + STARTUP_PAGE_SIZE)
         .then(r => r.json())
         .then(res => {
           if (!res.success) { tbody.innerHTML = '<tr><td colspan="10" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; return; }
           startupBusinessData = res.data || [];
-          startupBusinessPage = 1;
+          startupBusinessTotal = res.total || 0;
+          startupBusinessPage = res.page || page;
           renderStartupBusiness();
         })
         .catch(function() { tbody.innerHTML = '<tr><td colspan="10" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; });
     }
-    function loadStartupAnnouncements() {
+    function loadStartupAnnouncements(page = 1) {
       const tbody = document.getElementById('startupAnnouncementsBody');
       if (!tbody) return;
       const COLS = 17;
       tbody.innerHTML = '<tr><td colspan="' + COLS + '" class="loading">로딩 중</td></tr>';
       document.getElementById('startupAnnouncementsPagination').style.display = 'none';
-      fetch('/api/startup/announcements')
+      // 페이지네이션 지원 (백엔드 최적화)
+      fetch('/api/startup/announcements?page=' + encodeURIComponent(page) + '&limit=' + STARTUP_PAGE_SIZE)
         .then(r => r.json())
         .then(res => {
           if (!res.success) { tbody.innerHTML = '<tr><td colspan="' + COLS + '" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; return; }
           startupAnnouncementsData = res.data || [];
-          startupAnnouncementsPage = 1;
+          startupAnnouncementsTotal = res.total || 0;
+          startupAnnouncementsPage = res.page || page;
           renderStartupAnnouncements();
         })
         .catch(function() { tbody.innerHTML = '<tr><td colspan="17" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; });

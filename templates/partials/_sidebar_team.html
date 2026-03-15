@@ -392,8 +392,10 @@
         if (addBtn) addBtn.style.display = 'inline-block';
         if (editBtn) editBtn.style.display = 'none';
       }
-      loadTeamSettings();
-      loadPrizeProgress();
+      // 병렬 호출로 최적화 (순차 호출 → 병렬 호출)
+      Promise.all([loadTeamSettings(), loadPrizeProgress()]).catch(function() {
+        // 에러 처리
+      });
     }).catch(function() {
       teamYearsList = [];
       var yearRow = document.getElementById('sidebarYearRow');
@@ -402,8 +404,10 @@
       if (yearRow) yearRow.style.display = 'none';
       if (addBtn) addBtn.style.display = 'inline-block';
       if (editBtn) editBtn.style.display = 'none';
-      loadTeamSettings();
-      loadPrizeProgress();
+      // 병렬 호출로 최적화
+      Promise.all([loadTeamSettings(), loadPrizeProgress()]).catch(function() {
+        // 에러 처리
+      });
     });
   }
 
@@ -447,7 +451,12 @@
   }
 
   var yearSelEl = document.getElementById('sidebarTeamYear');
-  if (yearSelEl) yearSelEl.addEventListener('change', function() { loadTeamSettings(); loadPrizeProgress(); });
+  if (yearSelEl) yearSelEl.addEventListener('change', function() { 
+    // 병렬 호출로 최적화
+    Promise.all([loadTeamSettings(), loadPrizeProgress()]).catch(function() {
+      // 에러 처리
+    });
+  });
 
   loadTeamYears();
 

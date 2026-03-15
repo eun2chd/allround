@@ -646,6 +646,7 @@
         const j = await r.json();
         if (j.success && !j.bookmarked) {
           removeRow(tr);
+          // 폴더 개수만 업데이트 (전체 재조회 불필요)
           loadFolders();
           showToast('북마크에서 제거했습니다');
         } else {
