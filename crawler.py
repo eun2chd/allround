@@ -3,12 +3,15 @@ allforyoung.com 공모전/대외활동 크롤러
 HTML 파싱 방식 (API 미지원 사이트)
 """
 
+import logging
 import re
 import time
 from urllib.parse import urljoin
 
 import requests
 from bs4 import BeautifulSoup
+
+logger = logging.getLogger("allyoung.crawler")
 
 
 BASE_URL = "https://www.allforyoung.com"
@@ -94,9 +97,10 @@ def crawl_post_detail(post_id: str) -> dict | None:
     """
     url = f"{BASE_URL}/posts/{post_id}"
     try:
+        logger.info("크롤링 시작: %s", url)
         session = requests.Session()
         session.headers.update(HEADERS)
-        resp = session.get(url, timeout=15)
+        resp = session.get(url, timeout=30)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
@@ -167,9 +171,20 @@ def crawl_post_detail(post_id: str) -> dict | None:
                     blocks.append(t)
             result["body"] = "\n\n".join(blocks[:60]) if blocks else ""
 
+        logger.info("크롤링 성공: %s", url)
         return result
 
-    except requests.RequestException:
+    except requests.Timeout as e:
+        logger.error("크롤링 타임아웃: %s, error=%s", url, str(e))
+        return None
+    except requests.ConnectionError as e:
+        logger.error("크롤링 연결 실패: %s, error=%s", url, str(e))
+        return None
+    except requests.RequestException as e:
+        logger.error("크롤링 요청 실패: %s, error=%s, status_code=%s", url, str(e), getattr(e.response, 'status_code', None))
+        return None
+    except Exception as e:
+        logger.error("크롤링 예상치 못한 오류: %s, error=%s", url, str(e))
         return None
 
 
@@ -188,9 +203,10 @@ def crawl_wevity_detail(contest_id: str) -> dict | None:
     """
     url = f"{WEVITY_BASE}/?c=find&s=1&gbn=view&ix={contest_id}"
     try:
+        logger.info("크롤링 시작: %s", url)
         session = requests.Session()
         session.headers.update(WEVITY_HEADERS)
-        resp = session.get(url, timeout=15)
+        resp = session.get(url, timeout=30)
         resp.raise_for_status()
         soup = BeautifulSoup(resp.text, "html.parser")
 
@@ -269,7 +285,18 @@ def crawl_wevity_detail(contest_id: str) -> dict | None:
                 result["apply_url"] = urljoin(WEVITY_BASE, href) if href.startswith("/") or href.startswith("?") else href
                 break
 
+        logger.info("크롤링 성공: %s", url)
         return result
 
-    except requests.RequestException:
+    except requests.Timeout as e:
+        logger.error("크롤링 타임아웃: %s, error=%s", url, str(e))
+        return None
+    except requests.ConnectionError as e:
+        logger.error("크롤링 연결 실패: %s, error=%s", url, str(e))
+        return None
+    except requests.RequestException as e:
+        logger.error("크롤링 요청 실패: %s, error=%s, status_code=%s", url, str(e), getattr(e.response, 'status_code', None))
+        return None
+    except Exception as e:
+        logger.error("크롤링 예상치 못한 오류: %s, error=%s", url, str(e))
         return None

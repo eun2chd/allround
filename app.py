@@ -3101,14 +3101,19 @@ def api_contest_content(source, contest_id):
 def _api_contest_content(source: str, contest_id: str):
     try:
         source_clean = (source or "").strip()
+        logger.info("공모전 상세 조회 시도: source=%s, contest_id=%s", source_clean, contest_id)
         if source_clean == "위비티":
             detail = crawl_wevity_detail(contest_id)
         else:
             detail = crawl_post_detail(contest_id)
         if detail:
+            logger.info("공모전 상세 조회 성공: source=%s, contest_id=%s", source_clean, contest_id)
             return jsonify({"success": True, "data": detail})
+        logger.warning("공모전 상세 조회 실패 (크롤링 결과 없음): source=%s, contest_id=%s", source_clean, contest_id)
         return jsonify({"success": False, "error": "상세 내용을 가져올 수 없습니다."}), 404
     except Exception as e:
+        logger.error("공모전 상세 조회 오류: source=%s, contest_id=%s, error=%s, traceback=%s", 
+                     source_clean, contest_id, str(e), traceback.format_exc())
         return jsonify({"success": False, "error": str(e)}), 500
 
 
