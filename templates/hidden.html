@@ -167,7 +167,81 @@
       from { opacity: 0; transform: translateY(-10px); }
       to { opacity: 1; transform: translateY(0); }
     }
-    td:nth-child(2), td:nth-child(6), td:nth-child(7) { white-space: nowrap; }
+    td:nth-child(2), td:nth-child(6), td:nth-child(7), td:nth-child(8) { white-space: nowrap; }
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 20px;
+      border-top: 1px solid var(--border-gray);
+      flex-wrap: wrap;
+    }
+    .pagination-numbers {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .pagination button {
+      font-family: var(--font);
+      padding: 0;
+      min-width: 36px;
+      min-height: 36px;
+      border: none;
+      border-radius: 50%;
+      background: var(--bg-white);
+      color: var(--text-dark);
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .pagination button:hover:not(:disabled) {
+      background: var(--soft-purple);
+    }
+    .pagination button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    .pagination-arrow img {
+      width: 18px;
+      height: 18px;
+      display: block;
+    }
+    .pagination button.active {
+      background: var(--main-purple);
+      color: #fff;
+    }
+    .pagination-ellipsis {
+      padding: 0 4px;
+      color: var(--gray-muted);
+      user-select: none;
+    }
+    .part-status { font-size: 0.8rem; color: var(--text-dark); }
+    .part-status.part-participate { color: var(--text-dark); font-weight: 600; }
+    .part-status.part-pass { color: var(--text-dark); }
+    .hidden-filters {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--border-gray);
+    }
+    .hidden-filters label { font-size: 0.9rem; font-weight: 500; color: var(--text-dark); }
+    .part-filter-select {
+      font-family: var(--font);
+      padding: 6px 12px;
+      border: 1px solid var(--border-gray);
+      border-radius: var(--radius);
+      font-size: 0.9rem;
+      color: var(--text-dark);
+      background: var(--bg-white);
+      cursor: pointer;
+    }
+    .part-filter-select:focus { outline: none; border-color: var(--main-purple); }
     @media (max-width: 768px) {
       .container { padding: 24px 20px; margin-left: 0; }
     }
@@ -182,23 +256,39 @@
     </header>
 
     <div class="card">
+      <div class="hidden-filters">
+        <label for="partFilter">참가/패스</label>
+        <select id="partFilter" class="part-filter-select">
+          <option value="">전체</option>
+          <option value="participate">참가</option>
+          <option value="pass">패스</option>
+        </select>
+      </div>
       <div class="table-wrap">
         <table>
           <thead>
             <tr>
               <th style="width:50px">No</th>
               <th style="width:70px">D-day</th>
-              <th style="width:30%">제목</th>
-              <th style="width:20%">주최/주관</th>
-              <th style="width:100px">카테고리</th>
+              <th style="width:28%">제목</th>
+              <th style="width:18%">주최/주관</th>
+              <th style="width:90px">카테고리</th>
+              <th style="width:70px">참가/패스</th>
               <th style="width:70px">출처</th>
               <th style="width:100px">숨김 취소</th>
             </tr>
           </thead>
           <tbody id="tableBody">
-            <tr><td colspan="7" class="loading">로딩 중</td></tr>
+            <tr><td colspan="8" class="loading">로딩 중</td></tr>
           </tbody>
         </table>
+      </div>
+      <div class="pagination" id="pagination" style="display:none">
+        <button type="button" id="btnFirst" class="pagination-arrow" title="첫 페이지"><img src="{{ url_for('static', filename='images/doubleLeft.png') }}" alt="첫 페이지"></button>
+        <button type="button" id="btnPrev" class="pagination-arrow" title="이전"><img src="{{ url_for('static', filename='images/left.png') }}" alt="이전"></button>
+        <span class="pagination-numbers" id="pageNumbers"></span>
+        <button type="button" id="btnNext" class="pagination-arrow" title="다음"><img src="{{ url_for('static', filename='images/right.png') }}" alt="다음"></button>
+        <button type="button" id="btnLast" class="pagination-arrow" title="끝 페이지"><img src="{{ url_for('static', filename='images/doubleRight.png') }}" alt="끝 페이지"></button>
       </div>
     </div>
   </div>
@@ -208,8 +298,18 @@
   {% include 'partials/_loading_overlay.html' %}
   <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
   <script>
+    const PAGE_SIZE = 10;
     const tableBody = document.getElementById('tableBody');
     const toast = document.getElementById('toast');
+    const pagination = document.getElementById('pagination');
+    const pageNumbers = document.getElementById('pageNumbers');
+    const btnFirst = document.getElementById('btnFirst');
+    const btnPrev = document.getElementById('btnPrev');
+    const btnNext = document.getElementById('btnNext');
+    const btnLast = document.getElementById('btnLast');
+    const partFilter = document.getElementById('partFilter');
+    let currentPage = 1;
+    let totalCount = 0;
 
     function showToast(msg, type = 'success') {
       toast.textContent = msg;
@@ -229,27 +329,31 @@
       return d.innerHTML;
     }
 
-    function renderTable(data) {
+    function renderTable(data, startNo) {
       if (!data || data.length === 0) {
         tableBody.innerHTML = `
-          <tr><td colspan="7" class="empty-state">
+          <tr><td colspan="8" class="empty-state">
             <p>숨긴 공모전이 없습니다.</p>
             <p><a href="{{ url_for('home') }}">공모전 목록</a>에서 공모전을 숨김 처리할 수 있습니다.</p>
           </td></tr>
         `;
         return;
       }
+      const baseNo = (startNo != null ? startNo : 0);
       tableBody.innerHTML = data.map((row, idx) => {
         const dClass = row.d_day?.includes('마감') ? 'urgent' : (row.d_day?.includes('오늘') ? 'today' : 'normal');
+        const partStatus = row.participation_status === 'participate' ? '참가' : (row.participation_status === 'pass' ? '패스' : '-');
+        const partClass = row.participation_status === 'participate' ? 'part-status part-participate' : (row.participation_status === 'pass' ? 'part-status part-pass' : 'part-status');
         return `
           <tr data-id="${escapeHtml(row.id)}" data-source="${escapeHtml(row.source || '')}">
-            <td>${idx + 1}</td>
+            <td>${baseNo + idx + 1}</td>
             <td><span class="d-day ${dClass}">${escapeHtml(row.d_day || '-')}</span></td>
             <td class="title-cell">
               <a href="${escapeHtml(row.url)}" target="_blank" rel="noopener" title="${escapeHtml(row.title || '')}">${escapeHtml(row.title)}</a>
             </td>
             <td class="host-cell" title="${escapeHtml(row.host || '')}">${escapeHtml(row.host || '-')}</td>
             <td class="category-cell" title="${escapeHtml(row.category || '공모전')}">${escapeHtml(truncateWithEllipsis(row.category, 12))}</td>
+            <td class="${partClass}">${escapeHtml(partStatus)}</td>
             <td>${escapeHtml(row.source || '요즘것들')}</td>
             <td>
               <button type="button" class="btn-hide" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}">숨김 취소</button>
@@ -263,32 +367,97 @@
       tr.remove();
       const rows = tableBody.querySelectorAll('tr[data-id]');
       if (rows.length === 0) {
-        renderTable([]);
+        loadHidden(currentPage);
       } else {
+        const startNo = (currentPage - 1) * PAGE_SIZE;
         rows.forEach((r, i) => {
           const noCell = r.querySelector('td:nth-child(1)');
-          if (noCell) noCell.textContent = i + 1;
+          if (noCell) noCell.textContent = startNo + i + 1;
         });
       }
     }
 
-    async function loadHidden() {
+    function renderPagination(total, page, perPage) {
+      totalCount = total;
+      const totalPages = Math.ceil(total / perPage) || 1;
+      if (totalPages <= 1) {
+        pagination.style.display = 'none';
+        return;
+      }
+      pagination.style.display = 'flex';
+      btnFirst.disabled = page <= 1;
+      btnPrev.disabled = page <= 1;
+      btnNext.disabled = page >= totalPages;
+      btnLast.disabled = page >= totalPages;
+
+      // 첫 페이지 ... 현재 주변 ... 끝 페이지
+      const pad = 2;
+      const winStart = Math.max(2, page - pad);
+      const winEnd = Math.min(totalPages - 1, page + pad);
+      const showFirstEllipsis = winStart > 2;
+      const showLastEllipsis = winEnd < totalPages - 1;
+
+      let numHtml = '';
+      numHtml += page === 1
+        ? `<button type="button" class="active" disabled>1</button>`
+        : `<button type="button" data-page="1">1</button>`;
+      if (showFirstEllipsis) numHtml += `<span class="pagination-ellipsis">…</span>`;
+      for (let i = winStart; i <= winEnd; i++) {
+        if (i === page) {
+          numHtml += `<button type="button" class="active" disabled>${i}</button>`;
+        } else {
+          numHtml += `<button type="button" data-page="${i}">${i}</button>`;
+        }
+      }
+      if (showLastEllipsis) numHtml += `<span class="pagination-ellipsis">…</span>`;
+      if (totalPages > 1) {
+        numHtml += page === totalPages
+          ? `<button type="button" class="active" disabled>${totalPages}</button>`
+          : `<button type="button" data-page="${totalPages}">${totalPages}</button>`;
+      }
+      pageNumbers.innerHTML = numHtml;
+      pageNumbers.querySelectorAll('button[data-page]').forEach(b => {
+        b.addEventListener('click', () => goToPage(parseInt(b.dataset.page)));
+      });
+    }
+
+    function goToPage(page) {
+      currentPage = page;
+      loadHidden(page);
+    }
+
+    async function loadHidden(page) {
+      if (page == null) page = 1;
+      currentPage = page;
+      const partVal = (partFilter && partFilter.value) ? partFilter.value : '';
       if (typeof window.showLoading === 'function') window.showLoading();
-      tableBody.innerHTML = '<tr><td colspan="7" class="loading">로딩 중</td></tr>';
+      tableBody.innerHTML = '<tr><td colspan="8" class="loading">로딩 중</td></tr>';
+      pagination.style.display = 'none';
       try {
-        const r = await fetch('/api/contests/hidden');
+        let url = '/api/contests/hidden?page=' + encodeURIComponent(page) + '&per_page=' + encodeURIComponent(PAGE_SIZE);
+        if (partVal) url += '&participation_status=' + encodeURIComponent(partVal);
+        const r = await fetch(url);
         const j = await r.json();
         if (j.success && j.data) {
-          renderTable(j.data);
+          const startNo = ((j.page || 1) - 1) * (j.per_page || PAGE_SIZE);
+          renderTable(j.data, startNo);
+          renderPagination(j.total != null ? j.total : j.data.length, j.page || 1, j.per_page || PAGE_SIZE);
         } else {
           renderTable([]);
         }
       } catch (e) {
-        tableBody.innerHTML = '<tr><td colspan="7" class="empty-state">데이터를 불러올 수 없습니다.</td></tr>';
+        tableBody.innerHTML = '<tr><td colspan="8" class="empty-state">데이터를 불러올 수 없습니다.</td></tr>';
       } finally {
         if (typeof window.hideLoading === 'function') window.hideLoading();
       }
     }
+
+    if (partFilter) partFilter.addEventListener('change', () => { currentPage = 1; loadHidden(1); });
+
+    btnFirst.addEventListener('click', () => { if (currentPage > 1) goToPage(1); });
+    btnPrev.addEventListener('click', () => { if (currentPage > 1) goToPage(currentPage - 1); });
+    btnNext.addEventListener('click', () => { if (currentPage < Math.ceil(totalCount / PAGE_SIZE)) goToPage(currentPage + 1); });
+    btnLast.addEventListener('click', () => { const last = Math.ceil(totalCount / PAGE_SIZE); if (currentPage < last) goToPage(last); });
 
     tableBody.addEventListener('click', async (e) => {
       const btn = e.target.closest('.btn-hide');

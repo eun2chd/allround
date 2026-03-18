@@ -200,6 +200,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
+  color: var(--main-purple, #6d28d9) !important;
 }
 .nav-dropdown-toggle::after {
   content: '▼';
@@ -233,7 +234,7 @@
 .nav-dropdown-item {
   display: block;
   padding: 10px 16px;
-  color: var(--text-dark);
+  color: var(--main-purple, #6d28d9);
   text-decoration: none;
   font-size: 0.9rem;
   transition: background 0.2s;

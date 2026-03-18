@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
-  <title>Ntpercent 공모전</title>
+  <title>allRound 공모전</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
@@ -120,7 +120,6 @@
       vertical-align: middle;
     }
     tr:hover td { background: #faf5ff; }
-    tr.row-new { border-left: 3px solid #dc2626; background: #fef2f2; }
     tr.row-viewed td { color: var(--text-dark); }
     tr.row-viewed .title-cell a { color: var(--text-dark); }
     .status-dot { display: inline-block; width: 8px; height: 8px; background: #dc2626; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
@@ -412,6 +411,11 @@
       background: var(--main-purple);
       color: #fff;
     }
+    .pagination-ellipsis {
+      padding: 0 4px;
+      color: var(--gray-muted);
+      user-select: none;
+    }
     .detail-row td {
       padding: 0;
       vertical-align: top;
@@ -636,9 +640,9 @@
       display: flex;
       flex-wrap: wrap;
       align-items: center;
-      gap: 16px;
+      gap: 10px 14px;
       margin-bottom: 20px;
-      padding: 14px 18px;
+      padding: 10px 16px;
       background: var(--soft-purple);
       border-radius: var(--radius);
       border: 1px solid rgba(109, 40, 217, 0.2);
@@ -646,9 +650,10 @@
     .filter-bar .filter-search {
       display: flex;
       align-items: center;
-      gap: 8px;
-      min-width: 200px;
-      max-width: 400px;
+      gap: 6px;
+      min-width: 180px;
+      max-width: 320px;
+      flex: 1;
     }
     .filter-bar .filter-search input {
       flex: 1;
@@ -689,57 +694,71 @@
       border-color: var(--main-purple);
       box-shadow: 0 0 0 2px rgba(109, 40, 217, 0.15);
     }
-    .filter-bar .filter-row {
-      display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
     .filter-bar .filter-group {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 4px;
     }
     .filter-bar .filter-group label {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--text-dark);
       font-weight: 500;
       white-space: nowrap;
     }
+    .btn-hide-all-pass {
+      font-family: var(--font);
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      color: var(--main-purple);
+      background: var(--bg-white);
+      border: 1px solid var(--main-purple);
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .btn-hide-all-pass:hover {
+      background: var(--soft-purple);
+      color: var(--main-purple-hover);
+    }
     .filter-bar .filter-group select {
       font-family: var(--font);
-      font-size: 0.88rem;
-      padding: 8px 12px;
+      font-size: 0.82rem;
+      padding: 6px 10px;
       border: 1px solid var(--border-gray);
       border-radius: var(--radius);
       background: var(--bg-white);
       color: var(--text-dark);
-      min-width: 100px;
+      min-width: 88px;
     }
     .filter-bar .filter-divider {
       width: 1px;
-      height: 24px;
+      height: 20px;
       background: rgba(109, 40, 217, 0.25);
       flex-shrink: 0;
+      align-self: stretch;
+      margin: 2px 0;
     }
     .filter-bar .filter-check {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 5px;
     }
     .filter-bar .filter-check input[type="checkbox"] {
-      width: 16px;
-      height: 16px;
+      width: 14px;
+      height: 14px;
       margin: 0;
       accent-color: var(--main-purple);
       cursor: pointer;
     }
     .filter-bar .filter-check label {
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 500;
       color: var(--text-dark);
       cursor: pointer;
       user-select: none;
+      white-space: nowrap;
     }
     .startup-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
     .startup-tab {
@@ -773,6 +792,64 @@
     #startupTabAnnouncements tr.row-startup-checked:hover td {
       background: #dcfce7;
     }
+    #startupTabBusiness tr.startup-business-data-row { cursor: pointer; }
+    #startupTabBusiness tr.startup-business-detail-row td {
+      padding: 0;
+      vertical-align: top;
+      border-left: 1px solid var(--border-gray);
+      border-right: 1px solid var(--border-gray);
+      border-bottom: 1px solid var(--border-gray);
+      background: var(--soft-purple);
+    }
+    #startupTabBusiness .startup-business-detail-inner {
+      padding: 16px 20px;
+      max-height: 320px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      text-align: left;
+      color: var(--text-dark);
+    }
+    #startupTabBusiness .startup-business-detail-inner .detail-block { margin-bottom: 16px; }
+    #startupTabBusiness .startup-business-detail-inner .detail-block:last-child { margin-bottom: 0; }
+    #startupTabBusiness .startup-business-detail-inner .detail-label { font-weight: 700; color: var(--main-purple); margin-bottom: 6px; font-size: 0.85rem; }
+    #startupTabBusiness .startup-business-detail-inner .detail-value { white-space: pre-wrap; word-break: break-word; }
+    .startup-search-bar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+    .startup-search-bar .startup-search-input { flex: 1; min-width: 0; max-width: 320px; padding: 8px 12px; font-size: 0.9rem; border: 1px solid var(--border-gray); border-radius: 6px; }
+    .startup-search-bar .btn { flex-shrink: 0; }
+    .startup-detail-comments { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-gray); }
+    .startup-detail-comments .comments-title { font-size: 0.95rem; font-weight: 700; color: var(--main-purple); margin-bottom: 10px; }
+    .startup-comments-list { max-height: 160px; overflow-y: auto; margin-bottom: 10px; font-size: 0.85rem; }
+    .startup-comment-item { padding: 6px 0; border-bottom: 1px solid rgba(0,0,0,0.06); }
+    .startup-comment-item:last-child { border-bottom: none; }
+    .startup-comment-item .comment-author { font-weight: 600; color: var(--text-dark); margin-right: 6px; }
+    .startup-comment-item .comment-body { color: var(--text-dark); }
+    .startup-comment-item .comment-time { font-size: 0.75rem; color: #666; margin-top: 2px; }
+    .startup-comment-form { display: flex; flex-direction: column; align-items: flex-start; width: 100%; }
+    .startup-comment-form textarea { width: 100%; min-height: 56px; padding: 8px 10px; font-size: 0.85rem; border: 1px solid var(--border-gray); border-radius: 6px; resize: vertical; box-sizing: border-box; }
+    .startup-comment-form .btn-submit-comment { margin-top: 8px; padding: 6px 14px; font-size: 0.85rem; }
+    #startupTabAnnouncements tr.startup-announcements-data-row { cursor: pointer; }
+    #startupTabAnnouncements tr.startup-announcements-detail-row td {
+      padding: 0;
+      vertical-align: top;
+      border-left: 1px solid var(--border-gray);
+      border-right: 1px solid var(--border-gray);
+      border-bottom: 1px solid var(--border-gray);
+      background: var(--soft-purple);
+    }
+    #startupTabAnnouncements .startup-announcements-detail-inner {
+      padding: 16px 20px;
+      max-height: 320px;
+      overflow-y: auto;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      text-align: left;
+      color: var(--text-dark);
+    }
+    #startupTabAnnouncements .startup-announcements-detail-inner .detail-block { margin-bottom: 16px; }
+    #startupTabAnnouncements .startup-announcements-detail-inner .detail-block:last-child { margin-bottom: 0; }
+    #startupTabAnnouncements .startup-announcements-detail-inner .detail-label { font-weight: 700; color: var(--main-purple); margin-bottom: 6px; font-size: 0.85rem; }
+    #startupTabAnnouncements .startup-announcements-detail-inner .detail-value { white-space: pre-wrap; word-break: break-word; }
     @media (max-width: 1200px) {
       .sidebar-team { display: none; }
       .container { margin-left: 0; }
@@ -804,41 +881,40 @@
         <input type="text" id="searchInput" placeholder="제목, 주최·주관 검색" autocomplete="off">
         <button type="button" id="searchButton">검색</button>
       </div>
-      <div class="filter-divider"></div>
-      <div class="filter-row">
-        <div class="filter-check">
-          <input type="checkbox" id="bookmarkFilterCheck" title="북마크 DB에 추가한 것만 표시">
-          <label for="bookmarkFilterCheck">즐겨찾기한 것만</label>
-        </div>
-        <div class="filter-divider"></div>
-        <div class="filter-group">
-          <label for="checkFilterSelect">확인</label>
-          <select id="checkFilterSelect">
-            <option value="">전체</option>
-            <option value="checked">확인함</option>
-            <option value="unchecked">확인 안함</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="participationFilterSelect">참가·패스</label>
-          <select id="participationFilterSelect">
-            <option value="">전체</option>
-            <option value="participate">참가만</option>
-            <option value="pass">패스만</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="categorySelect">카테고리</label>
-          <select id="categorySelect">
-            <option value="">전체</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label for="sourceSelect">출처</label>
-          <select id="sourceSelect">
-            <option value="">전체</option>
-          </select>
-        </div>
+      <span class="filter-divider"></span>
+      <div class="filter-check">
+        <input type="checkbox" id="bookmarkFilterCheck" title="북마크한 것만 표시">
+        <label for="bookmarkFilterCheck">즐겨찾기</label>
+      </div>
+      <span class="filter-divider"></span>
+      <div class="filter-group">
+        <label for="checkFilterSelect">확인</label>
+        <select id="checkFilterSelect">
+          <option value="">전체</option>
+          <option value="checked">확인함</option>
+          <option value="unchecked">확인 안함</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="participationFilterSelect">참가/패스</label>
+        <select id="participationFilterSelect">
+          <option value="">전체</option>
+          <option value="participate">참가만</option>
+          <option value="pass">패스만</option>
+        </select>
+      </div>
+      <button type="button" id="btnHideAllPass" class="btn-hide-all-pass" title="패스한 공모전 전부 숨김">패스 전부 숨기기</button>
+      <div class="filter-group">
+        <label for="categorySelect">카테고리</label>
+        <select id="categorySelect">
+          <option value="">전체</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="sourceSelect">출처</label>
+        <select id="sourceSelect">
+          <option value="">전체</option>
+        </select>
       </div>
     </div>
 
@@ -865,9 +941,11 @@
         </table>
       </div>
       <div class="pagination" id="pagination" style="display:none">
+        <button type="button" id="btnFirst" class="pagination-arrow" title="첫 페이지"><img src="{{ url_for('static', filename='images/doubleLeft.png') }}" alt="첫 페이지"></button>
         <button type="button" id="btnPrev" class="pagination-arrow" title="이전"><img src="{{ url_for('static', filename='images/left.png') }}" alt="이전"></button>
         <span class="pagination-numbers" id="pageNumbers"></span>
         <button type="button" id="btnNext" class="pagination-arrow" title="다음"><img src="{{ url_for('static', filename='images/right.png') }}" alt="다음"></button>
+        <button type="button" id="btnLast" class="pagination-arrow" title="끝 페이지"><img src="{{ url_for('static', filename='images/doubleRight.png') }}" alt="끝 페이지"></button>
       </div>
     </div>
     </div>
@@ -888,6 +966,10 @@
         <button type="button" class="startup-tab" data-tab="announcements">지원사업 공고</button>
       </div>
       <div id="startupTabBusiness" class="startup-tab-panel">
+        <div class="startup-search-bar">
+          <input type="text" id="startupBusinessSearch" class="startup-search-input" placeholder="지원사업명으로 검색..." autocomplete="off">
+          <button type="button" id="startupBusinessSearchBtn" class="btn btn-primary">검색</button>
+        </div>
         <div class="card">
           <div class="table-wrap">
             <table>
@@ -896,28 +978,29 @@
                   <th style="min-width:50px">No</th>
                   <th style="min-width:80px">내용확인</th>
                   <th style="min-width:80px">사업연도</th>
-                  <th style="min-width:220px">지원사업명</th>
-                  <th style="min-width:200px">지원대상</th>
-                  <th style="min-width:220px">지원내용</th>
-                  <th style="min-width:150px">예산/지원규모</th>
-                  <th style="min-width:180px">지원사업특징</th>
-                  <th style="min-width:180px">지원사업소개</th>
+                  <th style="min-width:280px">지원사업명</th>
                   <th style="min-width:80px">상세</th>
                 </tr>
               </thead>
               <tbody id="startupBusinessBody">
-                <tr><td colspan="10" class="loading">로딩 중</td></tr>
+                <tr><td colspan="5" class="loading">로딩 중</td></tr>
               </tbody>
             </table>
           </div>
           <div class="pagination" id="startupBusinessPagination" style="display:none">
+            <button type="button" id="startupBusinessFirst" class="pagination-arrow" title="첫 페이지"><img src="{{ url_for('static', filename='images/doubleLeft.png') }}" alt="첫 페이지"></button>
             <button type="button" id="startupBusinessPrev" class="pagination-arrow" title="이전"><img src="{{ url_for('static', filename='images/left.png') }}" alt="이전"></button>
             <span class="pagination-numbers" id="startupBusinessPageNumbers"></span>
             <button type="button" id="startupBusinessNext" class="pagination-arrow" title="다음"><img src="{{ url_for('static', filename='images/right.png') }}" alt="다음"></button>
+            <button type="button" id="startupBusinessLast" class="pagination-arrow" title="끝 페이지"><img src="{{ url_for('static', filename='images/doubleRight.png') }}" alt="끝 페이지"></button>
           </div>
         </div>
       </div>
       <div id="startupTabAnnouncements" class="startup-tab-panel" style="display:none">
+        <div class="startup-search-bar">
+          <input type="text" id="startupAnnouncementsSearch" class="startup-search-input" placeholder="공고명으로 검색..." autocomplete="off">
+          <button type="button" id="startupAnnouncementsSearchBtn" class="btn btn-primary">검색</button>
+        </div>
         <div class="card">
           <div class="table-wrap">
             <table>
@@ -925,32 +1008,21 @@
                 <tr>
                   <th style="min-width:50px">No</th>
                   <th style="min-width:80px">내용확인</th>
-                  <th style="min-width:200px">공고명</th>
-                  <th style="min-width:180px">통합공고명</th>
-                  <th style="min-width:140px">공고기관명</th>
-                  <th style="min-width:120px">담당부서</th>
-                  <th style="min-width:120px">담당연락처</th>
-                  <th style="min-width:90px">지원지역</th>
-                  <th style="min-width:140px">지원사업분류</th>
-                  <th style="min-width:100px">주관기관</th>
-                  <th style="min-width:90px">접수시작</th>
-                  <th style="min-width:90px">접수마감</th>
-                  <th style="min-width:80px">모집진행</th>
-                  <th style="min-width:120px">신청대상</th>
-                  <th style="min-width:100px">창업기간</th>
-                  <th style="min-width:180px">대상연령</th>
+                  <th style="min-width:280px">공고명</th>
                   <th style="min-width:80px">상세</th>
                 </tr>
               </thead>
               <tbody id="startupAnnouncementsBody">
-                <tr><td colspan="17" class="loading">로딩 중</td></tr>
+                <tr><td colspan="4" class="loading">로딩 중</td></tr>
               </tbody>
             </table>
           </div>
           <div class="pagination" id="startupAnnouncementsPagination" style="display:none">
+            <button type="button" id="startupAnnouncementsFirst" class="pagination-arrow" title="첫 페이지"><img src="{{ url_for('static', filename='images/doubleLeft.png') }}" alt="첫 페이지"></button>
             <button type="button" id="startupAnnouncementsPrev" class="pagination-arrow" title="이전"><img src="{{ url_for('static', filename='images/left.png') }}" alt="이전"></button>
             <span class="pagination-numbers" id="startupAnnouncementsPageNumbers"></span>
             <button type="button" id="startupAnnouncementsNext" class="pagination-arrow" title="다음"><img src="{{ url_for('static', filename='images/right.png') }}" alt="다음"></button>
+            <button type="button" id="startupAnnouncementsLast" class="pagination-arrow" title="끝 페이지"><img src="{{ url_for('static', filename='images/doubleRight.png') }}" alt="끝 페이지"></button>
           </div>
         </div>
       </div>
@@ -976,8 +1048,10 @@
     const toast = document.getElementById('toast');
     const pagination = document.getElementById('pagination');
     const pageNumbers = document.getElementById('pageNumbers');
+    const btnFirst = document.getElementById('btnFirst');
     const btnPrev = document.getElementById('btnPrev');
     const btnNext = document.getElementById('btnNext');
+    const btnLast = document.getElementById('btnLast');
     const countdownEl = document.getElementById('countdown');
     const dateTimeEl = document.getElementById('currentDateTime');
 
@@ -1200,10 +1274,11 @@
       const bookmarkedKey = (s, c) => (s || '') + ':' + (c || '');
       const isBookmarked = (r) => bookmarkSet.has(bookmarkedKey(r.source, r.id));
       const hasCommented = (r) => commentedSet.has(bookmarkedKey(r.source, r.id));
+      const hasContentCheck = (r) => contentChecks.has(bookmarkedKey(r.source, r.id));
       const isHidden = (r) => hideSet.has(bookmarkedKey(r.source, r.id));
       tableBody.innerHTML = pageData.map((row, idx) => {
         const no = start + idx + 1;
-        const isViewed = hasCommented(row);
+        const isViewed = hasCommented(row) || hasContentCheck(row);
         const rowClass = isViewed ? 'row-viewed' : 'row-new';
         const statusHtml = isViewed
           ? '<span class="status-check">✓</span>'
@@ -1245,21 +1320,34 @@
 
       if (totalPages > 1) {
         pagination.style.display = 'flex';
+        btnFirst.disabled = page <= 1;
         btnPrev.disabled = page <= 1;
         btnNext.disabled = page >= totalPages;
+        btnLast.disabled = page >= totalPages;
 
-        const MAX_VISIBLE_PAGES = 10;
-        const block = Math.floor((page - 1) / MAX_VISIBLE_PAGES);
-        const startPage = block * MAX_VISIBLE_PAGES + 1;
-        const endPage = Math.min(startPage + MAX_VISIBLE_PAGES - 1, totalPages);
+        const pad = 2;
+        const winStart = Math.max(2, page - pad);
+        const winEnd = Math.min(totalPages - 1, page + pad);
+        const showFirstEllipsis = winStart > 2;
+        const showLastEllipsis = winEnd < totalPages - 1;
 
         let numHtml = '';
-        for (let i = startPage; i <= endPage; i++) {
+        numHtml += page === 1
+          ? `<button type="button" class="active" disabled>1</button>`
+          : `<button type="button" data-page="1">1</button>`;
+        if (showFirstEllipsis) numHtml += `<span class="pagination-ellipsis">…</span>`;
+        for (let i = winStart; i <= winEnd; i++) {
           if (i === page) {
             numHtml += `<button type="button" class="active" disabled>${i}</button>`;
           } else {
             numHtml += `<button type="button" data-page="${i}">${i}</button>`;
           }
+        }
+        if (showLastEllipsis) numHtml += `<span class="pagination-ellipsis">…</span>`;
+        if (totalPages > 1) {
+          numHtml += page === totalPages
+            ? `<button type="button" class="active" disabled>${totalPages}</button>`
+            : `<button type="button" data-page="${totalPages}">${totalPages}</button>`;
         }
         pageNumbers.innerHTML = numHtml;
         pageNumbers.querySelectorAll('button[data-page]').forEach(b => {
@@ -1384,6 +1472,15 @@
               const isBookmarked = (row) => bookmarkSet.has(makeKey(row.source, row.id));
               list = list.filter(isBookmarked);
             }
+            list.sort((a, b) => {
+              const createdA = new Date(a.created_at || 0).getTime();
+              const createdB = new Date(b.created_at || 0).getTime();
+              if (createdB !== createdA) return createdB - createdA;
+              const tA = new Date(a.updated_at || 0).getTime();
+              const tB = new Date(b.updated_at || 0).getTime();
+              if (tB !== tA) return tB - tA;
+              return (contentChecks.has(makeKey(a.source, a.id)) ? 1 : 0) - (contentChecks.has(makeKey(b.source, b.id)) ? 1 : 0);
+            });
             allData = list;
             totalDataCount = list.length;
             currentPage = page;
@@ -1412,6 +1509,15 @@
               const hasPartStatus = (row) => (participation[row.source + ':' + row.id] || '') === fp.participationFilter;
               list = list.filter(hasPartStatus);
             }
+            list.sort((a, b) => {
+              const createdA = new Date(a.created_at || 0).getTime();
+              const createdB = new Date(b.created_at || 0).getTime();
+              if (createdB !== createdA) return createdB - createdA;
+              const tA = new Date(a.updated_at || 0).getTime();
+              const tB = new Date(b.updated_at || 0).getTime();
+              if (tB !== tA) return tB - tA;
+              return (contentChecks.has(makeKey(a.source, a.id)) ? 1 : 0) - (contentChecks.has(makeKey(b.source, b.id)) ? 1 : 0);
+            });
             allData = list;
             totalDataCount = list.length;
             currentPage = page;
@@ -1428,6 +1534,15 @@
             if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
             else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
             if (fp.participationFilter === 'participate' || fp.participationFilter === 'pass') list = list.filter(hasPartStatus);
+            list.sort((a, b) => {
+              const createdA = new Date(a.created_at || 0).getTime();
+              const createdB = new Date(b.created_at || 0).getTime();
+              if (createdB !== createdA) return createdB - createdA;
+              const tA = new Date(a.updated_at || 0).getTime();
+              const tB = new Date(b.updated_at || 0).getTime();
+              if (tB !== tA) return tB - tA;
+              return (contentChecks.has(makeKey(a.source, a.id)) ? 1 : 0) - (contentChecks.has(makeKey(b.source, b.id)) ? 1 : 0);
+            });
             allData = list;
             totalDataCount = list.length;
             currentPage = page;
@@ -1438,7 +1553,16 @@
             const makeKey = (s, c) => (s || '') + ':' + (c || '');
             const isHidden = (row) => hideSet.has(makeKey(row.source, row.id));
             // all 모드로 전체 데이터를 가져왔으므로 필터링 후 클라이언트 사이드 페이지네이션
-            const filteredList = list.filter(r => !isHidden(r));
+            let filteredList = list.filter(r => !isHidden(r));
+            filteredList.sort((a, b) => {
+              const createdA = new Date(a.created_at || 0).getTime();
+              const createdB = new Date(b.created_at || 0).getTime();
+              if (createdB !== createdA) return createdB - createdA;
+              const tA = new Date(a.updated_at || 0).getTime();
+              const tB = new Date(b.updated_at || 0).getTime();
+              if (tB !== tA) return tB - tA;
+              return (contentChecks.has(makeKey(a.source, a.id)) ? 1 : 0) - (contentChecks.has(makeKey(b.source, b.id)) ? 1 : 0);
+            });
             allData = filteredList;
             totalDataCount = filteredList.length;
             currentPage = page;
@@ -1971,16 +2095,10 @@
               hideBtn.textContent = '숨김 해제';
               hideBtn.title = '숨김 해제';
               showToast('숨김 처리했습니다');
-              // 숨김 처리된 행 제거
               const row = hideBtn.closest('tr');
-              if (row && !row.classList.contains('detail-row')) {
-                row.remove();
-                // 테이블이 비어있으면 빈 상태 표시
-                const remainingRows = tableBody.querySelectorAll('tr[data-id]');
-                if (remainingRows.length === 0) {
-                  loadContests(currentPage, false);
-                }
-              }
+              if (row && !row.classList.contains('detail-row')) row.remove();
+              // 뒤에 있는 데이터가 바로 붙도록 현재 페이지 다시 조회
+              loadContests(currentPage, false);
             }
           }
         } catch (err) {
@@ -2018,29 +2136,41 @@
     const STARTUP_PAGE_SIZE = 10;
     const MAX_VISIBLE_PAGES = 10;
 
-    function renderStartupPagination(pagEl, prevBtn, nextBtn, numEl, total, page, setPage, loadFn) {
+    function renderStartupPagination(pagEl, firstBtn, prevBtn, nextBtn, lastBtn, numEl, total, page, setPage, loadFn) {
       if (!pagEl || !total || total === 0) { if (pagEl) pagEl.style.display = 'none'; return; }
       const totalPages = Math.ceil(total / STARTUP_PAGE_SIZE);
       if (totalPages <= 1) { pagEl.style.display = 'none'; return; }
+      if (firstBtn) firstBtn.disabled = page <= 1;
       prevBtn.disabled = page <= 1;
       nextBtn.disabled = page >= totalPages;
-      const block = Math.floor((page - 1) / MAX_VISIBLE_PAGES);
-      const startPg = block * MAX_VISIBLE_PAGES + 1;
-      const endPg = Math.min(startPg + MAX_VISIBLE_PAGES - 1, totalPages);
+      if (lastBtn) lastBtn.disabled = page >= totalPages;
+      const pad = 2;
+      const winStart = Math.max(2, page - pad);
+      const winEnd = Math.min(totalPages - 1, page + pad);
+      const showFirstEllipsis = winStart > 2;
+      const showLastEllipsis = winEnd < totalPages - 1;
       let html = '';
-      for (let i = startPg; i <= endPg; i++) {
+      html += page === 1 ? '<button type="button" class="active" disabled>1</button>' : '<button type="button" data-page="1">1</button>';
+      if (showFirstEllipsis) html += '<span class="pagination-ellipsis">…</span>';
+      for (let i = winStart; i <= winEnd; i++) {
         html += i === page ? '<button type="button" class="active" disabled>' + i + '</button>' : '<button type="button" data-page="' + i + '">' + i + '</button>';
+      }
+      if (showLastEllipsis) html += '<span class="pagination-ellipsis">…</span>';
+      if (totalPages > 1) {
+        html += page === totalPages ? '<button type="button" class="active" disabled>' + totalPages + '</button>' : '<button type="button" data-page="' + totalPages + '">' + totalPages + '</button>';
       }
       numEl.innerHTML = html;
       numEl.querySelectorAll('button[data-page]').forEach(function(b) {
-        b.addEventListener('click', function() { 
+        b.addEventListener('click', function() {
           const newPage = parseInt(b.dataset.page);
           setPage(newPage);
-          loadFn(newPage); // 페이지네이션 지원: 서버에서 데이터 로드
+          loadFn(newPage);
         });
       });
+      if (firstBtn) firstBtn.onclick = function() { if (page > 1) { setPage(1); loadFn(1); } };
       prevBtn.onclick = function() { if (page > 1) { setPage(page - 1); loadFn(page - 1); } };
       nextBtn.onclick = function() { if (page < totalPages) { setPage(page + 1); loadFn(page + 1); } };
+      if (lastBtn) lastBtn.onclick = function() { if (page < totalPages) { setPage(totalPages); loadFn(totalPages); } };
       pagEl.style.display = 'flex';
     }
 
@@ -2050,26 +2180,27 @@
       const data = startupBusinessData;
       const page = startupBusinessPage;
       if (!data || data.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="10" class="empty-state">등록된 통합지원사업이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">등록된 통합지원사업이 없습니다.</td></tr>';
         document.getElementById('startupBusinessPagination').style.display = 'none';
         return;
       }
-      // 페이지네이션 지원: 서버에서 이미 페이지네이션된 데이터를 받음
       const pageData = data;
       const key = function(r) { return 'business:' + (r.id || ''); };
       tbody.innerHTML = pageData.map(function(row, idx) {
         const no = (page - 1) * STARTUP_PAGE_SIZE + idx + 1;
-        const t = row.title || '-'; const tg = row.target || '-'; const ct = row.content || '-'; const bd = row.bdgt || '-'; const ch = row.chrct || '-'; const ir = row.intrd || '-';
+        const t = row.title || '-';
         const checked = startupContentChecks.has(key(row));
-        const rowClass = checked ? ' class="row-startup-checked"' : '';
+        const rowClass = (checked ? ' row-startup-checked' : '') + ' startup-business-data-row';
         const checkBtn = checked ? '<button type="button" class="btn btn-action" disabled title="이미 확인함">확인완료</button>' : '<button type="button" class="btn btn-action btn-startup-content-check" data-item-type="business" data-item-id="' + esc(row.id || '') + '" title="내용확인">내용확인</button>';
         const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
-        return '<tr' + rowClass + '><td>' + no + '</td><td>' + checkBtn + '</td><td>' + esc(row.biz_yr || '-') + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 50)) + '</td><td style="text-align:left" title="' + esc(tg) + '">' + esc(tr(tg, 40)) + '</td><td style="text-align:left" title="' + esc(ct) + '">' + esc(tr(ct, 40)) + '</td><td style="text-align:left" title="' + esc(bd) + '">' + esc(tr(bd, 30)) + '</td><td style="text-align:left" title="' + esc(ch) + '">' + esc(tr(ch, 35)) + '</td><td style="text-align:left" title="' + esc(ir) + '">' + esc(tr(ir, 35)) + '</td><td>' + link + '</td></tr>';
+        return '<tr class="' + rowClass + '" data-id="' + esc(String(row.id || '')) + '"><td>' + no + '</td><td>' + checkBtn + '</td><td>' + esc(row.biz_yr || '-') + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 80)) + '</td><td>' + link + '</td></tr>';
       }).join('');
       renderStartupPagination(
         document.getElementById('startupBusinessPagination'),
+        document.getElementById('startupBusinessFirst'),
         document.getElementById('startupBusinessPrev'),
         document.getElementById('startupBusinessNext'),
+        document.getElementById('startupBusinessLast'),
         document.getElementById('startupBusinessPageNumbers'),
         startupBusinessTotal, startupBusinessPage,
         function(p) { startupBusinessPage = p; },
@@ -2082,29 +2213,29 @@
       if (!tbody) return;
       const data = startupAnnouncementsData;
       const page = startupAnnouncementsPage;
-      const COLS = 17;
+      const COLS = 4;
       if (!data || data.length === 0) {
         tbody.innerHTML = '<tr><td colspan="' + COLS + '" class="empty-state">등록된 지원사업 공고가 없습니다.</td></tr>';
         document.getElementById('startupAnnouncementsPagination').style.display = 'none';
         return;
       }
-      // 페이지네이션 지원: 서버에서 이미 페이지네이션된 데이터를 받음
       const pageData = data;
-      const fmt = function(d) { return d ? d.replace(/(\d{4})(\d{2})(\d{2})/, '$1-$2-$3') : '-'; };
       const key = function(r) { return 'announcement:' + (r.id || ''); };
       tbody.innerHTML = pageData.map(function(row, idx) {
         const no = (page - 1) * STARTUP_PAGE_SIZE + idx + 1;
-        const t = row.title || '-'; const intg = row.intg_nm || '-'; const org = row.org || '-'; const dprt = row.dprt || '-'; const contact = row.contact || '-'; const reg = row.region || '-'; const cl = row.clsfc || '-'; const sprv = row.sprv_inst || '-'; const aply = row.aply_trgt || '-'; const enyy = row.biz_enyy || '-'; const age = row.biz_trgt_age || '-';
+        const t = row.title || '-';
         const checked = startupContentChecks.has(key(row));
-        const rowClass = checked ? ' class="row-startup-checked"' : '';
+        const rowClass = (checked ? ' row-startup-checked' : '') + ' startup-announcements-data-row';
         const checkBtn = checked ? '<button type="button" class="btn btn-action" disabled title="이미 확인함">확인완료</button>' : '<button type="button" class="btn btn-action btn-startup-content-check" data-item-type="announcement" data-item-id="' + esc(row.id || '') + '" title="내용확인">내용확인</button>';
         const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
-        return '<tr' + rowClass + '><td>' + no + '</td><td>' + checkBtn + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 45)) + '</td><td style="text-align:left" title="' + esc(intg) + '">' + esc(tr(intg, 35)) + '</td><td title="' + esc(org) + '">' + esc(tr(org, 25)) + '</td><td title="' + esc(dprt) + '">' + esc(tr(dprt, 20)) + '</td><td>' + esc(tr(contact, 25)) + '</td><td>' + esc(reg) + '</td><td title="' + esc(cl) + '">' + esc(tr(cl, 25)) + '</td><td>' + esc(sprv) + '</td><td>' + fmt(row.start_date) + '</td><td>' + fmt(row.end_date) + '</td><td>' + esc(row.rcrt_prgs || '-') + '</td><td title="' + esc(aply) + '">' + esc(tr(aply, 20)) + '</td><td>' + esc(enyy) + '</td><td title="' + esc(age) + '">' + esc(tr(age, 35)) + '</td><td>' + link + '</td></tr>';
+        return '<tr class="' + rowClass + '" data-id="' + esc(String(row.id || '')) + '"><td>' + no + '</td><td>' + checkBtn + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 80)) + '</td><td>' + link + '</td></tr>';
       }).join('');
       renderStartupPagination(
         document.getElementById('startupAnnouncementsPagination'),
+        document.getElementById('startupAnnouncementsFirst'),
         document.getElementById('startupAnnouncementsPrev'),
         document.getElementById('startupAnnouncementsNext'),
+        document.getElementById('startupAnnouncementsLast'),
         document.getElementById('startupAnnouncementsPageNumbers'),
         startupAnnouncementsTotal, startupAnnouncementsPage,
         function(p) { startupAnnouncementsPage = p; },
@@ -2115,37 +2246,51 @@
     function loadStartupBusiness(page = 1) {
       const tbody = document.getElementById('startupBusinessBody');
       if (!tbody) return;
-      tbody.innerHTML = '<tr><td colspan="10" class="loading">로딩 중</td></tr>';
+      const q = (document.getElementById('startupBusinessSearch') && document.getElementById('startupBusinessSearch').value || '').trim();
+      tbody.innerHTML = '<tr><td colspan="5" class="loading">로딩 중</td></tr>';
       document.getElementById('startupBusinessPagination').style.display = 'none';
-      // 페이지네이션 지원 (백엔드 최적화)
-      fetch('/api/startup/business?page=' + encodeURIComponent(page) + '&limit=' + STARTUP_PAGE_SIZE)
+      let url = '/api/startup/business?page=' + encodeURIComponent(page) + '&limit=' + STARTUP_PAGE_SIZE;
+      if (q) url += '&q=' + encodeURIComponent(q);
+      fetch(url)
         .then(r => r.json())
         .then(res => {
-          if (!res.success) { tbody.innerHTML = '<tr><td colspan="10" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; return; }
+          if (!res.success) { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; return; }
           startupBusinessData = res.data || [];
+          startupBusinessData.sort((a, b) => {
+            const aChecked = startupContentChecks.has('business:' + (a.id || ''));
+            const bChecked = startupContentChecks.has('business:' + (b.id || ''));
+            return (aChecked ? 1 : 0) - (bChecked ? 1 : 0);
+          });
           startupBusinessTotal = res.total || 0;
           startupBusinessPage = res.page || page;
           renderStartupBusiness();
         })
-        .catch(function() { tbody.innerHTML = '<tr><td colspan="10" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; });
+        .catch(function() { tbody.innerHTML = '<tr><td colspan="5" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; });
     }
     function loadStartupAnnouncements(page = 1) {
       const tbody = document.getElementById('startupAnnouncementsBody');
       if (!tbody) return;
-      const COLS = 17;
+      const COLS = 4;
+      const q = (document.getElementById('startupAnnouncementsSearch') && document.getElementById('startupAnnouncementsSearch').value || '').trim();
       tbody.innerHTML = '<tr><td colspan="' + COLS + '" class="loading">로딩 중</td></tr>';
       document.getElementById('startupAnnouncementsPagination').style.display = 'none';
-      // 페이지네이션 지원 (백엔드 최적화)
-      fetch('/api/startup/announcements?page=' + encodeURIComponent(page) + '&limit=' + STARTUP_PAGE_SIZE)
+      let url = '/api/startup/announcements?page=' + encodeURIComponent(page) + '&limit=' + STARTUP_PAGE_SIZE;
+      if (q) url += '&q=' + encodeURIComponent(q);
+      fetch(url)
         .then(r => r.json())
         .then(res => {
           if (!res.success) { tbody.innerHTML = '<tr><td colspan="' + COLS + '" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; return; }
           startupAnnouncementsData = res.data || [];
+          startupAnnouncementsData.sort((a, b) => {
+            const aChecked = startupContentChecks.has('announcement:' + (a.id || ''));
+            const bChecked = startupContentChecks.has('announcement:' + (b.id || ''));
+            return (aChecked ? 1 : 0) - (bChecked ? 1 : 0);
+          });
           startupAnnouncementsTotal = res.total || 0;
           startupAnnouncementsPage = res.page || page;
           renderStartupAnnouncements();
         })
-        .catch(function() { tbody.innerHTML = '<tr><td colspan="17" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; });
+        .catch(function() { tbody.innerHTML = '<tr><td colspan="4" class="empty-state">목록을 불러올 수 없습니다.</td></tr>'; });
     }
     function loadStartupData() {
       fetch('/api/user/startup-status')
@@ -2184,6 +2329,147 @@
         document.getElementById('startupTabAnnouncements').style.display = tab === 'announcements' ? 'block' : 'none';
       });
     });
+    document.getElementById('startupBusinessSearchBtn')?.addEventListener('click', function() { loadStartupBusiness(1); });
+    document.getElementById('startupBusinessSearch')?.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); loadStartupBusiness(1); } });
+    document.getElementById('startupAnnouncementsSearchBtn')?.addEventListener('click', function() { loadStartupAnnouncements(1); });
+    document.getElementById('startupAnnouncementsSearch')?.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); loadStartupAnnouncements(1); } });
+
+    function toggleStartupBusinessDetail(clickedRow) {
+      if (!clickedRow || !clickedRow.classList.contains('startup-business-data-row')) return;
+      const rowId = clickedRow.dataset.id;
+      if (!rowId) return;
+      const next = clickedRow.nextElementSibling;
+      if (next && next.classList.contains('startup-business-detail-row') && next.dataset.forId === rowId) {
+        next.remove();
+        return;
+      }
+      const row = startupBusinessData.find(function(r) { return String(r.id) === String(rowId); });
+      if (!row) return;
+      const target = (row.target || '-').toString().trim();
+      const content = (row.content || '-').toString().trim();
+      const bdgt = (row.bdgt || '-').toString().trim();
+      const intrd = (row.intrd || '-').toString().trim();
+      const detailTr = document.createElement('tr');
+      detailTr.className = 'startup-business-detail-row';
+      detailTr.dataset.forId = rowId;
+      detailTr.innerHTML = '<td colspan="5"><div class="startup-business-detail-inner">' +
+        '<div class="detail-block"><div class="detail-label">지원대상</div><div class="detail-value">' + esc(target) + '</div></div>' +
+        '<div class="detail-block"><div class="detail-label">지원내용</div><div class="detail-value">' + esc(content) + '</div></div>' +
+        '<div class="detail-block"><div class="detail-label">예산/지원규모</div><div class="detail-value">' + esc(bdgt) + '</div></div>' +
+        '<div class="detail-block"><div class="detail-label">지원사업소개</div><div class="detail-value">' + esc(intrd) + '</div></div>' +
+        '<div class="startup-detail-comments" data-item-type="business" data-item-id="' + esc(rowId) + '">' +
+        '<div class="comments-title">댓글</div>' +
+        '<div class="startup-comments-list"></div>' +
+        '<div class="startup-comment-form"><textarea placeholder="댓글 입력..." rows="2"></textarea><button type="button" class="btn btn-primary btn-submit-comment">등록</button></div></div>' +
+        '</div></td>';
+      clickedRow.after(detailTr);
+      var commentsWrap = detailTr.querySelector('.startup-detail-comments');
+      if (commentsWrap) loadStartupComments(commentsWrap);
+    }
+
+    var startupBusinessTbody = document.getElementById('startupBusinessBody');
+    if (startupBusinessTbody) {
+      startupBusinessTbody.addEventListener('click', function(e) {
+        if (e.target.closest('button') || e.target.closest('a')) return;
+        var tr = e.target.closest('tr.startup-business-data-row');
+        if (tr) toggleStartupBusinessDetail(tr);
+      });
+    }
+
+    function toggleStartupAnnouncementsDetail(clickedRow) {
+      if (!clickedRow || !clickedRow.classList.contains('startup-announcements-data-row')) return;
+      const rowId = clickedRow.dataset.id;
+      if (!rowId) return;
+      const next = clickedRow.nextElementSibling;
+      if (next && next.classList.contains('startup-announcements-detail-row') && next.dataset.forId === rowId) {
+        next.remove();
+        return;
+      }
+      const row = startupAnnouncementsData.find(function(r) { return String(r.id) === String(rowId); });
+      if (!row) return;
+      const title = (row.title || '-').toString().trim();
+      const aply = (row.aply_trgt || '-').toString().trim();
+      const enyy = (row.biz_enyy || '-').toString().trim();
+      const age = (row.biz_trgt_age || '-').toString().trim();
+      const detailTr = document.createElement('tr');
+      detailTr.className = 'startup-announcements-detail-row';
+      detailTr.dataset.forId = rowId;
+      detailTr.innerHTML = '<td colspan="4"><div class="startup-announcements-detail-inner">' +
+        '<div class="detail-block"><div class="detail-label">공고명</div><div class="detail-value">' + esc(title) + '</div></div>' +
+        '<div class="detail-block"><div class="detail-label">신청대상</div><div class="detail-value">' + esc(aply) + '</div></div>' +
+        '<div class="detail-block"><div class="detail-label">창업기간</div><div class="detail-value">' + esc(enyy) + '</div></div>' +
+        '<div class="detail-block"><div class="detail-label">대상연령</div><div class="detail-value">' + esc(age) + '</div></div>' +
+        '<div class="startup-detail-comments" data-item-type="announcement" data-item-id="' + esc(rowId) + '">' +
+        '<div class="comments-title">댓글</div>' +
+        '<div class="startup-comments-list"></div>' +
+        '<div class="startup-comment-form"><textarea placeholder="댓글 입력..." rows="2"></textarea><button type="button" class="btn btn-primary btn-submit-comment">등록</button></div></div>' +
+        '</div></td>';
+      clickedRow.after(detailTr);
+      var commentsWrap = detailTr.querySelector('.startup-detail-comments');
+      if (commentsWrap) loadStartupComments(commentsWrap);
+    }
+
+    var startupAnnouncementsTbody = document.getElementById('startupAnnouncementsBody');
+    if (startupAnnouncementsTbody) {
+      startupAnnouncementsTbody.addEventListener('click', function(e) {
+        if (e.target.closest('button') || e.target.closest('a')) return;
+        var tr = e.target.closest('tr.startup-announcements-data-row');
+        if (tr) toggleStartupAnnouncementsDetail(tr);
+      });
+    }
+
+    function loadStartupComments(wrapper) {
+      if (!wrapper) return;
+      var itemType = wrapper.dataset.itemType || '';
+      var itemId = wrapper.dataset.itemId || '';
+      var listEl = wrapper.querySelector('.startup-comments-list');
+      if (!listEl || !itemType || !itemId) return;
+      listEl.innerHTML = '<span class="loading">댓글 로딩...</span>';
+      fetch('/api/startup/comments?item_type=' + encodeURIComponent(itemType) + '&item_id=' + encodeURIComponent(itemId))
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+          if (!res.success) { listEl.innerHTML = '<span class="empty-state">댓글을 불러올 수 없습니다.</span>'; return; }
+          var list = res.data || [];
+          if (list.length === 0) {
+            listEl.innerHTML = '<span class="empty-state">댓글이 없습니다.</span>';
+            return;
+          }
+          listEl.innerHTML = list.map(function(c) {
+            var time = c.created_at ? new Date(c.created_at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '';
+            return '<div class="startup-comment-item"><span class="comment-author">' + esc(c.author_nickname || '익명') + '</span><span class="comment-body">' + esc(c.body || '') + '</span><div class="comment-time">' + esc(time) + '</div></div>';
+          }).join('');
+        })
+        .catch(function() { listEl.innerHTML = '<span class="empty-state">댓글을 불러올 수 없습니다.</span>'; });
+    }
+
+    document.addEventListener('click', function(e) {
+      var submitBtn = e.target.closest('.btn-submit-comment');
+      if (submitBtn) {
+        e.preventDefault();
+        var form = submitBtn.closest('.startup-comment-form');
+        var wrapper = form && form.closest('.startup-detail-comments');
+        if (!wrapper) return;
+        var textarea = form.querySelector('textarea');
+        var body = (textarea && textarea.value || '').trim();
+        if (!body) { showToast('댓글 내용을 입력하세요', 'error'); return; }
+        var itemType = wrapper.dataset.itemType || '';
+        var itemId = wrapper.dataset.itemId || '';
+        if (!itemType || !itemId) return;
+        fetch('/api/startup/comments', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ item_type: itemType, item_id: itemId, body: body })
+        }).then(function(r) { return r.json(); }).then(function(res) {
+          if (res.success) {
+            textarea.value = '';
+            loadStartupComments(wrapper);
+            showToast('댓글이 등록되었습니다');
+          } else {
+            showToast(res.error || '등록 실패', 'error');
+          }
+        }).catch(function() { showToast('오류가 발생했습니다', 'error'); });
+      }
+    });
 
     document.addEventListener('click', async function(e) {
       const btn = e.target.closest('.btn-startup-content-check');
@@ -2209,6 +2495,11 @@
             const row = btn.closest('tr');
             if (row) row.classList.add('row-startup-checked');
             showToast('내용확인 완료');
+            var detailRow = itemType === 'business'
+              ? document.querySelector('#startupTabBusiness .startup-business-detail-row[data-for-id="' + itemId + '"]')
+              : document.querySelector('#startupTabAnnouncements .startup-announcements-detail-row[data-for-id="' + itemId + '"]');
+            var commentsWrap = detailRow && detailRow.querySelector('.startup-detail-comments');
+            if (commentsWrap) loadStartupComments(commentsWrap);
           } else {
             showToast(j.error || '실패', 'error');
           }
@@ -2218,8 +2509,10 @@
       }
     });
 
+    btnFirst.addEventListener('click', () => goToPage(1));
     btnPrev.addEventListener('click', () => goToPage(currentPage - 1));
     btnNext.addEventListener('click', () => goToPage(currentPage + 1));
+    btnLast.addEventListener('click', () => goToPage(Math.ceil(totalDataCount / PAGE_SIZE)));
 
     let searchDebounce = null;
     document.getElementById('searchInput')?.addEventListener('input', () => {
@@ -2235,6 +2528,25 @@
     document.getElementById('bookmarkFilterCheck')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('categorySelect')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('sourceSelect')?.addEventListener('change', () => applyFiltersAndSort());
+
+    document.getElementById('btnHideAllPass')?.addEventListener('click', async () => {
+      if (!confirm('패스한 공모전을 전부 숨김 처리할까요?')) return;
+      try {
+        const r = await fetch('/api/contests/hide-all-pass', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
+        const j = await r.json();
+        if (j.success) {
+          showToast(j.message || '패스한 공모전을 숨김 처리했습니다');
+          const statusRes = await fetch('/api/user/contest-status');
+          const statusJ = await statusRes.json();
+          if (statusJ.data && statusJ.data.hides) hideSet = new Set(statusJ.data.hides);
+          loadContests(1, false);
+        } else {
+          showToast(j.error || '처리 실패', 'error');
+        }
+      } catch (err) {
+        showToast('오류가 발생했습니다', 'error');
+      }
+    });
 
     loadContests();
 

@@ -502,7 +502,8 @@
       color: var(--main-purple);
     }
     .participation-pagination button:disabled { opacity: 0.5; cursor: default; }
-    .participation-pagination .participation-pages { display: flex; gap: 4px; }
+    .participation-pagination .participation-pages { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; }
+    .participation-pagination .participation-pagination-ellipsis { padding: 0 4px; color: var(--gray-muted); user-select: none; }
     .participation-pagination .participation-page-btn {
       min-width: 32px;
       padding: 6px 10px;
@@ -966,9 +967,11 @@
         <div class="participation-loading" id="participationLoading" style="color:var(--gray-muted);padding:24px;text-align:center;">불러오는 중...</div>
       </div>
       <div class="participation-pagination" id="participationPagination" style="display:none">
+        <button type="button" class="participation-first" id="participationFirst" title="첫 페이지">«</button>
         <button type="button" class="participation-prev" id="participationPrev" title="이전">이전</button>
         <span class="participation-pages" id="participationPages"></span>
         <button type="button" class="participation-next" id="participationNext" title="다음">다음</button>
+        <button type="button" class="participation-last" id="participationLast" title="끝 페이지">»</button>
       </div>
     </section>
   </div>
@@ -1620,19 +1623,21 @@
       }
     }
 
-    // 참가/패스 공모전 목록 로드 (5개씩, 최대 10페이지)
+    // 참가/패스 공모전 목록 로드 (서버 페이징)
     const participationSection = document.getElementById('participationSection');
     const participationList = document.getElementById('participationList');
     const participationLoading = document.getElementById('participationLoading');
     const participationPagination = document.getElementById('participationPagination');
+    const participationFirst = document.getElementById('participationFirst');
     const participationPrev = document.getElementById('participationPrev');
     const participationNext = document.getElementById('participationNext');
+    const participationLast = document.getElementById('participationLast');
     const participationPages = document.getElementById('participationPages');
     const isOwnProfile = participationSection && participationSection.dataset.ownProfile === '1';
-    const PARTICIPATION_PAGE_SIZE = 5;
-    const PARTICIPATION_MAX_PAGES = 10;
-    let participationAllData = [];
+    const PARTICIPATION_PAGE_SIZE = 10;
+    let participationPageData = [];
     let participationCurrentPage = 1;
+    let participationTotal = 0;
     let participationFilter = 'all';
     let participationViewMode = 'card';
     function fmtDate(s) {
@@ -1646,18 +1651,14 @@
       if (isNaN(n)) return '-';
       return n >= 10000 ? (n/10000).toFixed(1).replace(/\.0$/, '') + '만원' : n + '원';
     }
-    function renderParticipationList(data, page) {
+    function renderParticipationList(data, page, total) {
       if (!participationList) return;
-      if (data) participationAllData = data;
-      let filteredData = participationAllData;
-      if (participationFilter === 'participate') filteredData = participationAllData.filter(function(x) { return x.status === 'participate'; });
-      else if (participationFilter === 'pass') filteredData = participationAllData.filter(function(x) { return x.status === 'pass'; });
-      participationCurrentPage = Math.max(1, Math.min(page || 1, PARTICIPATION_MAX_PAGES));
-      const totalItems = Math.min(filteredData.length, PARTICIPATION_PAGE_SIZE * PARTICIPATION_MAX_PAGES);
-      const totalPages = Math.max(1, Math.ceil(totalItems / PARTICIPATION_PAGE_SIZE));
-      const start = (participationCurrentPage - 1) * PARTICIPATION_PAGE_SIZE;
-      const pageData = filteredData.slice(start, start + PARTICIPATION_PAGE_SIZE);
-      if (filteredData.length === 0) {
+      if (data) participationPageData = data;
+      if (typeof page === 'number') participationCurrentPage = page;
+      if (typeof total === 'number') participationTotal = total;
+      const totalPages = Math.max(1, Math.ceil(participationTotal / PARTICIPATION_PAGE_SIZE));
+      const pageData = participationPageData;
+      if (pageData.length === 0 && participationTotal === 0) {
         participationList.innerHTML = '<div style="color:var(--gray-muted);padding:24px;text-align:center;">' + (participationFilter === 'participate' ? '참가한 공모전이 없습니다.' : participationFilter === 'pass' ? '패스한 공모전이 없습니다.' : '참가 또는 패스한 공모전이 없습니다.') + '</div>';
         if (participationPagination) participationPagination.style.display = 'none';
         return;
@@ -1737,24 +1738,41 @@
       participationList.innerHTML = html;
       if (participationPagination) {
         participationPagination.style.display = totalPages > 1 ? 'flex' : 'none';
+        if (participationFirst) {
+          participationFirst.disabled = participationCurrentPage <= 1;
+          participationFirst.onclick = function() { if (participationCurrentPage > 1) loadParticipationPage(1); };
+        }
         if (participationPrev) {
           participationPrev.disabled = participationCurrentPage <= 1;
-          participationPrev.onclick = function() { if (participationCurrentPage > 1) renderParticipationList(null, participationCurrentPage - 1); };
+          participationPrev.onclick = function() { if (participationCurrentPage > 1) loadParticipationPage(participationCurrentPage - 1); };
         }
         if (participationNext) {
           participationNext.disabled = participationCurrentPage >= totalPages;
-          participationNext.onclick = function() { if (participationCurrentPage < totalPages) renderParticipationList(null, participationCurrentPage + 1); };
+          participationNext.onclick = function() { if (participationCurrentPage < totalPages) loadParticipationPage(participationCurrentPage + 1); };
+        }
+        if (participationLast) {
+          participationLast.disabled = participationCurrentPage >= totalPages;
+          participationLast.onclick = function() { if (participationCurrentPage < totalPages) loadParticipationPage(totalPages); };
         }
         if (participationPages) {
-          var maxShow = Math.min(totalPages, PARTICIPATION_MAX_PAGES);
           var html = [];
-          for (var i = 1; i <= maxShow; i++) {
-            var active = i === participationCurrentPage ? ' active' : '';
-            html.push('<button type="button" class="participation-page-btn' + active + '" data-page="' + i + '">' + i + '</button>');
+          var cur = participationCurrentPage;
+          if (totalPages <= 7) {
+            for (var i = 1; i <= totalPages; i++) {
+              html.push('<button type="button" class="participation-page-btn' + (i === cur ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>');
+            }
+          } else {
+            if (cur > 2) html.push('<button type="button" class="participation-page-btn" data-page="1">1</button>');
+            if (cur > 3) html.push('<span class="participation-pagination-ellipsis">…</span>');
+            for (var i = Math.max(1, cur - 2); i <= Math.min(totalPages, cur + 2); i++) {
+              html.push('<button type="button" class="participation-page-btn' + (i === cur ? ' active' : '') + '" data-page="' + i + '">' + i + '</button>');
+            }
+            if (cur < totalPages - 2) html.push('<span class="participation-pagination-ellipsis">…</span>');
+            if (cur < totalPages - 1) html.push('<button type="button" class="participation-page-btn" data-page="' + totalPages + '">' + totalPages + '</button>');
           }
           participationPages.innerHTML = html.join('');
           participationPages.querySelectorAll('.participation-page-btn').forEach(function(btn) {
-            btn.addEventListener('click', function() { renderParticipationList(null, parseInt(btn.dataset.page, 10)); });
+            btn.addEventListener('click', function() { loadParticipationPage(parseInt(btn.dataset.page, 10)); });
           });
         }
       }
@@ -1770,10 +1788,10 @@
             .then(function(r) { return r.json(); })
             .then(function(j) {
               if (j.success) {
-                const idx = participationAllData.findIndex(function(x) { return x.source === src && x.contest_id === cid; });
-                if (idx >= 0) participationAllData.splice(idx, 1);
-                renderParticipationList(participationAllData, participationCurrentPage);
                 showToast('삭제되었습니다.');
+                var nextPage = participationCurrentPage;
+                if (participationPageData.length <= 1 && participationCurrentPage > 1) nextPage = participationCurrentPage - 1;
+                loadParticipationPage(nextPage);
               } else { showToast(j.error || '삭제 실패', 'error'); }
             })
             .catch(function() { showToast('삭제에 실패했습니다.', 'error'); });
@@ -1817,7 +1835,7 @@
         if (f === participationFilter) return;
         participationFilter = f;
         document.querySelectorAll('.participation-filter-btn').forEach(function(b) { b.classList.toggle('active', b.dataset.filter === participationFilter); });
-        renderParticipationList(null, 1);
+        loadParticipationPage(1);
       });
     });
     document.querySelectorAll('.participation-view-btn').forEach(function(btn) {
@@ -1829,20 +1847,33 @@
         renderParticipationList(null, participationCurrentPage);
       });
     });
-    if (participationList) {
-      (async function() {
-        try {
-          const profileUserId = participationSection ? (participationSection.dataset.userId || '') : '';
-          const url = profileUserId ? '/api/user/participation?user_id=' + encodeURIComponent(profileUserId) : '/api/user/participation';
-          const r = await fetch(url);
-          const j = await r.json();
-          if (participationLoading) participationLoading.remove();
-          renderParticipationList(j.data || [], 1);
-        } catch (e) {
-          if (participationLoading) participationLoading.remove();
+    function loadParticipationPage(page) {
+      if (!participationList) return;
+      var profileUserId = participationSection ? (participationSection.dataset.userId || '') : '';
+      var url = '/api/user/participation?page=' + encodeURIComponent(page) + '&per_page=' + PARTICIPATION_PAGE_SIZE;
+      if (profileUserId) url += '&user_id=' + encodeURIComponent(profileUserId);
+      if (participationFilter === 'participate' || participationFilter === 'pass') url += '&participation_status=' + encodeURIComponent(participationFilter);
+      fetch(url).then(function(r) { return r.json(); }).then(function(j) {
+        if (participationLoading) participationLoading.remove();
+        if (j.success) {
+          var data = j.data || [];
+          var total = typeof j.total === 'number' ? j.total : 0;
+          var p = typeof j.page === 'number' ? j.page : page;
+          if (data.length === 0 && p > 1 && total > 0) {
+            loadParticipationPage(p - 1);
+            return;
+          }
+          renderParticipationList(data, p, total);
+        } else {
           participationList.innerHTML = '<div style="color:#dc2626;padding:24px;text-align:center;">목록을 불러올 수 없습니다.</div>';
         }
-      })();
+      }).catch(function() {
+        if (participationLoading) participationLoading.remove();
+        participationList.innerHTML = '<div style="color:#dc2626;padding:24px;text-align:center;">목록을 불러올 수 없습니다.</div>';
+      });
+    }
+    if (participationList) {
+      loadParticipationPage(1);
     }
 
     function openParticipationDetailModal(source, contestId, title) {
@@ -2004,9 +2035,7 @@
           }
           fetch('/api/contests/' + encodeURIComponent(src) + '/' + encodeURIComponent(cid) + '/participation/detail', opts).then(function(r) { return r.json(); }).then(function(j) {
             if (j.success) {
-              var item = typeof participationAllData !== 'undefined' && participationAllData.find(function(x) { return x.source === src && x.contest_id === cid; });
-              if (item) item.has_detail = true;
-              if (typeof renderParticipationList === 'function') renderParticipationList(participationAllData || [], participationCurrentPage || 1);
+              if (typeof loadParticipationPage === 'function') loadParticipationPage(participationCurrentPage || 1);
               showToast(j.exp_gained ? '저장되었습니다. +' + j.exp_gained + ' EXP 획득!' : '저장되었습니다.');
               if (docFileInp) docFileInp.value = '';
               if (typeof closeModal === 'function') closeModal('modalParticipationDetail');
@@ -2024,9 +2053,7 @@
             .then(function(r) { return r.json(); })
             .then(function(j) {
               if (j.success) {
-                var item = typeof participationAllData !== 'undefined' && participationAllData.find(function(x) { return x.source === src && x.contest_id === cid; });
-                if (item) item.has_detail = false;
-                if (typeof renderParticipationList === 'function') renderParticipationList(participationAllData || [], participationCurrentPage || 1);
+                if (typeof loadParticipationPage === 'function') loadParticipationPage(participationCurrentPage || 1);
                 showToast('삭제되었습니다.');
                 if (typeof closeModal === 'function') closeModal('modalParticipationDetail');
               } else { showToast(j.error || '삭제 실패', 'error'); }

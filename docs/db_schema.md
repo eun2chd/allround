@@ -964,6 +964,29 @@ CREATE INDEX IF NOT EXISTS idx_startup_content_checks_item ON startup_content_ch
 
 ---
 
+### 20-1. startup_comments (창업 댓글)
+
+통합지원사업/지원사업 공고 항목당 댓글. 내용확인 시 "내용 확인 완료" 자동 댓글 저장.
+
+```sql
+CREATE TABLE IF NOT EXISTS startup_comments (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    item_type TEXT NOT NULL CHECK (item_type IN ('business', 'announcement')),
+    item_id TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_startup_comments_item ON startup_comments(item_type, item_id);
+CREATE INDEX IF NOT EXISTS idx_startup_comments_user ON startup_comments(user_id);
+```
+
+- `item_type`: 'business' | 'announcement'
+- `item_id`: startup_business.id 또는 startup_announcement.pbanc_sn
+
+---
+
 ### 21. startup_participation (창업 참가/패스)
 
 행 없음 = 미결정. `participate` = 참가, `pass` = 패스. 경험치/티어 미반영.
