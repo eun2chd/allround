@@ -122,6 +122,19 @@
     tr:hover td { background: #faf5ff; }
     tr.row-viewed td { color: var(--text-dark); }
     tr.row-viewed .title-cell a { color: var(--text-dark); }
+    /* 미확인(내용확인·댓글 없음) 행 강조 — 행 클릭 시 제거 */
+    tr.contest-row-unread td {
+      background: rgba(254, 202, 202, 0.65) !important;
+    }
+    tr.contest-row-unread:hover td {
+      background: rgba(252, 165, 165, 0.75) !important;
+    }
+    tr.startup-row-unread td {
+      background: rgba(254, 202, 202, 0.65) !important;
+    }
+    tr.startup-row-unread:hover td {
+      background: rgba(252, 165, 165, 0.75) !important;
+    }
     .status-dot { display: inline-block; width: 8px; height: 8px; background: #dc2626; border-radius: 50%; margin-right: 8px; vertical-align: middle; }
     .status-check { color: #059669; margin-right: 8px; font-weight: bold; }
     .bookmark-star {
@@ -1167,6 +1180,55 @@
     let participation = {};
     let commentedSet = new Set();
 
+    const STORAGE_CONTEST_ROW_DISMISSED = 'ar_contest_row_unread_dismissed_v1';
+    const STORAGE_STARTUP_ROW_DISMISSED = 'ar_startup_row_unread_dismissed_v1';
+    let contestUnreadDismissed = new Set();
+    let startupUnreadDismissed = new Set();
+    try {
+      const cj = sessionStorage.getItem(STORAGE_CONTEST_ROW_DISMISSED);
+      if (cj) JSON.parse(cj).forEach((x) => contestUnreadDismissed.add(String(x)));
+    } catch (_) {}
+    try {
+      const sj = sessionStorage.getItem(STORAGE_STARTUP_ROW_DISMISSED);
+      if (sj) JSON.parse(sj).forEach((x) => startupUnreadDismissed.add(String(x)));
+    } catch (_) {}
+
+    function persistContestUnreadDismissed() {
+      try {
+        sessionStorage.setItem(STORAGE_CONTEST_ROW_DISMISSED, JSON.stringify([...contestUnreadDismissed]));
+      } catch (_) {}
+    }
+    function persistStartupUnreadDismissed() {
+      try {
+        sessionStorage.setItem(STORAGE_STARTUP_ROW_DISMISSED, JSON.stringify([...startupUnreadDismissed]));
+      } catch (_) {}
+    }
+    function dismissContestRowUnreadHighlight(tr) {
+      if (!tr || !tr.classList.contains('contest-row-unread')) return;
+      const src = tr.dataset.source || '';
+      const id = tr.dataset.id || '';
+      const k = src + ':' + id;
+      if (!id) return;
+      contestUnreadDismissed.add(k);
+      persistContestUnreadDismissed();
+      tr.classList.remove('contest-row-unread');
+    }
+    function resolveContestMainRowFromEvent(e) {
+      let tr = e.target.closest('tr[data-id]');
+      if (tr && !tr.classList.contains('detail-row') && tableBody.contains(tr)) return tr;
+      const dr = e.target.closest('tr.detail-row');
+      if (dr && tableBody.contains(dr) && dr.dataset.forId) {
+        const fid = dr.dataset.forId;
+        const src = dr.dataset.source || '';
+        return Array.from(tableBody.querySelectorAll('tr[data-id]')).find(
+          (r) => !r.classList.contains('detail-row') && r.dataset.id === fid && (r.dataset.source || '') === src
+        ) || Array.from(tableBody.querySelectorAll('tr[data-id]')).find(
+          (r) => !r.classList.contains('detail-row') && r.dataset.id === fid
+        );
+      }
+      return null;
+    }
+
     function getFilterParams() {
       return {
         q: (document.getElementById('searchInput')?.value || '').trim(),
@@ -1280,13 +1342,14 @@
         const no = start + idx + 1;
         const isViewed = hasCommented(row) || hasContentCheck(row);
         const rowClass = isViewed ? 'row-viewed' : 'row-new';
+        const key = bookmarkedKey(row.source, row.id);
+        const showUnreadBg = !isViewed && !contestUnreadDismissed.has(key);
         const statusHtml = isViewed
           ? '<span class="status-check">✓</span>'
           : '<span class="status-dot"></span>';
         const dClass = row.d_day?.includes('마감') ? 'urgent' : (row.d_day?.includes('오늘') ? 'today' : 'normal');
         const starClass = isBookmarked(row) ? 'bookmark-star bookmarked' : 'bookmark-star';
         const starChar = isBookmarked(row) ? '★' : '☆';
-        const key = bookmarkedKey(row.source, row.id);
         const contentChecked = contentChecks.has(key);
         const partStatus = participation[key] || '';
         const btnCheckDisabled = contentChecked ? ' disabled' : '';
@@ -1296,7 +1359,7 @@
         const btnPartActive = partStatus === 'participate' ? ' action-btn-active' : '';
         const btnPassActive = partStatus === 'pass' ? ' action-btn-active' : '';
         return `
-          <tr data-id="${escapeHtml(row.id)}" data-source="${escapeHtml(row.source || '')}" class="${rowClass}">
+          <tr data-id="${escapeHtml(row.id)}" data-source="${escapeHtml(row.source || '')}" class="${rowClass}${showUnreadBg ? ' contest-row-unread' : ''}">
             <td><span class="${starClass}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}" title="북마크">${starChar}</span></td>
             <td>${statusHtml}${no}</td>
             <td><span class="d-day ${dClass}">${escapeHtml(row.d_day || '-')}</span></td>
@@ -1402,50 +1465,54 @@
         let j = { success: false }, bj = { success: false, data: [] }, statusJ = { success: false, data: {} };
 
         if (participationOnly) {
-          const [partRes, bookmarksRes, statusRes] = await Promise.all([
+          const [partRes, metaRes] = await Promise.all([
             fetch('/api/contests/by-participation?status=' + encodeURIComponent(fp.participationFilter)),
-            fetch('/api/bookmarks'),
-            fetch('/api/user/contest-status')
+            fetch('/api/user/contest-meta')
           ]);
           j = await partRes.json();
-          bj = await bookmarksRes.json();
-          statusJ = await statusRes.json();
+          const meta = await metaRes.json();
+          if (meta.success && meta.data) {
+            bookmarkSet = new Set((meta.data.bookmarks || []).map(x => (x.source || '') + ':' + (x.contest_id || '')));
+            contentChecks = new Set(meta.data.content_checks || []);
+            participation = meta.data.participation || {};
+            commentedSet = new Set(meta.data.commented || []);
+            hideSet = new Set(meta.data.hides || []);
+          }
         } else if (bookmarkOnly) {
-          const [bookmarksContestsRes, bookmarksRes, statusRes] = await Promise.all([
+          const [bookmarksContestsRes, metaRes] = await Promise.all([
             fetch('/api/bookmarks/contests'),
-            fetch('/api/bookmarks'),
-            fetch('/api/user/contest-status')
+            fetch('/api/user/contest-meta')
           ]);
           j = await bookmarksContestsRes.json();
-          bj = await bookmarksRes.json();
-          statusJ = await statusRes.json();
+          const meta = await metaRes.json();
+          if (meta.success && meta.data) {
+            bookmarkSet = new Set((meta.data.bookmarks || []).map(x => (x.source || '') + ':' + (x.contest_id || '')));
+            contentChecks = new Set(meta.data.content_checks || []);
+            participation = meta.data.participation || {};
+            commentedSet = new Set(meta.data.commented || []);
+            hideSet = new Set(meta.data.hides || []);
+          }
         } else {
           const params = new URLSearchParams();
-          // 숨김 처리 필터링을 위해 all 모드로 전체 데이터 가져오기
-          params.set('page', '1');
-          params.set('limit', '10');
-          params.set('all', '1');
+          params.set('page', String(page));
+          params.set('limit', String(PAGE_SIZE));
+          params.set('exclude_hidden', '1');
           if (fp.q) params.set('q', fp.q);
           if (fp.category) params.set('category', fp.category);
           if (fp.source) params.set('source', fp.source);
-          const [contestsRes, bookmarksRes, statusRes] = await Promise.all([
+          const [contestsRes, metaRes] = await Promise.all([
             fetch('/api/contests?' + params.toString()),
-            fetch('/api/bookmarks'),
-            fetch('/api/user/contest-status')
+            fetch('/api/user/contest-meta')
           ]);
           j = await contestsRes.json();
-          bj = await bookmarksRes.json();
-          statusJ = await statusRes.json();
-        }
-
-        if (bj.success && bj.data) {
-          bookmarkSet = new Set(bj.data.map(x => (x.source || '') + ':' + (x.contest_id || '')));
-        }
-        if (statusJ.success && statusJ.data) {
-          contentChecks = new Set(statusJ.data.content_checks || []);
-          participation = statusJ.data.participation || {};
-          commentedSet = new Set(statusJ.data.commented || []);
-          hideSet = new Set(statusJ.data.hides || []);
+          const meta = await metaRes.json();
+          if (meta.success && meta.data) {
+            bookmarkSet = new Set((meta.data.bookmarks || []).map(x => (x.source || '') + ':' + (x.contest_id || '')));
+            contentChecks = new Set(meta.data.content_checks || []);
+            participation = meta.data.participation || {};
+            commentedSet = new Set(meta.data.commented || []);
+            hideSet = new Set(meta.data.hides || []);
+          }
         }
 
         if (j.success && j.data) {
@@ -1549,25 +1616,9 @@
             const start = (page - 1) * PAGE_SIZE;
             list = list.slice(start, start + PAGE_SIZE);
           } else {
-            // 일반 목록 조회 시에도 숨김 처리된 항목 필터링
-            const makeKey = (s, c) => (s || '') + ':' + (c || '');
-            const isHidden = (row) => hideSet.has(makeKey(row.source, row.id));
-            // all 모드로 전체 데이터를 가져왔으므로 필터링 후 클라이언트 사이드 페이지네이션
-            let filteredList = list.filter(r => !isHidden(r));
-            filteredList.sort((a, b) => {
-              const createdA = new Date(a.created_at || 0).getTime();
-              const createdB = new Date(b.created_at || 0).getTime();
-              if (createdB !== createdA) return createdB - createdA;
-              const tA = new Date(a.updated_at || 0).getTime();
-              const tB = new Date(b.updated_at || 0).getTime();
-              if (tB !== tA) return tB - tA;
-              return (contentChecks.has(makeKey(a.source, a.id)) ? 1 : 0) - (contentChecks.has(makeKey(b.source, b.id)) ? 1 : 0);
-            });
-            allData = filteredList;
-            totalDataCount = filteredList.length;
-            currentPage = page;
-            const start = (page - 1) * PAGE_SIZE;
-            list = filteredList.slice(start, start + PAGE_SIZE);
+            // 서버 페이지네이션 (exclude_hidden 적용됨, limit=10)
+            totalDataCount = j.total != null ? j.total : list.length;
+            currentPage = j.page != null ? j.page : page;
           }
           document.getElementById('filterBar').style.display = 'flex';
           const catSel = document.getElementById('categorySelect');
@@ -1674,13 +1725,13 @@
           } else showToast(j.error || '등록 실패', 'error');
         } catch (e) { showToast('등록 실패', 'error'); }
       });
-      loadComments();
-
       try {
-        const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(postId) + '/content');
+        const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(postId) + '/detail');
         const j = await r.json();
         if (j.success && j.data) {
-          const d = j.data;
+          const d = j.data.content || {};
+          if (j.data.comments) renderComments(j.data.comments, j.data.current_user_id);
+          else loadComments();
           let meta = [];
           if (d.host) meta.push('주최/주관: ' + d.host);
           if (d.category) meta.push('카테고리: ' + d.category);
@@ -1900,6 +1951,9 @@
     }
 
     tableBody.addEventListener('click', async (e) => {
+      const mainRowForUnread = resolveContestMainRowFromEvent(e);
+      if (mainRowForUnread) dismissContestRowUnreadHighlight(mainRowForUnread);
+
       const delBtn = e.target.closest('.comment-delete-btn');
       if (delBtn) {
         e.preventDefault();
@@ -1923,10 +1977,14 @@
             const stillHasMine = list.some(c => (c.user_id || '').toString() === myId);
             if (!stillHasMine) {
               commentedSet.delete(src2 + ':' + cid2);
+              contestUnreadDismissed.delete(src2 + ':' + cid2);
+              persistContestUnreadDismissed();
               const row = Array.from(tableBody.querySelectorAll('tr')).find(r => r.dataset.id === cid2 && r.dataset.source === src2 && !r.classList.contains('detail-row'));
               if (row) {
                 row.classList.add('row-new');
                 row.classList.remove('row-viewed');
+                const mk = (src2 || '') + ':' + cid2;
+                if (!contestUnreadDismissed.has(mk)) row.classList.add('contest-row-unread');
                 const noCell = row.querySelector('td:nth-child(2)');
                 if (noCell) {
                   const num = (noCell.textContent.match(/\d+/) || [''])[0];
@@ -2134,6 +2192,16 @@
     let startupAnnouncementsTotal = 0;
     let startupContentChecks = new Set();
     const STARTUP_PAGE_SIZE = 10;
+
+    function dismissStartupRowUnreadHighlight(tr, kind) {
+      if (!tr || !tr.classList.contains('startup-row-unread')) return;
+      var id = tr.dataset.id;
+      if (!id) return;
+      var key = kind + ':' + id;
+      startupUnreadDismissed.add(key);
+      persistStartupUnreadDismissed();
+      tr.classList.remove('startup-row-unread');
+    }
     const MAX_VISIBLE_PAGES = 10;
 
     function renderStartupPagination(pagEl, firstBtn, prevBtn, nextBtn, lastBtn, numEl, total, page, setPage, loadFn) {
@@ -2190,7 +2258,8 @@
         const no = (page - 1) * STARTUP_PAGE_SIZE + idx + 1;
         const t = row.title || '-';
         const checked = startupContentChecks.has(key(row));
-        const rowClass = (checked ? ' row-startup-checked' : '') + ' startup-business-data-row';
+        const unreadBg = !checked && !startupUnreadDismissed.has(key(row));
+        const rowClass = (checked ? ' row-startup-checked' : '') + ' startup-business-data-row' + (unreadBg ? ' startup-row-unread' : '');
         const checkBtn = checked ? '<button type="button" class="btn btn-action" disabled title="이미 확인함">확인완료</button>' : '<button type="button" class="btn btn-action btn-startup-content-check" data-item-type="business" data-item-id="' + esc(row.id || '') + '" title="내용확인">내용확인</button>';
         const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
         return '<tr class="' + rowClass + '" data-id="' + esc(String(row.id || '')) + '"><td>' + no + '</td><td>' + checkBtn + '</td><td>' + esc(row.biz_yr || '-') + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 80)) + '</td><td>' + link + '</td></tr>';
@@ -2225,7 +2294,8 @@
         const no = (page - 1) * STARTUP_PAGE_SIZE + idx + 1;
         const t = row.title || '-';
         const checked = startupContentChecks.has(key(row));
-        const rowClass = (checked ? ' row-startup-checked' : '') + ' startup-announcements-data-row';
+        const unreadBg = !checked && !startupUnreadDismissed.has(key(row));
+        const rowClass = (checked ? ' row-startup-checked' : '') + ' startup-announcements-data-row' + (unreadBg ? ' startup-row-unread' : '');
         const checkBtn = checked ? '<button type="button" class="btn btn-action" disabled title="이미 확인함">확인완료</button>' : '<button type="button" class="btn btn-action btn-startup-content-check" data-item-type="announcement" data-item-id="' + esc(row.id || '') + '" title="내용확인">내용확인</button>';
         const link = row.url ? '<a href="' + esc(row.url) + '" target="_blank" rel="noopener" class="btn btn-primary">상세</a>' : '-';
         return '<tr class="' + rowClass + '" data-id="' + esc(String(row.id || '')) + '"><td>' + no + '</td><td>' + checkBtn + '</td><td class="title-cell" style="text-align:left" title="' + esc(t) + '">' + esc(tr(t, 80)) + '</td><td>' + link + '</td></tr>';
@@ -2370,6 +2440,16 @@
     var startupBusinessTbody = document.getElementById('startupBusinessBody');
     if (startupBusinessTbody) {
       startupBusinessTbody.addEventListener('click', function(e) {
+        var tr = e.target.closest('tr.startup-business-data-row');
+        if (!tr) {
+          var dr = e.target.closest('tr.startup-business-detail-row');
+          if (dr && dr.dataset.forId) {
+            tr = Array.from(startupBusinessTbody.querySelectorAll('tr.startup-business-data-row')).find(function(r) { return r.dataset.id === dr.dataset.forId; });
+          }
+        }
+        if (tr) dismissStartupRowUnreadHighlight(tr, 'business');
+      }, true);
+      startupBusinessTbody.addEventListener('click', function(e) {
         if (e.target.closest('button') || e.target.closest('a')) return;
         var tr = e.target.closest('tr.startup-business-data-row');
         if (tr) toggleStartupBusinessDetail(tr);
@@ -2411,6 +2491,16 @@
 
     var startupAnnouncementsTbody = document.getElementById('startupAnnouncementsBody');
     if (startupAnnouncementsTbody) {
+      startupAnnouncementsTbody.addEventListener('click', function(e) {
+        var tr = e.target.closest('tr.startup-announcements-data-row');
+        if (!tr) {
+          var dr = e.target.closest('tr.startup-announcements-detail-row');
+          if (dr && dr.dataset.forId) {
+            tr = Array.from(startupAnnouncementsTbody.querySelectorAll('tr.startup-announcements-data-row')).find(function(r) { return r.dataset.id === dr.dataset.forId; });
+          }
+        }
+        if (tr) dismissStartupRowUnreadHighlight(tr, 'announcement');
+      }, true);
       startupAnnouncementsTbody.addEventListener('click', function(e) {
         if (e.target.closest('button') || e.target.closest('a')) return;
         var tr = e.target.closest('tr.startup-announcements-data-row');
@@ -2493,7 +2583,10 @@
             btn.title = '이미 확인함';
             btn.classList.remove('btn-startup-content-check');
             const row = btn.closest('tr');
-            if (row) row.classList.add('row-startup-checked');
+            if (row) {
+              row.classList.add('row-startup-checked');
+              row.classList.remove('startup-row-unread');
+            }
             showToast('내용확인 완료');
             var detailRow = itemType === 'business'
               ? document.querySelector('#startupTabBusiness .startup-business-detail-row[data-for-id="' + itemId + '"]')

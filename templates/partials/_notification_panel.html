@@ -236,11 +236,13 @@
   function togglePanel() { panel.classList.toggle('open'); }
   function closePanel() { panel.classList.remove('open'); }
 
+  var lastNotiFetchAt = 0;
+  var NOTI_REFETCH_MS = 30000;
   document.querySelectorAll('.nav-btn-icon[title="알림"], #navNotificationBtn').forEach(function(btn) {
     btn.addEventListener('click', function(e) {
       e.preventDefault();
       togglePanel();
-      if (panel.classList.contains('open')) loadNotifications();
+      if (panel.classList.contains('open') && (Date.now() - lastNotiFetchAt > NOTI_REFETCH_MS)) loadNotifications();
     });
   });
   if (closeBtn) closeBtn.addEventListener('click', closePanel);
@@ -353,6 +355,7 @@
 
   var lastUnreadCount = null;
   function loadNotifications() {
+    lastNotiFetchAt = Date.now();
     fetch('/api/notifications').then(function(r) { return r.json(); }).then(function(j) {
       var unread = (j.success ? (j.unread_count || 0) : 0);
       if (j.success) {

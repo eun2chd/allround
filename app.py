@@ -1400,35 +1400,77 @@ def api_team_activity():
 
 @app.route("/api/contests")
 def api_contests():
-    """Supabase contests 테이블에서 공고 목록 조회 (페이지당 10개)"""
+    """Supabase contests 테이블에서 공고 목록 조회 (페이지당 10~20개, all 모드 제거로 payload 최소화)"""
     try:
         page = max(1, int(request.args.get("page", 1)))
         limit_arg = int(request.args.get("limit", 10))
-        all_mode = request.args.get("all") in ("1", "true")
-        limit = 2000 if all_mode else max(1, min(100, limit_arg))
+        limit = max(1, min(20, limit_arg))  # 최대 20개, 2000 제거
         category = request.args.get("category", "").strip() or None
         source = request.args.get("source", "").strip() or None
         q = request.args.get("q", "").strip() or None
+        exclude_hidden = request.args.get("exclude_hidden") in ("1", "true")
 
         supabase = get_supabase_admin_client()
-        query = (
-            supabase.table("contests")
-            .select("id, title, d_day, host, url, category, source, created_at, updated_at", count="exact")
-            .order("created_at", desc=True)
-        )
-        if category:
-            query = query.eq("category", category)
-        if source:
-            query = query.eq("source", source)
-        if q:
-            safe_q = q.replace(",", " ").replace("%", "")  # avoid breaking or_ syntax
-            pattern = f"%{safe_q}%"
-            query = query.or_(f"title.ilike.{pattern},host.ilike.{pattern},category.ilike.{pattern}")
+        hidden_set = set()
+        if exclude_hidden and session.get("logged_in") and session.get("user_id"):
+            try:
+                r = supabase.table("contest_hides").select("source, contest_id").eq("user_id", session["user_id"]).execute()
+                for x in (r.data or []):
+                    hidden_set.add((str(x.get("source") or ""), str(x.get("contest_id") or "")))
+            except Exception:
+                pass
 
-        offset = (page - 1) * limit
-        r = query.range(offset, offset + limit - 1).execute()
-        rows = r.data or []
-        total = getattr(r, "count", None) or len(rows)
+        def base_query():
+            qry = (
+                supabase.table("contests")
+                .select("id, title, d_day, host, url, category, source, created_at, updated_at", count="exact")
+                .order("created_at", desc=True)
+            )
+            if category:
+                qry = qry.eq("category", category)
+            if source:
+                qry = qry.eq("source", source)
+            if q:
+                safe_q = q.replace(",", " ").replace("%", "")
+                pattern = f"%{safe_q}%"
+                qry = qry.or_(f"title.ilike.{pattern},host.ilike.{pattern},category.ilike.{pattern}")
+            return qry
+
+        if not hidden_set:
+            query = base_query()
+            offset = (page - 1) * limit
+            r = query.range(offset, offset + limit - 1).execute()
+            rows = r.data or []
+            total = getattr(r, "count", None) or len(rows)
+            return jsonify({
+                "success": True,
+                "data": rows,
+                "total": total,
+                "page": page,
+                "limit": limit,
+            })
+
+        # exclude_hidden: 배치로 가져와서 숨긴 항목 제외 후 limit개 반환 (페이지네이션 지원)
+        skip = (page - 1) * limit
+        collected = []
+        batch_size = 50
+        offset = 0
+        total_approx = None
+        while len(collected) < skip + limit:
+            query = base_query()
+            r = query.range(offset, offset + batch_size - 1).execute()
+            batch = r.data or []
+            if total_approx is None:
+                total_approx = getattr(r, "count", None)
+            for row in batch:
+                key = (str(row.get("source") or ""), str(row.get("id") or ""))
+                if key not in hidden_set:
+                    collected.append(row)
+            if len(batch) < batch_size:
+                break
+            offset += batch_size
+        rows = collected[skip : skip + limit]
+        total = max(len(collected), total_approx or 0)
         return jsonify({
             "success": True,
             "data": rows,
@@ -2624,9 +2666,73 @@ def api_notice_detail(notice_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+@app.route("/api/user/contest-meta")
+def api_user_contest_meta():
+    """유저 상태 통합: bookmarks + content_checks + participation + commented + hides (5개 API → 1개)"""
+    empty = {
+        "bookmarks": [],
+        "content_checks": [],
+        "participation": {},
+        "commented": [],
+        "hides": [],
+    }
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": empty})
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": True, "data": empty})
+    try:
+        supabase = get_supabase_admin_client()
+        bookmarks = []
+        content_checks = []
+        participation = {}
+        commented = []
+        hides = []
+        try:
+            r = supabase.table("contest_bookmarks").select("source, contest_id").eq("user_id", user_id).execute()
+            bookmarks = [{"source": x.get("source"), "contest_id": x.get("contest_id")} for x in (r.data or [])]
+        except Exception:
+            pass
+        try:
+            r = supabase.table("contest_content_checks").select("source, contest_id").eq("user_id", user_id).execute()
+            content_checks = [(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])]
+        except Exception:
+            pass
+        try:
+            r = supabase.table("contest_participation").select("source, contest_id, status").eq("user_id", user_id).execute()
+            for x in (r.data or []):
+                k = (x.get("source") or "") + ":" + (x.get("contest_id") or "")
+                participation[k] = x.get("status") or ""
+        except Exception:
+            pass
+        try:
+            r = supabase.table("contest_comments").select("source, contest_id").eq("user_id", user_id).execute()
+            commented = list({(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])})
+        except Exception:
+            pass
+        try:
+            r = supabase.table("contest_hides").select("source, contest_id").eq("user_id", user_id).execute()
+            hides = list({(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])})
+        except Exception:
+            pass
+        return jsonify({
+            "success": True,
+            "data": {
+                "bookmarks": bookmarks,
+                "content_checks": content_checks,
+                "participation": participation,
+                "commented": commented,
+                "hides": hides,
+            },
+        })
+    except Exception as e:
+        logger.error("api/user/contest-meta 오류: %s", e)
+        return jsonify({"success": True, "data": empty})
+
+
 @app.route("/api/user/contest-status")
 def api_user_contest_status():
-    """현재 사용자의 내용확인/참가/패스 상태 + 댓글 작성한 공모전 (내용 봤음) + 숨김 처리"""
+    """현재 사용자의 내용확인/참가/패스 상태 + 댓글 작성한 공모전 (내용 봤음) + 숨김 처리 (하위호환, contest-meta 권장)"""
     if not session.get("logged_in"):
         return jsonify({"success": True, "data": {"content_checks": [], "participation": {}, "commented": [], "hides": []}})
     user_id = session.get("user_id")
@@ -3449,6 +3555,57 @@ def api_contest_teams():
         except Exception as e:
             logger.error("팀 생성 오류: %s", e)
             return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route("/api/contests/<source>/<contest_id>/detail")
+def api_contest_detail(source, contest_id):
+    """상세 + 댓글 한 번에 조회 (2회 호출 → 1회로 축소)"""
+    try:
+        supabase = get_supabase_admin_client()
+        # content
+        r = supabase.table("contests").select(
+            "id, title, host, category, url, content, d_day"
+        ).eq("source", source).eq("id", contest_id).limit(1).execute()
+        if not r.data or len(r.data) == 0:
+            return jsonify({"success": False, "error": "상세 내용을 가져올 수 없습니다."}), 404
+        row = r.data[0]
+        content = row.get("content") or ""
+        detail = {
+            "id": str(row.get("id", contest_id)),
+            "url": row.get("url", ""),
+            "title": row.get("title", ""),
+            "host": row.get("host", ""),
+            "category": row.get("category", ""),
+            "apply_period": "",
+            "body": content,
+            "apply_url": "",
+            "images": [],
+            "has_content": bool(content),
+        }
+        # comments (동일 로직)
+        cr = supabase.table("contest_comments").select("id, user_id, body, created_at").eq("source", source).eq("contest_id", contest_id).order("created_at").execute()
+        rows = cr.data or []
+        user_ids = list({x["user_id"] for x in rows if x.get("user_id")})
+        profiles_map = {}
+        if user_ids:
+            try:
+                p = supabase.table("profiles").select("id, nickname, profile_url").in_("id", user_ids).execute()
+                for u in (p.data or []):
+                    profiles_map[u["id"]] = {"nickname": u.get("nickname") or "익명", "profile_url": u.get("profile_url") or ""}
+            except Exception:
+                pass
+        for crow in rows:
+            pr = profiles_map.get(crow.get("user_id")) or {}
+            crow["nickname"] = pr.get("nickname", "익명")
+            crow["profile_url"] = pr.get("profile_url", "")
+        current_user_id = str(session.get("user_id") or "") if session.get("logged_in") else None
+        return jsonify({
+            "success": True,
+            "data": {"content": detail, "comments": rows, "current_user_id": current_user_id},
+        })
+    except Exception as e:
+        logger.error("api/contest/detail 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/contests/<source>/<contest_id>/comments")
