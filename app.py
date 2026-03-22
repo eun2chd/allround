@@ -1551,14 +1551,24 @@ def api_contests_by_participation():
 
 @app.route("/api/contests/filters")
 def api_contests_filters():
-    """필터용 카테고리/출처 목록 (distinct)"""
+    """필터용 카테고리/출처 목록 (DISTINCT RPC, limit=500 제거 → 데이터량 최소화)"""
     try:
         supabase = get_supabase_admin_client()
-        r = supabase.table("contests").select("category, source").limit(500).execute()
-        rows = r.data or []
-        categories = sorted({str(row.get("category") or "공모전") for row in rows if row.get("category")})
-        sources = sorted({str(row.get("source") or "요즘것들") for row in rows if row.get("source")})
-        return jsonify({"success": True, "categories": categories, "sources": sources})
+        try:
+            r = supabase.rpc("get_contest_filter_options").execute()
+            raw = r.data
+            if isinstance(raw, list) and raw:
+                raw = raw[0]
+            raw = raw or {}
+            categories = list(raw.get("categories") or [])
+            sources = list(raw.get("sources") or [])
+        except Exception:
+            # RPC 미적용 시 폴백: 기존 limit=500 방식
+            r = supabase.table("contests").select("category, source").limit(500).execute()
+            rows = r.data or []
+            categories = sorted({str(row.get("category") or "공모전") for row in rows if row.get("category")})
+            sources = sorted({str(row.get("source") or "요즘것들") for row in rows if row.get("source")})
+        return jsonify({"success": True, "categories": sorted(categories), "sources": sorted(sources)})
     except Exception as e:
         logger.error("api/contests/filters 오류: %s", e)
         return jsonify({"success": True, "categories": [], "sources": []})
@@ -2608,10 +2618,14 @@ def api_notice_detail(notice_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
-def _get_contest_user_meta_from_rpc(supabase, user_id):
-    """RPC get_contest_user_status 1회 호출로 bookmarks/content_checks/participation/commented 반환. 실패 시 None."""
+def _get_contest_user_meta_from_rpc(supabase, user_id, contest_keys=None):
+    """RPC get_contest_user_status 1회 호출로 bookmarks/content_checks/participation/commented 반환.
+    contest_keys: None이면 전체, ['source:id', ...]이면 해당 키만 (리스트용 최소 데이터). 실패 시 None."""
     try:
-        r = supabase.rpc("get_contest_user_status", {"p_user_id": str(user_id)}).execute()
+        params = {"p_user_id": str(user_id)}
+        if contest_keys is not None and len(contest_keys) > 0:
+            params["p_contest_keys"] = contest_keys
+        r = supabase.rpc("get_contest_user_status", params).execute()
         rows = r.data or []
     except Exception:
         return None
@@ -2667,7 +2681,9 @@ def _get_contest_user_meta_legacy(supabase, user_id):
 
 @app.route("/api/user/contest-meta")
 def api_user_contest_meta():
-    """유저 상태 통합: bookmarks + content_checks + participation + commented (RPC 1회 또는 폴백 4회)"""
+    """유저 상태 통합: bookmarks + content_checks + participation + commented.
+    쿼리 파라미터 ids=source1:id1,source2:id2,... 이 있으면 해당 contest만 반환 (리스트용 최소 데이터, 75KB→수백B).
+    없으면 전체 반환 (북마크/참가 필터 등에 필요)."""
     empty = {
         "bookmarks": [],
         "content_checks": [],
@@ -2679,11 +2695,21 @@ def api_user_contest_meta():
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"success": True, "data": empty})
+    contest_keys = None
+    ids_param = request.args.get("ids", "").strip()
+    if ids_param:
+        contest_keys = [k.strip() for k in ids_param.split(",") if k.strip()]
     try:
         supabase = get_supabase_admin_client()
-        data = _get_contest_user_meta_from_rpc(supabase, user_id)
+        data = _get_contest_user_meta_from_rpc(supabase, user_id, contest_keys)
         if data is None:
             data = _get_contest_user_meta_legacy(supabase, user_id)
+            if contest_keys:
+                key_set = set(contest_keys)
+                data["bookmarks"] = [b for b in data["bookmarks"] if f"{b.get('source','')}:{b.get('contest_id','')}" in key_set]
+                data["content_checks"] = [c for c in data["content_checks"] if c in key_set]
+                data["participation"] = {k: v for k, v in data["participation"].items() if k in key_set}
+                data["commented"] = [c for c in data["commented"] if c in key_set]
         return jsonify({"success": True, "data": data})
     except Exception as e:
         logger.error("api/user/contest-meta 오류: %s", e)

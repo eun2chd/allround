@@ -1470,17 +1470,20 @@
             commentedSet = new Set(meta.data.commented || []);
           }
         } else {
+          // 일반 리스트: contests 먼저 → 해당 id만 contest-meta 요청 (75KB→수백B로 감소)
           const params = new URLSearchParams();
           params.set('page', String(page));
           params.set('limit', String(PAGE_SIZE));
           if (fp.q) params.set('q', fp.q);
           if (fp.category) params.set('category', fp.category);
           if (fp.source) params.set('source', fp.source);
-          const [contestsRes, metaRes] = await Promise.all([
-            fetch('/api/contests?' + params.toString()),
-            fetch('/api/user/contest-meta')
-          ]);
+          const contestsRes = await fetch('/api/contests?' + params.toString());
           j = await contestsRes.json();
+          const listData = (j.success && j.data) ? j.data : [];
+          const ids = listData.map(r => (r.source || '요즘것들') + ':' + String(r.id || '')).filter(Boolean);
+          const metaRes = ids.length
+            ? await fetch('/api/user/contest-meta?ids=' + encodeURIComponent(ids.join(',')))
+            : { json: async () => ({ success: true, data: {} }) };  // 빈 리스트면 meta 생략
           const meta = await metaRes.json();
           if (meta.success && meta.data) {
             bookmarkSet = new Set((meta.data.bookmarks || []).map(x => (x.source || '') + ':' + (x.contest_id || '')));

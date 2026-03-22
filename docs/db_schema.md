@@ -479,6 +479,30 @@ $$ LANGUAGE sql STABLE;
 - 각 UNION 브랜치에 `WHERE user_id = p_user_id` 적용 → user_id 인덱스 활용
 - 4회 쿼리 → 1회 호출로 축소
 
+**성능 최적화 (20260323)**: `p_contest_keys TEXT[]` 파라미터 추가.  
+- `NULL`(기본): 전체 반환 (북마크/참가 필터용)  
+- `['source:id', ...]`: 해당 contest만 반환 (리스트용 75KB→수백B)
+
+---
+
+### 11-2. get_contest_filter_options (함수) — filters API 최적화
+
+필터용 카테고리/출처를 DISTINCT로 조회. `limit=500` 제거, 전체 distinct 반환.
+
+```sql
+CREATE OR REPLACE FUNCTION get_contest_filter_options()
+RETURNS JSONB AS $$
+  SELECT jsonb_build_object(
+    'categories', (SELECT COALESCE(jsonb_agg(c ORDER BY c), '[]'::jsonb)
+      FROM (SELECT DISTINCT category AS c FROM contests WHERE (category IS NOT NULL AND category != '')) sub),
+    'sources', (SELECT COALESCE(jsonb_agg(s ORDER BY s), '[]'::jsonb)
+      FROM (SELECT DISTINCT source AS s FROM contests WHERE (source IS NOT NULL AND source != '')) sub)
+  );
+$$ LANGUAGE sql STABLE;
+```
+
+**사용**: `supabase.rpc('get_contest_filter_options')` → `{categories: [...], sources: [...]}`
+
 ---
 
 ### 12. contest_hides (공모전 숨김 처리)
