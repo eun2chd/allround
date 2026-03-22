@@ -13,6 +13,7 @@
       <a href="{{ url_for('home') }}" class="nav-link{% if request.endpoint == 'home' %} active{% endif %}" data-page="allyoung">공모전</a>
       <a href="{{ url_for('home') }}" class="nav-link" data-page="wavity">창업</a>
       <a href="{{ url_for('notices_page') }}" class="nav-link{% if request.endpoint == 'notices_page' %} active{% endif %}" data-skip-loading>공지사항</a>
+      <a href="{{ url_for('participation_status_page') }}" class="nav-link{% if request.endpoint == 'participation_status_page' %} active{% endif %}" data-skip-loading>참여현황</a>
       <a href="{{ url_for('feedback_page') }}" class="nav-link{% if request.endpoint == 'feedback_page' %} active{% endif %}" data-skip-loading>건의·신고</a>
     </div>
     <div class="navbar-right navbar-user">
@@ -32,7 +33,6 @@
           <button type="button" class="nav-btn-menu nav-dropdown-toggle">더보기</button>
           <div class="nav-dropdown-menu">
             <a href="{{ url_for('bookmarks_page') }}" class="nav-dropdown-item">즐겨찾기</a>
-            <a href="{{ url_for('hidden_page') }}" class="nav-dropdown-item" data-skip-loading>숨긴 공모전</a>
             <div class="nav-dropdown-divider"></div>
             <a href="{{ url_for('logout') }}" class="nav-dropdown-item nav-dropdown-item-danger">로그아웃</a>
           </div>

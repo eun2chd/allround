@@ -718,23 +718,6 @@
       font-weight: 500;
       white-space: nowrap;
     }
-    .btn-hide-all-pass {
-      font-family: var(--font);
-      padding: 6px 10px;
-      font-size: 0.8rem;
-      font-weight: 500;
-      color: var(--main-purple);
-      background: var(--bg-white);
-      border: 1px solid var(--main-purple);
-      border-radius: var(--radius);
-      cursor: pointer;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    .btn-hide-all-pass:hover {
-      background: var(--soft-purple);
-      color: var(--main-purple-hover);
-    }
     .filter-bar .filter-group select {
       font-family: var(--font);
       font-size: 0.82rem;
@@ -916,7 +899,6 @@
           <option value="pass">패스만</option>
         </select>
       </div>
-      <button type="button" id="btnHideAllPass" class="btn-hide-all-pass" title="패스한 공모전 전부 숨김">패스 전부 숨기기</button>
       <div class="filter-group">
         <label for="categorySelect">카테고리</label>
         <select id="categorySelect">
@@ -1175,7 +1157,6 @@
     let totalDataCount = 0;
     let currentPage = 1;
     let bookmarkSet = new Set();
-    let hideSet = new Set();
     let contentChecks = new Set();
     let participation = {};
     let commentedSet = new Set();
@@ -1337,7 +1318,6 @@
       const isBookmarked = (r) => bookmarkSet.has(bookmarkedKey(r.source, r.id));
       const hasCommented = (r) => commentedSet.has(bookmarkedKey(r.source, r.id));
       const hasContentCheck = (r) => contentChecks.has(bookmarkedKey(r.source, r.id));
-      const isHidden = (r) => hideSet.has(bookmarkedKey(r.source, r.id));
       tableBody.innerHTML = pageData.map((row, idx) => {
         const no = start + idx + 1;
         const isViewed = hasCommented(row) || hasContentCheck(row);
@@ -1375,7 +1355,6 @@
               <button type="button" class="btn btn-action btn-content-check" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}"${contentChecked ? ' disabled title="이미 확인함"' : ' title="클릭 시 댓글 자동 작성: 공모전 내용확인 완료"'}>${btnCheckText}</button>
               <button type="button" class="btn btn-action btn-participate${btnPartActive}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}"${contentChecked ? '' : ' disabled'} title="${contentChecked ? '참가 (댓글: 공모전 참가)' : '내용확인 후 활성화'}">참가</button>
               <button type="button" class="btn btn-action btn-pass${btnPassActive}" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}"${contentChecked ? '' : ' disabled'} title="${contentChecked ? '패스 (댓글: 공모전 패스)' : '내용확인 후 활성화'}">패스</button>
-              <button type="button" class="btn btn-action btn-hide" data-source="${escapeHtml(row.source || '')}" data-contest-id="${escapeHtml(row.id)}" title="${isHidden(row) ? '숨김 해제' : '숨김 처리'}">${isHidden(row) ? '숨김 해제' : '숨김'}</button>
             </td>
           </tr>
         `;
@@ -1476,7 +1455,6 @@
             contentChecks = new Set(meta.data.content_checks || []);
             participation = meta.data.participation || {};
             commentedSet = new Set(meta.data.commented || []);
-            hideSet = new Set(meta.data.hides || []);
           }
         } else if (bookmarkOnly) {
           const [bookmarksContestsRes, metaRes] = await Promise.all([
@@ -1490,13 +1468,11 @@
             contentChecks = new Set(meta.data.content_checks || []);
             participation = meta.data.participation || {};
             commentedSet = new Set(meta.data.commented || []);
-            hideSet = new Set(meta.data.hides || []);
           }
         } else {
           const params = new URLSearchParams();
           params.set('page', String(page));
           params.set('limit', String(PAGE_SIZE));
-          params.set('exclude_hidden', '1');
           if (fp.q) params.set('q', fp.q);
           if (fp.category) params.set('category', fp.category);
           if (fp.source) params.set('source', fp.source);
@@ -1511,7 +1487,6 @@
             contentChecks = new Set(meta.data.content_checks || []);
             participation = meta.data.participation || {};
             commentedSet = new Set(meta.data.commented || []);
-            hideSet = new Set(meta.data.hides || []);
           }
         }
 
@@ -1520,9 +1495,6 @@
           if (participationOnly) {
             const makeKey = (s, c) => (s || '') + ':' + String(c || '');
             const hasCheck = (row) => contentChecks.has(makeKey(row.source, row.id));
-            const isHidden = (row) => hideSet.has(makeKey(row.source, row.id));
-            // 숨김 처리된 항목 필터링
-            list = list.filter(r => !isHidden(r));
             if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
             else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
             if (fp.q) {
@@ -1556,9 +1528,6 @@
           } else if (bookmarkOnly) {
             const makeKey = (s, c) => (s || '') + ':' + String(c || '');
             const hasCheck = (row) => contentChecks.has(makeKey(row.source, row.id));
-            const isHidden = (row) => hideSet.has(makeKey(row.source, row.id));
-            // 숨김 처리된 항목 필터링
-            list = list.filter(r => !isHidden(r));
             if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
             else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
             if (fp.q) {
@@ -1595,9 +1564,6 @@
             const hasCheck = (row) => contentChecks.has(makeKey(row.source, row.id));
             const isBookmarked = (row) => bookmarkSet.has(makeKey(row.source, row.id));
             const hasPartStatus = (row) => (participation[makeKey(row.source, row.id)] || '') === fp.participationFilter;
-            const isHidden = (row) => hideSet.has(makeKey(row.source, row.id));
-            // 숨김 처리된 항목 필터링
-            list = list.filter(r => !isHidden(r));
             if (fp.checkFilter === 'checked') list = list.filter(hasCheck);
             else if (fp.checkFilter === 'unchecked') list = list.filter(r => !hasCheck(r));
             if (fp.participationFilter === 'participate' || fp.participationFilter === 'pass') list = list.filter(hasPartStatus);
@@ -1616,7 +1582,7 @@
             const start = (page - 1) * PAGE_SIZE;
             list = list.slice(start, start + PAGE_SIZE);
           } else {
-            // 서버 페이지네이션 (exclude_hidden 적용됨, limit=10)
+            // 서버 페이지네이션 (limit=10)
             totalDataCount = j.total != null ? j.total : list.length;
             currentPage = j.page != null ? j.page : page;
           }
@@ -2127,43 +2093,6 @@
         }
         return;
       }
-      const hideBtn = e.target.closest('.btn-hide');
-      if (hideBtn) {
-        e.preventDefault();
-        e.stopPropagation();
-        const source = hideBtn.dataset.source || '요즘것들';
-        const contestId = hideBtn.dataset.contestId || '';
-        if (!contestId) return;
-        const key = source + ':' + contestId;
-        const isCurrentlyHidden = hideSet.has(key);
-        try {
-          const r = await fetch('/api/contests/' + encodeURIComponent(source) + '/' + encodeURIComponent(contestId) + '/hide', {
-            method: isCurrentlyHidden ? 'DELETE' : 'POST',
-            headers: { 'Content-Type': 'application/json' }
-          });
-          const j = await r.json();
-          if (j.success) {
-            if (isCurrentlyHidden) {
-              hideSet.delete(key);
-              hideBtn.textContent = '숨김';
-              hideBtn.title = '숨김 처리';
-              showToast('숨김 해제했습니다');
-            } else {
-              hideSet.add(key);
-              hideBtn.textContent = '숨김 해제';
-              hideBtn.title = '숨김 해제';
-              showToast('숨김 처리했습니다');
-              const row = hideBtn.closest('tr');
-              if (row && !row.classList.contains('detail-row')) row.remove();
-              // 뒤에 있는 데이터가 바로 붙도록 현재 페이지 다시 조회
-              loadContests(currentPage, false);
-            }
-          }
-        } catch (err) {
-          showToast('오류가 발생했습니다', 'error');
-        }
-        return;
-      }
       const img = e.target.closest('img.detail-img');
       if (img) {
         e.preventDefault();
@@ -2621,25 +2550,6 @@
     document.getElementById('bookmarkFilterCheck')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('categorySelect')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('sourceSelect')?.addEventListener('change', () => applyFiltersAndSort());
-
-    document.getElementById('btnHideAllPass')?.addEventListener('click', async () => {
-      if (!confirm('패스한 공모전을 전부 숨김 처리할까요?')) return;
-      try {
-        const r = await fetch('/api/contests/hide-all-pass', { method: 'POST', headers: { 'Content-Type': 'application/json' } });
-        const j = await r.json();
-        if (j.success) {
-          showToast(j.message || '패스한 공모전을 숨김 처리했습니다');
-          const statusRes = await fetch('/api/user/contest-status');
-          const statusJ = await statusRes.json();
-          if (statusJ.data && statusJ.data.hides) hideSet = new Set(statusJ.data.hides);
-          loadContests(1, false);
-        } else {
-          showToast(j.error || '처리 실패', 'error');
-        }
-      } catch (err) {
-        showToast('오류가 발생했습니다', 'error');
-      }
-    });
 
     loadContests();
 

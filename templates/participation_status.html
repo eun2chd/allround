@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width:device-width, initial-scale=1.0">
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+  <title>참여현황 | Ntpercent</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/navbar.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/loading.css') }}">
+  <style>
+    :root {
+      --main-purple: #6d28d9;
+      --main-purple-hover: #5b21b6;
+      --soft-purple: #ede9fe;
+      --text-dark: #212121;
+      --gray-muted: #9ca3af;
+      --border-gray: #e5e7eb;
+      --radius: 8px;
+      --radius-lg: 12px;
+      --font: 'Pretendard Variable', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font); background: #f9fafb; color: var(--text-dark); min-height: 100vh; line-height: 1.5; }
+    .participation-main { margin-left: 260px; padding: 24px 32px; min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; }
+    .page-header { margin-bottom: 24px; padding-bottom: 20px; border-bottom: 1px solid var(--border-gray); }
+    .page-header h1 { font-size: 1.5rem; font-weight: 700; }
+    .page-header h1 span { color: var(--main-purple); }
+    .page-header p { font-size: 0.9rem; color: var(--gray-muted); margin-top: 8px; }
+
+    /* 4열 그리드 카드 */
+    .member-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+    @media (max-width: 1200px) { .member-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 640px) { .member-grid { grid-template-columns: 1fr; } }
+
+    .member-card {
+      background: #fff;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border-gray);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: box-shadow 0.2s, border-color 0.2s;
+    }
+    .member-card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); border-color: rgba(109, 40, 217, 0.3); }
+
+    .member-card-header {
+      padding: 20px;
+      border-bottom: 1px solid var(--border-gray);
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .member-avatar {
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--soft-purple), #c7d2fe);
+      background-size: cover;
+      background-position: center;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--main-purple);
+    }
+    .member-info { min-width: 0; }
+    .member-nickname { font-size: 1rem; font-weight: 700; color: var(--text-dark); }
+    .member-count { font-size: 0.8rem; color: var(--gray-muted); margin-top: 2px; }
+
+    .member-contests {
+      padding: 16px;
+      overflow-y: auto;
+      flex: 1;
+      max-height: 280px;
+    }
+    .member-contests-empty {
+      font-size: 0.9rem;
+      color: var(--gray-muted);
+      text-align: center;
+      padding: 20px;
+    }
+    .contest-item {
+      display: block;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      text-decoration: none;
+      color: inherit;
+      margin-bottom: 8px;
+      border: 1px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .contest-item:last-child { margin-bottom: 0; }
+    .contest-item:hover {
+      background: var(--soft-purple);
+      border-color: rgba(109, 40, 217, 0.2);
+    }
+    .contest-item-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+    }
+    .contest-item-meta {
+      font-size: 0.75rem;
+      color: var(--gray-muted);
+      margin-top: 4px;
+    }
+    .contest-item-meta .d-day { font-weight: 600; }
+    .contest-item-meta .d-day.urgent { color: #dc2626; }
+    .contest-item-meta .d-day.today { color: #059669; }
+
+    .loading-state, .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--gray-muted);
+    }
+  </style>
+</head>
+<body>
+  {% include 'partials/_navbar.html' %}
+  {% include 'partials/_sidebar_team.html' %}
+
+  <div class="participation-main">
+    <div class="container">
+      <header class="page-header">
+        <h1><span>참여</span>현황</h1>
+        <p>각 팀원이 참가 중인 공모전을 한눈에 확인할 수 있습니다.</p>
+      </header>
+
+      <div id="memberGrid" class="member-grid">
+        <div class="loading-state" id="loadingState">로딩 중...</div>
+      </div>
+    </div>
+  </div>
+
+  {% include 'partials/_loading_overlay.html' %}
+  <script>
+(function() {
+  const grid = document.getElementById('memberGrid');
+  const loadingEl = document.getElementById('loadingState');
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s ?? '';
+    return d.innerHTML;
+  }
+
+  function formatDday(d) {
+    if (!d) return '';
+    const s = String(d).trim();
+    if (s.includes('마감')) return '<span class="d-day urgent">' + escapeHtml(s) + '</span>';
+    if (s.includes('오늘') || s === 'D-day') return '<span class="d-day today">' + escapeHtml(s) + '</span>';
+    return '<span class="d-day">' + escapeHtml(s) + '</span>';
+  }
+
+  fetch('/api/team/participation-overview')
+    .then(function(r) { return r.json(); })
+    .then(function(j) {
+      loadingEl.style.display = 'none';
+      if (!j.success || !j.data || j.data.length === 0) {
+        grid.innerHTML = '<div class="empty-state">팀원이 없거나 참가 중인 공모전이 없습니다.</div>';
+        return;
+      }
+
+      grid.innerHTML = j.data.map(function(m) {
+        const nickname = escapeHtml(m.nickname || '회원');
+        const avatarStyle = m.profile_url ? 'background-image: url(\'' + escapeHtml(m.profile_url) + '\')' : '';
+        const avatarChar = (m.nickname || '?').trim().charAt(0).toUpperCase();
+        const count = (m.contests || []).length;
+
+        let contestsHtml = '';
+        if (!m.contests || m.contests.length === 0) {
+          contestsHtml = '<div class="member-contests-empty">참가 중인 공모전이 없습니다</div>';
+        } else {
+          contestsHtml = m.contests.map(function(c) {
+            const title = escapeHtml(c.title || '(제목 없음)');
+            const url = escapeHtml(c.url || '#');
+            const dday = formatDday(c.d_day);
+            const source = escapeHtml(c.source || '요즘것들');
+            const meta = dday ? dday + ' · ' + source : source;
+            return '<a href="' + url + '" target="_blank" rel="noopener" class="contest-item"><div class="contest-item-title">' + title + '</div><div class="contest-item-meta">' + meta + '</div></a>';
+          }).join('');
+        }
+
+        const avatarContent = m.profile_url ? '' : avatarChar;
+        const mypageUrl = '/mypage/' + encodeURIComponent(m.id || '');
+        return '<div class="member-card">' +
+          '<a href="' + mypageUrl + '" class="member-card-header" style="text-decoration:none;color:inherit;">' +
+            '<div class="member-avatar" style="' + avatarStyle + '">' + avatarContent + '</div>' +
+            '<div class="member-info">' +
+              '<div class="member-nickname">' + nickname + '</div>' +
+              '<div class="member-count">참가 ' + count + '건</div>' +
+            '</div>' +
+          '</a>' +
+          '<div class="member-contests">' + contestsHtml + '</div>' +
+        '</div>';
+      }).join('');
+    })
+    .catch(function() {
+      loadingEl.style.display = 'none';
+      grid.innerHTML = '<div class="empty-state">데이터를 불러오지 못했습니다.</div>';
+    });
+})();
+  </script>
+</body>
+</html>
