@@ -756,6 +756,27 @@
       user-select: none;
       white-space: nowrap;
     }
+    .filter-bar .btn-bulk-check {
+      font-family: var(--font);
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+      color: #1f2937;
+      border: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    .filter-bar .btn-bulk-check:hover:not(:disabled) {
+      background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+      transform: translateY(-1px);
+    }
+    .filter-bar .btn-bulk-check:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
     .startup-tabs { display: flex; gap: 8px; margin-bottom: 20px; }
     .startup-tab {
       padding: 10px 20px;
@@ -911,6 +932,8 @@
           <option value="">전체</option>
         </select>
       </div>
+      <span class="filter-divider"></span>
+      <button type="button" id="btnBulkContentCheck" class="btn btn-bulk-check" title="현재 화면의 미확인 공고 전체 내용확인 (골드 Lv.71 이상만 사용 가능)">전체 내용확인</button>
     </div>
 
     <div class="card">
@@ -1037,6 +1060,8 @@
   <script src="{{ url_for('static', filename='js/loading.js') }}"></script>
   <script>
     const PAGE_SIZE = 10;
+    const USER_LEVEL = {{ user_level|default(1)|int }};
+    const CAN_BULK_CONTENT_CHECK = USER_LEVEL >= 71;
     const SUPABASE_URL = {{ (supabase_url or '')|tojson }};
     const SUPABASE_ANON_KEY = {{ (supabase_anon_key or '')|tojson }};
     const tableBody = document.getElementById('tableBody');
@@ -1154,6 +1179,7 @@
 
     let allData = [];
     let filteredData = [];
+    let currentDisplayContests = [];
     let totalDataCount = 0;
     let currentPage = 1;
     let bookmarkSet = new Set();
@@ -1313,6 +1339,7 @@
       const totalPages = Math.ceil(totalDataCount / PAGE_SIZE);
       const start = (page - 1) * PAGE_SIZE;
       const pageData = data;
+      currentDisplayContests = pageData;
 
       const bookmarkedKey = (s, c) => (s || '') + ':' + (c || '');
       const isBookmarked = (r) => bookmarkSet.has(bookmarkedKey(r.source, r.id));
@@ -2553,6 +2580,40 @@
     document.getElementById('bookmarkFilterCheck')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('categorySelect')?.addEventListener('change', () => applyFiltersAndSort());
     document.getElementById('sourceSelect')?.addEventListener('change', () => applyFiltersAndSort());
+
+    document.getElementById('btnBulkContentCheck')?.addEventListener('click', async function() {
+      if (!CAN_BULK_CONTENT_CHECK) {
+        showToast('골드(Lv.71) 이상만 사용 가능한 기능입니다', 'error');
+        return;
+      }
+      const makeKey = (s, c) => (s || '') + ':' + String(c || '');
+      const toCheck = (currentDisplayContests || []).filter(r => !contentChecks.has(makeKey(r.source, r.id)));
+      if (toCheck.length === 0) {
+        showToast('미확인 공고가 없습니다');
+        return;
+      }
+      this.disabled = true;
+      try {
+        const r = await fetch('/api/contests/content-check-bulk', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ contests: toCheck.map(x => ({ source: x.source || '요즘것들', contest_id: x.id })) })
+        });
+        const j = await r.json();
+        if (j.success) {
+          toCheck.forEach(x => contentChecks.add(makeKey(x.source, x.id)));
+          toCheck.forEach(x => commentedSet.add(makeKey(x.source, x.id)));
+          renderTable(currentDisplayContests, currentPage);
+          showToast(j.done ? (j.exp_gained ? '전체 내용확인 완료! +' + j.exp_gained + ' EXP' : '전체 내용확인 완료 (' + j.done + '건)') : '처리할 미확인 공고가 없습니다');
+        } else {
+          showToast(j.error || '실패', 'error');
+        }
+      } catch (err) {
+        showToast('오류가 발생했습니다', 'error');
+      } finally {
+        this.disabled = false;
+      }
+    });
 
     loadContests();
 

@@ -420,10 +420,21 @@ def home():
         return redirect(url_for("login_page"))
     _ensure_session_in_presence()
     from config import SUPABASE_ANON_KEY, SUPABASE_URL
+    user_level = 1
+    try:
+        user_id = session.get("user_id")
+        if user_id:
+            supabase = get_supabase_admin_client()
+            prof = supabase.table("profiles").select("total_exp").eq("id", user_id).limit(1).execute()
+            total_exp = int((prof.data or [{}])[0].get("total_exp") or 0)
+            user_level = _compute_level_from_exp(supabase, total_exp)
+    except Exception:
+        pass
     return render_template(
         "index.html",
         supabase_url=SUPABASE_URL or "",
         supabase_anon_key=SUPABASE_ANON_KEY or "",
+        user_level=user_level,
     )
 
 
@@ -3192,6 +3203,56 @@ def _upsert_participation_comment(supabase, user_id, source, contest_id, body):
             }).execute()
     except Exception as ex:
         logger.warning("참가/패스 댓글 업데이트 실패: %s", ex)
+
+
+@app.route("/api/contests/content-check-bulk", methods=["POST"])
+def api_contest_content_check_bulk():
+    """현재 화면의 미확인 공고 전체 내용확인 (골드 Lv.71 이상만)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    data = request.get_json(silent=True) or {}
+    contests = data.get("contests") or []
+    if not isinstance(contests, list) or len(contests) > 100:
+        return jsonify({"success": False, "error": "contests는 최대 100개까지 가능합니다"}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        prof = supabase.table("profiles").select("total_exp").eq("id", user_id).limit(1).execute()
+        total_exp = int((prof.data or [{}])[0].get("total_exp") or 0)
+        level = _compute_level_from_exp(supabase, total_exp)
+        if level < 71:
+            return jsonify({"success": False, "error": "골드(Lv.71) 이상만 이용 가능합니다"}), 403
+        already = set()
+        r = supabase.table("contest_content_checks").select("source, contest_id").eq("user_id", user_id).execute()
+        for row in (r.data or []):
+            already.add((str(row.get("source") or ""), str(row.get("contest_id") or "")))
+        done = 0
+        total_exp_gained = 0
+        for item in contests:
+            src = str(item.get("source") or "").strip()
+            cid = str(item.get("contest_id") or item.get("id") or "").strip()
+            if not src or not cid or (src, cid) in already:
+                continue
+            try:
+                supabase.table("contest_content_checks").upsert(
+                    {"user_id": user_id, "source": src, "contest_id": cid},
+                    on_conflict="user_id,source,contest_id"
+                ).execute()
+            except Exception:
+                supabase.table("contest_content_checks").insert({
+                    "user_id": user_id, "source": src, "contest_id": cid,
+                }).execute()
+            _post_comment(supabase, user_id, src, cid, "공모전 내용확인 완료")
+            exp_gained = _grant_exp(supabase, user_id, "content_check", src, cid)
+            total_exp_gained += exp_gained
+            already.add((src, cid))
+            done += 1
+        return jsonify({"success": True, "done": done, "exp_gained": total_exp_gained})
+    except Exception as e:
+        logger.error("api/contests/content-check-bulk 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
 
 
 @app.route("/api/contests/<source>/<contest_id>/content-check", methods=["POST"])
