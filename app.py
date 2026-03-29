@@ -20,6 +20,7 @@ from config import (
     get_supabase_storage_client,
     get_supabase_client_with_auth,
     get_supabase_for_server_storage_upload,
+    SUPABASE_SERVICE_ROLE_KEY,
 )
 from crawler import crawl_post_detail, crawl_wevity_detail
 
@@ -40,6 +41,16 @@ logging.basicConfig(
     force=True,
 )
 logger = logging.getLogger("allyoung")
+
+
+def _storage_upload_client_label(access_token: str) -> str:
+    """로그용: Storage 업로드 시 어떤 권한 경로를 쓰는지 (토큰 값은 남기지 않음)."""
+    if SUPABASE_SERVICE_ROLE_KEY:
+        return "service_role"
+    if access_token:
+        return "user_jwt_session"
+    return "admin_anon_fallback"
+
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY") or "allyoung-dev-secret-change-in-production"
@@ -2893,19 +2904,58 @@ def _upload_participation_document(user_id: str, source: str, contest_id: str, f
     ts = str(int(time.time() * 1000))
     safe_key = f"doc_{safe_src}_{safe_cid}_{ts}.{ext}"
     path = f"private/{user_id}/{safe_key}"
+    client_label = _storage_upload_client_label(access_token or "")
     try:
+        logger.info(
+            "[participation_doc_upload] start bucket=%s path=%s user_id=%s source=%s contest_id=%s "
+            "filename=%s storage_client=%s has_access_token=%s has_refresh_token=%s",
+            CONTEST_BUCKET,
+            path,
+            user_id,
+            source,
+            contest_id,
+            orig_filename,
+            client_label,
+            bool(access_token),
+            bool(refresh_token),
+        )
         supabase = get_supabase_for_server_storage_upload(access_token, refresh_token)
         file_data = file.read()
+        size_b = len(file_data) if file_data else 0
         content_type = file.content_type or "application/octet-stream"
+        logger.debug(
+            "[participation_doc_upload] read_ok size_bytes=%s content_type=%s",
+            size_b,
+            content_type,
+        )
         supabase.storage.from_(CONTEST_BUCKET).upload(
             file=file_data,
             path=path,
             file_options={"content-type": content_type, "upsert": "true"},
         )
         url = supabase.storage.from_(CONTEST_BUCKET).get_public_url(path)
+        logger.info(
+            "[participation_doc_upload] success user_id=%s contest_id=%s size_bytes=%s path=%s",
+            user_id,
+            contest_id,
+            size_b,
+            path,
+        )
         return (url, orig_filename)
-    except Exception as e:
-        logger.error("참가 상세 문서 업로드 실패: %s", e)
+    except Exception:
+        logger.exception(
+            "[participation_doc_upload] FAILED bucket=%s path=%s user_id=%s source=%s contest_id=%s "
+            "filename=%s storage_client=%s has_access_token=%s has_refresh_token=%s",
+            CONTEST_BUCKET,
+            path,
+            user_id,
+            source,
+            contest_id,
+            orig_filename,
+            client_label,
+            bool(access_token),
+            bool(refresh_token),
+        )
         raise
 
 
@@ -3430,14 +3480,39 @@ def api_contest_participation_detail(source, contest_id):
                 try:
                     acc = session.get("access_token") or ""
                     ref = session.get("refresh_token") or ""
+                    clen = request.content_length
+                    logger.info(
+                        "[api participation/detail POST] document multipart user_id=%s source=%s contest_id=%s "
+                        "upload_filename=%s content_length_header=%s remote_addr=%s",
+                        user_id,
+                        source,
+                        contest_id,
+                        doc_file.filename,
+                        clen,
+                        request.remote_addr,
+                    )
                     doc_url, doc_name = _upload_participation_document(user_id, source, contest_id, doc_file, acc, ref)
                     if doc_url:
                         document_path = doc_url
                         document_filename = doc_name
                     else:
+                        logger.error(
+                            "[api participation/detail POST] upload returned empty url user_id=%s contest_id=%s",
+                            user_id,
+                            contest_id,
+                        )
                         return jsonify({"success": False, "error": "문서 업로드에 실패했습니다."}), 500
                 except Exception as up_err:
-                    logger.error("참가 상세 문서 업로드 오류: %s", up_err)
+                    # 스택은 _upload_participation_document 안의 logger.exception 에 남김 (중복 방지)
+                    logger.error(
+                        "[api participation/detail POST] document upload failed user_id=%s source=%s contest_id=%s "
+                        "upload_filename=%s err_type=%s",
+                        user_id,
+                        source,
+                        contest_id,
+                        getattr(doc_file, "filename", None),
+                        type(up_err).__name__,
+                    )
                     return jsonify({"success": False, "error": f"문서 업로드 실패: {str(up_err)}"}), 500
             old_row = None
             try:
