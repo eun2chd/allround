@@ -52,3 +52,17 @@ def get_supabase_client_with_auth(access_token: str, refresh_token: str = ""):
     client = create_client(SUPABASE_URL, SUPABASE_ANON_KEY)
     client.auth.set_session(access_token, refresh_token or "")
     return client
+
+
+def get_supabase_for_server_storage_upload(access_token: str = "", refresh_token: str = ""):
+    """Flask에서 세션으로 user_id를 검증한 뒤 Storage에 올릴 때 사용.
+
+    service_role이 설정되어 있으면 항상 관리자 클라이언트를 쓴다. 업로드 직전에
+    set_session → 토큰 refresh가 일어나며, 이미 소비된 refresh 토큰이면
+    \"Invalid Refresh Token: Already Used\" 가 날 수 있어 이 경로로 회피한다.
+    """
+    if SUPABASE_SERVICE_ROLE_KEY:
+        return get_supabase_admin_client()
+    if access_token:
+        return get_supabase_client_with_auth(access_token, refresh_token)
+    return get_supabase_admin_client()

@@ -14,7 +14,13 @@ from datetime import datetime, timezone
 from flask import Flask, flash, jsonify, redirect, render_template, request, session, url_for
 import re
 
-from config import get_supabase_client, get_supabase_admin_client, get_supabase_storage_client, get_supabase_client_with_auth
+from config import (
+    get_supabase_client,
+    get_supabase_admin_client,
+    get_supabase_storage_client,
+    get_supabase_client_with_auth,
+    get_supabase_for_server_storage_upload,
+)
 from crawler import crawl_post_detail, crawl_wevity_detail
 
 
@@ -2376,7 +2382,7 @@ def _upload_feedback_image(user_id: str, file, access_token: str = "", refresh_t
     key = f"feedback_{uuid_module.uuid4().hex}.{ext}"
     path = f"private/{user_id}/{key}"
     try:
-        supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else get_supabase_admin_client()
+        supabase = get_supabase_for_server_storage_upload(access_token, refresh_token)
         file_data = file.read()
         content_type = file.content_type or f"image/{ext}"
         supabase.storage.from_(REP_BUCKET).upload(
@@ -2883,7 +2889,7 @@ def _upload_rep_image(user_id: str, source: str, contest_id: str, file, access_t
     path = f"private/{user_id}/____{contest_id}.{ext}"
     file_data = file.read()
     content_type = file.content_type or ("image/jpeg" if ext in ("jpg", "jpeg") else f"image/{ext}")
-    supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else get_supabase_admin_client()
+    supabase = get_supabase_for_server_storage_upload(access_token, refresh_token)
     supabase.storage.from_(REP_BUCKET).upload(
         file=file_data,
         path=path,
@@ -2906,7 +2912,7 @@ def _upload_participation_document(user_id: str, source: str, contest_id: str, f
     safe_key = f"doc_{safe_src}_{safe_cid}_{ts}.{ext}"
     path = f"private/{user_id}/{safe_key}"
     try:
-        supabase = get_supabase_client_with_auth(access_token, refresh_token) if access_token else get_supabase_admin_client()
+        supabase = get_supabase_for_server_storage_upload(access_token, refresh_token)
         file_data = file.read()
         content_type = file.content_type or "application/octet-stream"
         supabase.storage.from_(CONTEST_BUCKET).upload(
