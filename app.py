@@ -426,10 +426,21 @@ def home():
         return redirect(url_for("login_page"))
     _ensure_session_in_presence()
     from config import SUPABASE_ANON_KEY, SUPABASE_URL
+    user_level = 1
+    try:
+        user_id = session.get("user_id")
+        if user_id:
+            supabase = get_supabase_admin_client()
+            prof = supabase.table("profiles").select("total_exp").eq("id", user_id).limit(1).execute()
+            total_exp = int((prof.data or [{}])[0].get("total_exp") or 0)
+            user_level = _compute_level_from_exp(supabase, total_exp)
+    except Exception:
+        pass
     return render_template(
         "index.html",
         supabase_url=SUPABASE_URL or "",
         supabase_anon_key=SUPABASE_ANON_KEY or "",
+        user_level=user_level,
     )
 
 
@@ -457,12 +468,18 @@ def feedback_page():
     return render_template("feedback.html")
 
 
-@app.route("/hidden")
-def hidden_page():
-    """숨긴 공모전 페이지"""
+@app.route("/participation-status")
+def participation_status_page():
+    """팀원별 참가 공모전 현황 페이지"""
     if not session.get("logged_in"):
         return redirect(url_for("login_page"))
-    return render_template("hidden.html")
+    return render_template("participation_status.html")
+
+
+@app.route("/hidden")
+def hidden_page():
+    """숨긴 공모전 기능 제거됨 - 메인으로 리다이렉트"""
+    return redirect(url_for("home"))
 
 
 @app.route("/mypage")
@@ -1353,6 +1370,58 @@ def api_team_members():
         return jsonify({"success": True, "data": []})
 
 
+@app.route("/api/team/participation-overview")
+def api_team_participation_overview():
+    """팀원별 참가 공모전 현황: 각 멤버의 participate 상태 공모전 목록"""
+    if not session.get("logged_in"):
+        return jsonify({"success": True, "data": []})
+    try:
+        supabase = get_supabase_admin_client()
+        # 멤버 목록 (role=member)
+        r = supabase.table("profiles").select("id, nickname, profile_url").eq("role", "member").order("nickname").execute()
+        members = [{"id": str(u["id"]), "nickname": u.get("nickname") or "회원", "profile_url": u.get("profile_url") or ""} for u in (r.data or [])]
+        if not members:
+            return jsonify({"success": True, "data": []})
+        user_ids = [m["id"] for m in members]
+
+        # 참가(status=participate) 목록
+        part_r = supabase.table("contest_participation").select("user_id, source, contest_id, updated_at").eq("status", "participate").in_("user_id", user_ids).order("updated_at", desc=True).execute()
+        parts = part_r.data or []
+        if not parts:
+            for m in members:
+                m["contests"] = []
+            return jsonify({"success": True, "data": members})
+
+        # 공모전 정보 배치 조회
+        contest_keys = list(set([(p.get("source") or "", p.get("contest_id") or "") for p in parts if p.get("source") and p.get("contest_id")]))
+        contest_by_key = {}
+        for src, cid in contest_keys:
+            try:
+                c = supabase.table("contests").select("id, title, url, d_day, host, category, source").eq("source", src).eq("id", cid).limit(1).execute()
+                if c.data:
+                    contest_by_key[(src, cid)] = c.data[0]
+            except Exception:
+                pass
+
+        # 멤버별 참가 목록 그룹핑
+        part_by_user = {}
+        for p in parts:
+            uid = str(p.get("user_id") or "")
+            if uid not in part_by_user:
+                part_by_user[uid] = []
+            src, cid = p.get("source") or "", p.get("contest_id") or ""
+            contest = contest_by_key.get((src, cid))
+            if contest:
+                part_by_user[uid].append({**contest, "source": src})
+
+        for m in members:
+            m["contests"] = part_by_user.get(m["id"], [])
+        return jsonify({"success": True, "data": members})
+    except Exception as e:
+        logger.error("api/team/participation-overview 오류: %s", e)
+        return jsonify({"success": True, "data": []})
+
+
 @app.route("/api/team/activity")
 def api_team_activity():
     """참가 최근 5건: contest_participation(참가) + profiles(nickname) + contests(title, url)"""
@@ -1414,17 +1483,7 @@ def api_contests():
         category = request.args.get("category", "").strip() or None
         source = request.args.get("source", "").strip() or None
         q = request.args.get("q", "").strip() or None
-        exclude_hidden = request.args.get("exclude_hidden") in ("1", "true")
-
         supabase = get_supabase_admin_client()
-        hidden_set = set()
-        if exclude_hidden and session.get("logged_in") and session.get("user_id"):
-            try:
-                r = supabase.table("contest_hides").select("source, contest_id").eq("user_id", session["user_id"]).execute()
-                for x in (r.data or []):
-                    hidden_set.add((str(x.get("source") or ""), str(x.get("contest_id") or "")))
-            except Exception:
-                pass
 
         def base_query():
             qry = (
@@ -1442,41 +1501,11 @@ def api_contests():
                 qry = qry.or_(f"title.ilike.{pattern},host.ilike.{pattern},category.ilike.{pattern}")
             return qry
 
-        if not hidden_set:
-            query = base_query()
-            offset = (page - 1) * limit
-            r = query.range(offset, offset + limit - 1).execute()
-            rows = r.data or []
-            total = getattr(r, "count", None) or len(rows)
-            return jsonify({
-                "success": True,
-                "data": rows,
-                "total": total,
-                "page": page,
-                "limit": limit,
-            })
-
-        # exclude_hidden: 배치로 가져와서 숨긴 항목 제외 후 limit개 반환 (페이지네이션 지원)
-        skip = (page - 1) * limit
-        collected = []
-        batch_size = 50
-        offset = 0
-        total_approx = None
-        while len(collected) < skip + limit:
-            query = base_query()
-            r = query.range(offset, offset + batch_size - 1).execute()
-            batch = r.data or []
-            if total_approx is None:
-                total_approx = getattr(r, "count", None)
-            for row in batch:
-                key = (str(row.get("source") or ""), str(row.get("id") or ""))
-                if key not in hidden_set:
-                    collected.append(row)
-            if len(batch) < batch_size:
-                break
-            offset += batch_size
-        rows = collected[skip : skip + limit]
-        total = max(len(collected), total_approx or 0)
+        query = base_query()
+        offset = (page - 1) * limit
+        r = query.range(offset, offset + limit - 1).execute()
+        rows = r.data or []
+        total = getattr(r, "count", None) or len(rows)
         return jsonify({
             "success": True,
             "data": rows,
@@ -1539,93 +1568,27 @@ def api_contests_by_participation():
 
 @app.route("/api/contests/filters")
 def api_contests_filters():
-    """필터용 카테고리/출처 목록 (distinct)"""
+    """필터용 카테고리/출처 목록 (DISTINCT RPC, limit=500 제거 → 데이터량 최소화)"""
     try:
         supabase = get_supabase_admin_client()
-        r = supabase.table("contests").select("category, source").limit(500).execute()
-        rows = r.data or []
-        categories = sorted({str(row.get("category") or "공모전") for row in rows if row.get("category")})
-        sources = sorted({str(row.get("source") or "요즘것들") for row in rows if row.get("source")})
-        return jsonify({"success": True, "categories": categories, "sources": sources})
+        try:
+            r = supabase.rpc("get_contest_filter_options").execute()
+            raw = r.data
+            if isinstance(raw, list) and raw:
+                raw = raw[0]
+            raw = raw or {}
+            categories = list(raw.get("categories") or [])
+            sources = list(raw.get("sources") or [])
+        except Exception:
+            # RPC 미적용 시 폴백: 기존 limit=500 방식
+            r = supabase.table("contests").select("category, source").limit(500).execute()
+            rows = r.data or []
+            categories = sorted({str(row.get("category") or "공모전") for row in rows if row.get("category")})
+            sources = sorted({str(row.get("source") or "요즘것들") for row in rows if row.get("source")})
+        return jsonify({"success": True, "categories": sorted(categories), "sources": sorted(sources)})
     except Exception as e:
         logger.error("api/contests/filters 오류: %s", e)
         return jsonify({"success": True, "categories": [], "sources": []})
-
-
-@app.route("/api/contests/hidden")
-def api_contests_hidden():
-    """숨긴 공모전 목록 조회 (페이지네이션 + 참가/패스 필터)"""
-    if not session.get("logged_in"):
-        return jsonify({"success": True, "data": [], "total": 0})
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"success": True, "data": [], "total": 0})
-    try:
-        page = max(1, int(request.args.get("page", 1)))
-        per_page = max(1, min(100, int(request.args.get("per_page", 10))))
-        part_filter = (request.args.get("participation_status") or "").strip().lower()
-        if part_filter and part_filter not in ("participate", "pass"):
-            part_filter = ""
-        offset = (page - 1) * per_page
-
-        supabase = get_supabase_admin_client()
-        # 숨긴 공모전 전체 조회 (필터 적용을 위해)
-        hides = (
-            supabase.table("contest_hides")
-            .select("source, contest_id")
-            .eq("user_id", user_id)
-            .order("created_at", desc=True)
-            .execute()
-        )
-        hides_data = hides.data or []
-
-        # 참가/패스 여부 조회
-        part_by_key = {}
-        try:
-            part_r = supabase.table("contest_participation").select("source, contest_id, status").eq("user_id", user_id).execute()
-            for row in (part_r.data or []):
-                k = (str(row.get("source", "")), str(row.get("contest_id", "")))
-                part_by_key[k] = row.get("status")
-        except Exception:
-            pass
-
-        # 참가/패스 필터 적용
-        if part_filter:
-            hides_data = [h for h in hides_data if part_by_key.get((str(h.get("source", "")), str(h.get("contest_id", "")))) == part_filter]
-        total = len(hides_data)
-
-        if total == 0:
-            return jsonify({"success": True, "data": [], "total": 0, "page": page, "per_page": per_page, "participation_status": part_filter or None})
-
-        # 현재 페이지 구간만 추출
-        page_slice = hides_data[offset : offset + per_page]
-        contest_keys = [(str(h.get("source", "")), str(h.get("contest_id", ""))) for h in page_slice if h.get("source") and h.get("contest_id")]
-        unique_keys = list(set(contest_keys))
-        contest_by_key = {}
-
-        for src, cid in unique_keys:
-            try:
-                r = supabase.table("contests").select("id, title, d_day, host, url, category, source, created_at, updated_at").eq("source", src).eq("id", cid).limit(1).execute()
-                if r.data and len(r.data) > 0:
-                    contest_by_key[(src, cid)] = r.data[0]
-            except Exception:
-                pass
-
-        result = []
-        for h in page_slice:
-            s, cid = str(h.get("source", "")), str(h.get("contest_id", ""))
-            if not s or not cid:
-                continue
-            contest = contest_by_key.get((s, cid))
-            if contest:
-                item = contest.copy()
-                item["participation_status"] = part_by_key.get((s, cid))
-                result.append(item)
-
-        return jsonify({"success": True, "data": result, "total": total, "page": page, "per_page": per_page, "participation_status": part_filter or None})
-    except Exception as e:
-        logger.error("api/contests/hidden 오류: %s", e)
-        return jsonify({"success": True, "data": [], "total": 0})
 
 
 @app.route("/api/bookmarks/contests")
@@ -2672,65 +2635,99 @@ def api_notice_detail(notice_id):
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+def _get_contest_user_meta_from_rpc(supabase, user_id, contest_keys=None):
+    """RPC get_contest_user_status 1회 호출로 bookmarks/content_checks/participation/commented 반환.
+    contest_keys: None이면 전체, ['source:id', ...]이면 해당 키만 (리스트용 최소 데이터). 실패 시 None."""
+    try:
+        params = {"p_user_id": str(user_id)}
+        if contest_keys is not None and len(contest_keys) > 0:
+            params["p_contest_keys"] = contest_keys
+        r = supabase.rpc("get_contest_user_status", params).execute()
+        rows = r.data or []
+    except Exception:
+        return None
+    bookmarks = []
+    content_checks = []
+    participation = {}
+    commented = []
+    for row in rows:
+        src = row.get("source") or ""
+        cid = row.get("contest_id") or ""
+        key = src + ":" + cid
+        if row.get("is_bookmarked"):
+            bookmarks.append({"source": src, "contest_id": cid})
+        if row.get("is_content_checked"):
+            content_checks.append(key)
+        if row.get("participation_status"):
+            participation[key] = row.get("participation_status")
+        if row.get("has_commented"):
+            commented.append(key)
+    return {"bookmarks": bookmarks, "content_checks": content_checks, "participation": participation, "commented": commented}
+
+
+def _get_contest_user_meta_legacy(supabase, user_id):
+    """4개 테이블 각각 조회 (RPC 미사용 시 폴백)"""
+    bookmarks = []
+    content_checks = []
+    participation = {}
+    commented = []
+    try:
+        r = supabase.table("contest_bookmarks").select("source, contest_id").eq("user_id", user_id).execute()
+        bookmarks = [{"source": x.get("source"), "contest_id": x.get("contest_id")} for x in (r.data or [])]
+    except Exception:
+        pass
+    try:
+        r = supabase.table("contest_content_checks").select("source, contest_id").eq("user_id", user_id).execute()
+        content_checks = [(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])]
+    except Exception:
+        pass
+    try:
+        r = supabase.table("contest_participation").select("source, contest_id, status").eq("user_id", user_id).execute()
+        for x in (r.data or []):
+            k = (x.get("source") or "") + ":" + (x.get("contest_id") or "")
+            participation[k] = x.get("status") or ""
+    except Exception:
+        pass
+    try:
+        r = supabase.table("contest_comments").select("source, contest_id").eq("user_id", user_id).execute()
+        commented = list({(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])})
+    except Exception:
+        pass
+    return {"bookmarks": bookmarks, "content_checks": content_checks, "participation": participation, "commented": commented}
+
+
 @app.route("/api/user/contest-meta")
 def api_user_contest_meta():
-    """유저 상태 통합: bookmarks + content_checks + participation + commented + hides (5개 API → 1개)"""
+    """유저 상태 통합: bookmarks + content_checks + participation + commented.
+    쿼리 파라미터 ids=source1:id1,source2:id2,... 이 있으면 해당 contest만 반환 (리스트용 최소 데이터, 75KB→수백B).
+    없으면 전체 반환 (북마크/참가 필터 등에 필요)."""
     empty = {
         "bookmarks": [],
         "content_checks": [],
         "participation": {},
         "commented": [],
-        "hides": [],
     }
     if not session.get("logged_in"):
         return jsonify({"success": True, "data": empty})
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"success": True, "data": empty})
+    contest_keys = None
+    ids_param = request.args.get("ids", "").strip()
+    if ids_param:
+        contest_keys = [k.strip() for k in ids_param.split(",") if k.strip()]
     try:
         supabase = get_supabase_admin_client()
-        bookmarks = []
-        content_checks = []
-        participation = {}
-        commented = []
-        hides = []
-        try:
-            r = supabase.table("contest_bookmarks").select("source, contest_id").eq("user_id", user_id).execute()
-            bookmarks = [{"source": x.get("source"), "contest_id": x.get("contest_id")} for x in (r.data or [])]
-        except Exception:
-            pass
-        try:
-            r = supabase.table("contest_content_checks").select("source, contest_id").eq("user_id", user_id).execute()
-            content_checks = [(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])]
-        except Exception:
-            pass
-        try:
-            r = supabase.table("contest_participation").select("source, contest_id, status").eq("user_id", user_id).execute()
-            for x in (r.data or []):
-                k = (x.get("source") or "") + ":" + (x.get("contest_id") or "")
-                participation[k] = x.get("status") or ""
-        except Exception:
-            pass
-        try:
-            r = supabase.table("contest_comments").select("source, contest_id").eq("user_id", user_id).execute()
-            commented = list({(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])})
-        except Exception:
-            pass
-        try:
-            r = supabase.table("contest_hides").select("source, contest_id").eq("user_id", user_id).execute()
-            hides = list({(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])})
-        except Exception:
-            pass
-        return jsonify({
-            "success": True,
-            "data": {
-                "bookmarks": bookmarks,
-                "content_checks": content_checks,
-                "participation": participation,
-                "commented": commented,
-                "hides": hides,
-            },
-        })
+        data = _get_contest_user_meta_from_rpc(supabase, user_id, contest_keys)
+        if data is None:
+            data = _get_contest_user_meta_legacy(supabase, user_id)
+            if contest_keys:
+                key_set = set(contest_keys)
+                data["bookmarks"] = [b for b in data["bookmarks"] if f"{b.get('source','')}:{b.get('contest_id','')}" in key_set]
+                data["content_checks"] = [c for c in data["content_checks"] if c in key_set]
+                data["participation"] = {k: v for k, v in data["participation"].items() if k in key_set}
+                data["commented"] = [c for c in data["commented"] if c in key_set]
+        return jsonify({"success": True, "data": data})
     except Exception as e:
         logger.error("api/user/contest-meta 오류: %s", e)
         return jsonify({"success": True, "data": empty})
@@ -2738,44 +2735,29 @@ def api_user_contest_meta():
 
 @app.route("/api/user/contest-status")
 def api_user_contest_status():
-    """현재 사용자의 내용확인/참가/패스 상태 + 댓글 작성한 공모전 (내용 봤음) + 숨김 처리 (하위호환, contest-meta 권장)"""
+    """현재 사용자의 내용확인/참가/패스 상태 + 댓글 작성한 공모전 (RPC 1회 또는 폴백)"""
+    empty_data = {"content_checks": [], "participation": {}, "commented": []}
     if not session.get("logged_in"):
-        return jsonify({"success": True, "data": {"content_checks": [], "participation": {}, "commented": [], "hides": []}})
+        return jsonify({"success": True, "data": empty_data})
     user_id = session.get("user_id")
     if not user_id:
-        return jsonify({"success": True, "data": {"content_checks": [], "participation": {}, "commented": [], "hides": []}})
+        return jsonify({"success": True, "data": empty_data})
     try:
         supabase = get_supabase_admin_client()
-        content_checks = []
-        try:
-            r = supabase.table("contest_content_checks").select("source, contest_id").eq("user_id", user_id).execute()
-            content_checks = [(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])]
-        except Exception:
-            pass
-        participation = {}
-        try:
-            r = supabase.table("contest_participation").select("source, contest_id, status").eq("user_id", user_id).execute()
-            for x in (r.data or []):
-                k = (x.get("source") or "") + ":" + (x.get("contest_id") or "")
-                participation[k] = x.get("status") or ""
-        except Exception:
-            pass
-        commented = []
-        try:
-            r = supabase.table("contest_comments").select("source, contest_id").eq("user_id", user_id).execute()
-            commented = list({(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])})
-        except Exception:
-            pass
-        hides = []
-        try:
-            r = supabase.table("contest_hides").select("source, contest_id").eq("user_id", user_id).execute()
-            hides = list({(x.get("source") or "") + ":" + (x.get("contest_id") or "") for x in (r.data or [])})
-        except Exception:
-            pass
-        return jsonify({"success": True, "data": {"content_checks": content_checks, "participation": participation, "commented": commented, "hides": hides}})
+        meta = _get_contest_user_meta_from_rpc(supabase, user_id)
+        if meta is None:
+            meta = _get_contest_user_meta_legacy(supabase, user_id)
+        return jsonify({
+            "success": True,
+            "data": {
+                "content_checks": meta.get("content_checks", []),
+                "participation": meta.get("participation", {}),
+                "commented": meta.get("commented", []),
+            },
+        })
     except Exception as e:
         logger.error("api/user/contest-status 오류: %s", e)
-        return jsonify({"success": True, "data": {"content_checks": [], "participation": {}, "commented": [], "hides": []}})
+        return jsonify({"success": True, "data": empty_data})
 
 
 @app.route("/api/user/representative-works")
@@ -3229,6 +3211,56 @@ def _upsert_participation_comment(supabase, user_id, source, contest_id, body):
         logger.warning("참가/패스 댓글 업데이트 실패: %s", ex)
 
 
+@app.route("/api/contests/content-check-bulk", methods=["POST"])
+def api_contest_content_check_bulk():
+    """현재 화면의 미확인 공고 전체 내용확인 (골드 Lv.71 이상만)"""
+    if not session.get("logged_in"):
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
+    data = request.get_json(silent=True) or {}
+    contests = data.get("contests") or []
+    if not isinstance(contests, list) or len(contests) > 100:
+        return jsonify({"success": False, "error": "contests는 최대 100개까지 가능합니다"}), 400
+    try:
+        supabase = get_supabase_admin_client()
+        prof = supabase.table("profiles").select("total_exp").eq("id", user_id).limit(1).execute()
+        total_exp = int((prof.data or [{}])[0].get("total_exp") or 0)
+        level = _compute_level_from_exp(supabase, total_exp)
+        if level < 71:
+            return jsonify({"success": False, "error": "골드(Lv.71) 이상만 이용 가능합니다"}), 403
+        already = set()
+        r = supabase.table("contest_content_checks").select("source, contest_id").eq("user_id", user_id).execute()
+        for row in (r.data or []):
+            already.add((str(row.get("source") or ""), str(row.get("contest_id") or "")))
+        done = 0
+        total_exp_gained = 0
+        for item in contests:
+            src = str(item.get("source") or "").strip()
+            cid = str(item.get("contest_id") or item.get("id") or "").strip()
+            if not src or not cid or (src, cid) in already:
+                continue
+            try:
+                supabase.table("contest_content_checks").upsert(
+                    {"user_id": user_id, "source": src, "contest_id": cid},
+                    on_conflict="user_id,source,contest_id"
+                ).execute()
+            except Exception:
+                supabase.table("contest_content_checks").insert({
+                    "user_id": user_id, "source": src, "contest_id": cid,
+                }).execute()
+            _post_comment(supabase, user_id, src, cid, "공모전 내용확인 완료")
+            exp_gained = _grant_exp(supabase, user_id, "content_check", src, cid)
+            total_exp_gained += exp_gained
+            already.add((src, cid))
+            done += 1
+        return jsonify({"success": True, "done": done, "exp_gained": total_exp_gained})
+    except Exception as e:
+        logger.error("api/contests/content-check-bulk 오류: %s", e)
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
 @app.route("/api/contests/<source>/<contest_id>/content-check", methods=["POST"])
 def api_contest_content_check(source, contest_id):
     """내용확인 클릭: contest_content_checks 기록 + 댓글 '공모전 내용확인 완료' 작성"""
@@ -3310,76 +3342,6 @@ def api_contest_participation(source, contest_id):
         return jsonify({"success": True, "exp_gained": exp_gained})
     except Exception as e:
         logger.error("api/contest/participation 오류: %s", e)
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/contests/hide-all-pass", methods=["POST"])
-def api_contests_hide_all_pass():
-    """패스한 공모전 전부 숨기기: contest_participation(status=pass) 목록을 contest_hides에 배치 upsert"""
-    if not session.get("logged_in"):
-        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
-    user_id = str(user_id)
-    try:
-        supabase = get_supabase_admin_client()
-        r = supabase.table("contest_participation").select("source, contest_id").eq("user_id", user_id).eq("status", "pass").execute()
-        rows = r.data or []
-        seen = set()
-        payloads = []
-        for row in rows:
-            src = str(row.get("source", "")).strip()
-            cid = str(row.get("contest_id", "")).strip()
-            if not src or not cid:
-                continue
-            key = (src, cid)
-            if key in seen:
-                continue
-            seen.add(key)
-            payloads.append({"user_id": user_id, "source": src, "contest_id": cid})
-        if not payloads:
-            return jsonify({"success": True, "count": 0, "message": "패스한 공모전이 없습니다"})
-        # 배치 크기 제한(100건)으로 나눠 요청 (일부 환경에서 대량 한 번에 실패 방지)
-        chunk_size = 100
-        total = 0
-        for i in range(0, len(payloads), chunk_size):
-            chunk = payloads[i : i + chunk_size]
-            supabase.table("contest_hides").upsert(chunk, on_conflict="user_id,source,contest_id").execute()
-            total += len(chunk)
-        return jsonify({"success": True, "count": total, "message": f"패스한 공모전 {total}건을 숨김 처리했습니다"})
-    except Exception as e:
-        logger.error("api/contests/hide-all-pass 오류: %s", e)
-        return jsonify({"success": False, "error": str(e)}), 500
-
-
-@app.route("/api/contests/<source>/<contest_id>/hide", methods=["POST", "DELETE"])
-def api_contest_hide(source, contest_id):
-    """공모전 숨김 처리: POST=숨김, DELETE=숨김 해제"""
-    if not session.get("logged_in"):
-        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"success": False, "error": "로그인이 필요합니다"}), 401
-    try:
-        supabase = get_supabase_admin_client()
-        if request.method == "DELETE":
-            # 숨김 해제
-            supabase.table("contest_hides").delete().eq("user_id", user_id).eq("source", source).eq("contest_id", contest_id).execute()
-            return jsonify({"success": True})
-        else:
-            # 숨김 처리
-            supabase.table("contest_hides").upsert(
-                {
-                    "user_id": user_id,
-                    "source": source,
-                    "contest_id": contest_id,
-                },
-                on_conflict="user_id,source,contest_id"
-            ).execute()
-            return jsonify({"success": True})
-    except Exception as e:
-        logger.error("api/contest/hide 오류: %s", e)
         return jsonify({"success": False, "error": str(e)}), 500
 
 

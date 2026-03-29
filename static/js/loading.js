@@ -84,7 +84,9 @@
     if (!overlay) return;
 
     // 폼 제출 시 (로그인, 회원가입, 비밀번호 변경 등) - 즉시 표시
+    // 버블 단계에서 실행되므로, 폼 쪽에서 preventDefault()한 경우(클라이언트 검증 실패 등)에는 표시하지 않음
     document.addEventListener('submit', function (e) {
+      if (e.defaultPrevented) return;
       const form = e.target;
       if (form && form.tagName === 'FORM' && !form.hasAttribute('data-no-loading')) {
         showLoading(true); // 즉시 표시
