@@ -1,0 +1,121 @@
+/* 명시 스캔: vite 작업 디렉터리·.gitignore 조합으로 클래스 탐지가 빗나가는 경우 대비 */
+@import 'tailwindcss';
+@source './**/*.{js,ts,jsx,tsx,html}';
+
+@theme {
+  --font-sans:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
+}
+
+@import './styles/theme.css' layer(base);
+
+/*
+ * 레거시 전역 CSS는 layer(base)로 묶어야 함. Tailwind v4 유틸은 @layer utilities이며,
+ * 레이어 밖(unlayered) 스타일이 뒤에서 오면 margin/padding/max-width 등 유틸이 전부 덮여
+ * 로그인 등 Tailwind 레이아웃이 깨짐(https://tailwindcss.com/docs/adding-custom-styles).
+ */
+@import './styles/app-shell.css' layer(base);
+@import './styles/home-page.css' layer(base);
+@import './styles/mypage-page.css' layer(base);
+@import './styles/profile.css' layer(base);
+@import './styles/navbar.css' layer(base);
+@import './styles/sidebars.css' layer(base);
+@import './styles/loading.css' layer(base);
+@import './styles/click-cursor.css' layer(base);
+@import './styles/content-pages.css' layer(components);
+@import './styles/notification-panel.css' layer(components);
+@import './styles/bookmarks-page.css' layer(components);
+@import './styles/team-dashboard.css' layer(components);
+
+/* sonner 토스트 — 주입 스타일 보강 (레이어 밖) */
+@import './styles/toast-sonner.css';
+
+/* 전역 확인 모달 (ConfirmProvider) — 유틸보다 우선 필요하므로 레이어 밖 유지 */
+.ar-confirm-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 20px;
+  font-family:
+    Pretendard,
+    -apple-system,
+    BlinkMacSystemFont,
+    system-ui,
+    sans-serif;
+}
+
+.ar-confirm-dialog {
+  width: 100%;
+  max-width: 400px;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.2);
+  padding: 24px;
+}
+
+.ar-confirm-title {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #212121;
+}
+
+.ar-confirm-message {
+  margin: 14px 0 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: #4b5563;
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+.ar-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+.ar-confirm-btn {
+  padding: 10px 18px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+}
+
+.ar-confirm-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.ar-confirm-btn-cancel:hover {
+  background: #e5e7eb;
+}
+
+.ar-confirm-btn-ok {
+  background: #3b82f6;
+  color: #fff;
+}
+
+.ar-confirm-btn-ok:hover {
+  background: #2563eb;
+}
+
+.ar-confirm-btn-danger {
+  background: #dc2626;
+}
+
+.ar-confirm-btn-danger:hover {
+  background: #b91c1c;
+}

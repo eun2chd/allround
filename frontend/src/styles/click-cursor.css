@@ -1,0 +1,22 @@
+/* base 레이어에서 맨 마지막에 로드 — 클릭형 컨트롤에 pointer 통일 */
+
+button:not(:disabled):not([aria-disabled='true']),
+input[type='button']:not(:disabled),
+input[type='submit']:not(:disabled),
+input[type='reset']:not(:disabled),
+input[type='image']:not(:disabled),
+input[type='checkbox']:not(:disabled),
+input[type='radio']:not(:disabled),
+[role='button']:not([aria-disabled='true']),
+select:not(:disabled),
+summary {
+  cursor: pointer;
+}
+
+a[href] {
+  cursor: pointer;
+}
+
+label[for] {
+  cursor: pointer;
+}

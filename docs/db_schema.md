@@ -318,27 +318,33 @@ CREATE TABLE IF NOT EXISTS presence (
 
 ### 7. contests (공모전 리스트)
 
-30분마다 크롤링 → Edge Function → upsert. 리스트만 저장, 본문은 on-demand.
-프론트엔드: /api/contests 조회 + Realtime 구독(변경 시 자동 갱신).
+30분마다 크롤링 → Edge Function → upsert.  
+목록 필드는 매번 갱신하고, **상세 본문 HTML**은 `content` 컬럼에 저장(비어 있을 때만 상세 페이지 크롤로 채움 등).  
+프론트엔드: Supabase `contests` 조회 + Realtime 구독(변경 시 자동 갱신).
 
 ```sql
 CREATE TABLE IF NOT EXISTS contests (
-    source TEXT NOT NULL,           -- 출처 ('요즘것들', 'wavity' 등)
+    source TEXT NOT NULL,           -- 출처 ('요즘것들', 'wevity' 등)
     id TEXT NOT NULL,               -- 출처별 게시글 ID
     title TEXT,
     d_day TEXT,
     host TEXT,
     url TEXT,
     category TEXT DEFAULT 'NULL',
+    content TEXT,                   -- 상세 본문 HTML (크롤/내용확인용)
     created_at TIMESTAMPTZ,
     first_seen_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ,
     PRIMARY KEY (source, id)
-
 );
 
 CREATE INDEX IF NOT EXISTS idx_contests_created ON contests(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_contests_source ON contests(source);
+```
+
+**기존 DB에 본문 컬럼만 추가**:
+```sql
+ALTER TABLE contests ADD COLUMN IF NOT EXISTS content TEXT;
 ```
 
 **Realtime 구독 사용 시**: INSERT/UPDATE/DELETE 감지를 위해 `contests`가 publication에 있어야 합니다.

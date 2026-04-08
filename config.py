@@ -58,7 +58,7 @@ def get_supabase_client_with_auth(access_token: str, refresh_token: str = ""):
 
 
 def get_supabase_for_server_storage_upload(access_token: str = "", refresh_token: str = ""):
-    """Flask에서 세션으로 user_id를 검증한 뒤 Storage에 올릴 때 사용.
+    """서버/스크립트에서 Storage 업로드 시 클라이언트 선택.
 
     service_role이 설정되어 있으면 항상 관리자 클라이언트를 쓴다. 업로드 직전에
     set_session → 토큰 refresh가 일어나며, 이미 소비된 refresh 토큰이면

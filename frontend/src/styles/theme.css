@@ -1,0 +1,23 @@
+/*
+ * Trust Blue & Tech Navy — 전역 브랜드 팔레트
+ * 메인 #3B82F6 · 포인트 #1E293B · 페이지 배경 #F1F5F9
+ * 기존 코드 호환: --main-purple / --soft-purple 이름 유지(값은 블루 계열).
+ */
+:root {
+  --main-purple: #3b82f6;
+  --main-purple-hover: #2563eb;
+  --soft-purple: #dbeafe;
+  --accent-green-dark: #1e293b;
+  --page-tint: #f1f5f9;
+  --brand-light: #60a5fa;
+  --focus-ring-rgb: 59, 130, 246;
+
+  --text-dark: #212121;
+  --gray-muted: #6b7280;
+  --accent-yellow: #f59e0b;
+  --bg-white: #ffffff;
+  --border-gray: #e5e7eb;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --font: Pretendard, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+}
