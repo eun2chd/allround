@@ -25,13 +25,16 @@ from config import (
 from crawler import crawl_post_detail, crawl_wevity_detail
 
 
+PASSWORD_RULE_MESSAGE = (
+    "문자와 또는 숫자 6자리 이상 입력해주세요."
+)
+
+
 def _validate_password(password: str) -> bool:
-    """숫자 6자 이상 + 특수문자 1개 이상"""
-    if not password or len(password) < 7:
+    """비밀번호 6자 이상, 문자·숫자만 (특수문자·공백 불가). Unicode 글자 허용."""
+    if not password or len(password) < 6:
         return False
-    digits = len(re.findall(r"\d", password))
-    has_special = bool(re.search(r'[!@#$%^&*()_+\-=[\]{}|;\':",.<>?/`~\\]', password))
-    return digits >= 6 and has_special
+    return password.isalnum()
 
 
 logging.basicConfig(
@@ -189,7 +192,7 @@ def _mask_email(email: str) -> str:
 
 @app.route("/find-account", methods=["GET", "POST"])
 def find_account_page():
-    """아이디/비밀번호 찾기 - 닉네임으로 아이디(이메일) 조회, 이메일로 비밀번호 재설정"""
+    """아이디/비밀번호 찾기 - 닉네임으로 아이디(이메일) 조회, 닉네임으로 즉시 비밀번호 변경(서버 service_role 필요)"""
     if request.method == "POST":
         tab = request.form.get("tab", "password")
         if tab == "id":
@@ -210,20 +213,38 @@ def find_account_page():
                 logger.error("아이디 조회 실패: %s", e)
                 flash("조회에 실패했습니다. 다시 시도해 주세요.", "error")
                 return render_template("find_account.html", active_tab="id")
-        # tab == "password"
-        email = request.form.get("email", "").strip()
-        if not email or "@" not in email:
-            flash("이메일 형식을 확인해 주세요.", "error")
+        # tab == "password" — 닉네임만으로 비밀번호 변경 (이메일 인증 없음, Auth Admin API 사용)
+        if not SUPABASE_SERVICE_ROLE_KEY:
+            flash(
+                "비밀번호 찾기 기능을 쓰려면 서버에 Service Role 키(SUPABASE_SERVICE_ROLE_KEY 또는 VITE_SERVICE_ROLE)가 설정되어 있어야 합니다. 관리자에게 문의해 주세요.",
+                "error",
+            )
+            return render_template("find_account.html", active_tab="password")
+        nickname = request.form.get("nickname", "").strip()
+        password = request.form.get("password", "")
+        password_confirm = request.form.get("password_confirm", "")
+        if not nickname:
+            flash("닉네임을 입력해 주세요.", "error")
+            return render_template("find_account.html", active_tab="password")
+        if not _validate_password(password):
+            flash(PASSWORD_RULE_MESSAGE, "error")
+            return render_template("find_account.html", active_tab="password")
+        if password != password_confirm:
+            flash("비밀번호가 일치하지 않습니다.", "error")
             return render_template("find_account.html", active_tab="password")
         try:
-            supabase = get_supabase_client()
-            redirect_url = request.url_root.rstrip("/") + url_for("reset_password_page")
-            supabase.auth.reset_password_for_email(email, {"redirect_to": redirect_url})
-            flash("입력한 이메일로 비밀번호 재설정 링크를 보냈습니다. 메일함을 확인해 주세요.")
+            admin = get_supabase_admin_client()
+            r = admin.table("profiles").select("id").eq("nickname", nickname).limit(1).execute()
+            if not r.data or not r.data[0].get("id"):
+                flash("해당 닉네임으로 등록된 계정이 없습니다.", "error")
+                return render_template("find_account.html", active_tab="password")
+            user_id = str(r.data[0]["id"])
+            admin.auth.admin.update_user_by_id(user_id, {"password": password})
+            flash("비밀번호가 변경되었습니다. 새 비밀번호로 로그인해 주세요.")
             return redirect(url_for("login_page"))
         except Exception as e:
-            logger.error("비밀번호 재설정 메일 발송 실패: %s", e)
-            flash("메일 발송에 실패했습니다. 이메일 주소를 확인하거나 잠시 후 다시 시도해 주세요.", "error")
+            logger.error("닉네임 비밀번호 변경 실패: %s", e)
+            flash("비밀번호 변경에 실패했습니다. 잠시 후 다시 시도해 주세요.", "error")
             return render_template("find_account.html", active_tab="password")
     return render_template("find_account.html", active_tab=request.args.get("tab", "id"))
 
@@ -256,7 +277,7 @@ def mypage_password():
         password = request.form.get("password", "")
         password_confirm = request.form.get("password_confirm", "")
         if not _validate_password(password):
-            flash("비밀번호는 숫자 6자 이상 + 특수문자 1개 이상을 포함해야 합니다.", "error")
+            flash(PASSWORD_RULE_MESSAGE, "error")
             return render_template("mypage_password.html")
         if password != password_confirm:
             flash("비밀번호가 일치하지 않습니다.", "error")
@@ -288,7 +309,7 @@ def signup():
             flash("이메일 형식이 올바르지 않습니다.", "error")
             return render_template("signup.html")
         if not _validate_password(password):
-            flash("비밀번호는 숫자 6자 이상 + 특수문자 1개 이상을 포함해야 합니다.", "error")
+            flash(PASSWORD_RULE_MESSAGE, "error")
             return render_template("signup.html")
         if password != password_confirm:
             flash("비밀번호가 일치하지 않습니다.", "error")

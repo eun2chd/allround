@@ -17,7 +17,8 @@ logger.debug(".env 로드: %s (존재=%s)", env_path, env_path.exists())
 
 SUPABASE_URL = os.getenv("VITE_NTP_SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("VITE_NTP_SUPABASE_ANON_KEY")
-SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")  # Storage 업로드용 (선택)
+# Storage / Admin API / RLS 우회 등 — SUPABASE_SERVICE_ROLE_KEY 또는 VITE_SERVICE_ROLE(프론트 네이밍 호환)
+SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("VITE_SERVICE_ROLE")
 DATABASE_URL = os.getenv("VITE_NTP_DATABASE_URL")
 DATABASE_DIRECT_URL = os.getenv("VITE_NTP_DATABASE_DIRECT_URL")
 
@@ -35,7 +36,9 @@ def get_supabase_client():
 def get_supabase_admin_client():
     """서버 사이드용 Supabase 클라이언트 (RLS 우회, presence 등)"""
     if not SUPABASE_URL or not (SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY):
-        raise ValueError("SUPABASE_URL과 SUPABASE_SERVICE_ROLE_KEY(또는 VITE_NTP_SUPABASE_ANON_KEY)가 .env에 필요합니다.")
+        raise ValueError(
+            "SUPABASE_URL과 SUPABASE_SERVICE_ROLE_KEY(또는 VITE_SERVICE_ROLE) 또는 VITE_NTP_SUPABASE_ANON_KEY가 .env에 필요합니다."
+        )
     from supabase import create_client
     key = SUPABASE_SERVICE_ROLE_KEY or SUPABASE_ANON_KEY
     return create_client(SUPABASE_URL, key)
