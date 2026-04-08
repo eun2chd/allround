@@ -15,8 +15,13 @@ env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 logger.debug(".env 로드: %s (존재=%s)", env_path, env_path.exists())
 
-SUPABASE_URL = os.getenv("VITE_NTP_SUPABASE_URL")
+SUPABASE_URL = os.getenv("VITE_NTP_SUPABASE_URL") or os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("VITE_NTP_SUPABASE_ANON_KEY")
+# 로컬 크롤 서버 등: 표준 이름만 넣은 경우
+if not SUPABASE_ANON_KEY:
+    SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
+
+K_START_UP_SERVICE = os.getenv("K_START_UP_SERVICE")
 # Storage / Admin API / RLS 우회 등 — SUPABASE_SERVICE_ROLE_KEY 또는 VITE_SERVICE_ROLE(프론트 네이밍 호환)
 SUPABASE_SERVICE_ROLE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY") or os.getenv("VITE_SERVICE_ROLE")
 DATABASE_URL = os.getenv("VITE_NTP_DATABASE_URL")

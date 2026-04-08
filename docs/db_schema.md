@@ -318,7 +318,7 @@ CREATE TABLE IF NOT EXISTS presence (
 
 ### 7. contests (공모전 리스트)
 
-30분마다 크롤링 → Edge Function → upsert.  
+크롤링(`crawl_server.py` 등) → Supabase upsert.  
 목록 필드는 매번 갱신하고, **상세 본문 HTML**은 `content` 컬럼에 저장(비어 있을 때만 상세 페이지 크롤로 채움 등).  
 프론트엔드: Supabase `contests` 조회 + Realtime 구독(변경 시 자동 갱신).
 
@@ -634,7 +634,7 @@ CREATE TABLE IF NOT EXISTS crawl_state (
 
 - `source`: 'wevity' | 'kstartup_business' | 'kstartup_announcement'
 - `next_page`: 다음 크롤할 페이지 (초과 시 1로 리셋)
-- Edge Function이 SERVICE_ROLE_KEY로 읽기/쓰기 (RLS 없음)
+- 크롤러(서비스 롤 클라이언트)가 읽기/쓰기 (RLS 없음)
 
 ---
 
@@ -1020,7 +1020,7 @@ ON CONFLICT (id) DO NOTHING;
 - **business_next_page**: 통합지원사업 다음 크롤할 페이지
 - **announcement_next_page**: 지원사업 공고 다음 크롤할 페이지
 - **updated_at**: 마지막 업데이트 시각
-- Edge Function이 SERVICE_ROLE_KEY로 읽기/쓰기 (RLS 없음)
+- 크롤러(서비스 롤 클라이언트)가 읽기/쓰기 (RLS 없음)
 
 ---
 
@@ -1141,9 +1141,9 @@ startup_announcement (pbanc_sn)
 
 ---
 
-## 크롤링 (GitHub Actions + Edge Function)
+## 크롤링 (Python `crawl_server.py`)
 
-- 30분마다 `crawl-contests` Edge Function 호출 → contests 테이블 upsert
+- 로컬/서버에서 반복 실행 → `contests` 등 테이블 upsert. 자세한 내용은 `docs/크롤링_설정.md` 및 루트 README 참고.
 - 크롤 후 insert/update 건수에 따라 `notifications` 테이블에 알람 생성
 - 상세: [docs/크롤링_설정.md](크롤링_설정.md)
 

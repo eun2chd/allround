@@ -118,60 +118,36 @@ DO UPDATE SET
 ## 6. 운영 구조
 
 ```
-GitHub Actions (cron)
-        ↓
-Edge Function 호출
+서버 PC 등에서 crawl_server.py (무한 루프)
         ↓
 K-Startup API 요청 (page=1 ~ last_page)
         ↓
-Supabase DB UPSERT
+Supabase DB UPSERT (startup_business, startup_announcement)
         ↓
-프론트엔드 → 내 서버(Flask) → DB 조회
+React 프론트엔드 → Supabase 클라이언트 → DB 조회
 ```
 
-### 프론트엔드 아키텍처
+### 프론트엔드
 
-- **프론트엔드 → K-Startup API 직접 호출 금지**
-- **프론트엔드 → Flask 서버 API → DB 조회** 구조 사용
-
-```
-GET /api/startup/business?page=1
-GET /api/startup/announcements?page=1
-```
+- **브라우저에서 K-Startup 공공 API 직접 호출 금지** (인증키 노출 방지)
+- **Supabase에 적재된 테이블**을 프론트에서 조회
 
 ---
 
-## 7. Edge Function + GitHub Actions
+## 7. 환경 변수 (Python)
 
-### API 호출 URL
+| 이름 | 설명 |
+|------|------|
+| `K_START_UP_SERVICE` | 공공데이터포털 인증키 (프로젝트 루트 `.env`) |
+
+Edge Function / GitHub Actions 크롤 워크플로는 사용하지 않습니다. `kstartup_crawler.py` + `crawl_server.py`가 동일 API를 호출합니다.
+
+### API 호출 URL (참고)
 
 | API | URL |
 |-----|-----|
 | 통합공고 지원사업 | `https://apis.data.go.kr/B552735/kisedKstartupService01/getBusinessInformation01?ServiceKey=인증키` |
 | 지원사업 공고 | `https://apis.data.go.kr/B552735/kisedKstartupService01/getAnnouncementInformation01?ServiceKey=인증키` |
-
-### Secret (Supabase)
-
-| 이름 | 설명 |
-|------|------|
-| `K_START_UP_SERVICE` | 공공데이터포털 인증키 (등록 완료) |
-
-```bash
-# 로컬 Secret 설정 (배포 시 Supabase Dashboard에서 설정)
-supabase secrets set K_START_UP_SERVICE=your_encoding_key
-```
-
-### Edge Function: crawl-kstartup
-
-- `full=1` 또는 `body { "full": true }` → 전체 페이지 수집
-- 기본 호출 → page 1~3만 수집 (증분)
-
-### GitHub Actions 스케줄 (권장)
-
-| 워크플로우 | cron | 용도 |
-|------------|------|------|
-| K-Startup 전체 | `0 3,15 * * *` (03:00, 15:00) | getBusinessInformation + getAnnouncementInformation 전체 |
-| K-Startup 증분 | `*/10 * * * *` (10분마다) | page 1~3만 빠르게 반영 |
 
 ---
 
@@ -181,24 +157,6 @@ supabase secrets set K_START_UP_SERVICE=your_encoding_key
 |-----|--------|--------|
 | getBusinessInformation | startup_business | id (detl_pg_url 파싱) |
 | getAnnouncementInformation | startup_announcement | pbanc_sn |
-
-### 배포
-
-```bash
-npx supabase link --project-ref <PROJECT_REF>
-npx supabase functions deploy crawl-kstartup
-```
-
-Supabase Dashboard → Edge Functions → crawl-kstartup → Settings에서 `K_START_UP_SERVICE` 시크릿 확인.
-
-### GitHub Actions
-
-| 파일 | 스케줄 | 용도 |
-|------|--------|------|
-| `.github/workflows/crawl-kstartup.yml` | 10분마다 | page 1~3 증분 수집 |
-| `.github/workflows/crawl-kstartup-full.yml` | 03:00, 15:00 UTC | 전체 페이지 수집 |
-
-**필요한 Secrets** (Repository → Settings → Secrets): `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
 
 ---
 

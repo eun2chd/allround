@@ -206,6 +206,9 @@ def crawl_post_detail(post_id: str) -> dict | None:
         return None
 
 
+SOURCE_WEVITY = "위비티"
+SOURCE_ALLFORYOUNG = "요즘것들"
+
 WEVITY_BASE = "https://www.wevity.com"
 WEVITY_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -335,4 +338,201 @@ def crawl_wevity_detail(contest_id: str) -> dict | None:
         return None
     except Exception as e:
         logger.error("크롤링 예상치 못한 오류: %s, error=%s", url, str(e))
+        return None
+
+
+def _strip_wevity_title(title: str) -> str:
+    t = re.sub(r"\s+", " ", title or "").strip()
+    t = re.sub(r"\s+SPECIAL\s*$", "", t, flags=re.I)
+    t = re.sub(r"\s+IDEA\s*$", "", t, flags=re.I)
+    return t
+
+
+def parse_wevity_list_html(html: str) -> list[dict]:
+    """엣지 `parseWevityPage`와 동일 필드: id, title, d_day, host, url, category."""
+    soup = BeautifulSoup(html, "html.parser")
+    results: list[dict] = []
+    seen_ids: set[str] = set()
+
+    for li in soup.select("ul.list > li"):
+        if li.get("class") and "top" in li.get("class"):
+            continue
+        link = li.select_one('div.tit a[href*="gbn=view"][href*="ix="]')
+        if not link or not link.get("href"):
+            continue
+        m = re.search(r"ix=(\d+)", link["href"])
+        if not m:
+            continue
+        contest_id = m.group(1)
+        if contest_id in seen_ids:
+            continue
+        seen_ids.add(contest_id)
+
+        title = _strip_wevity_title(link.get_text(" ", strip=True)) or "(제목 없음)"
+
+        category = "공모전"
+        sub_tit = li.select_one("div.sub-tit")
+        if sub_tit:
+            cat_match = re.search(r"분야\s*:\s*(.+)", sub_tit.get_text(" ", strip=True))
+            if cat_match:
+                category = re.sub(r"\s+", " ", cat_match.group(1)).strip()[:200] or category
+
+        organ = li.select_one("div.organ")
+        host = re.sub(r"\s+", " ", organ.get_text(" ", strip=True)) if organ else "-"
+
+        day_el = li.select_one("div.day")
+        d_raw = ""
+        if day_el:
+            for rm in day_el.select("span, em, i, b, strong, a"):
+                rm.decompose()
+            d_raw = re.sub(r"\s+", " ", day_el.get_text(" ", strip=True))
+        d_day = d_raw or "-"
+        d_match = re.search(r"(D-\d+|오늘\s*마감|마감)", d_day)
+        if d_match:
+            d_day = d_match.group(1).strip()
+
+        href = link["href"].strip()
+        if href.startswith("http"):
+            full_url = href
+        elif href.startswith("?"):
+            full_url = WEVITY_BASE + href
+        else:
+            full_url = f"{WEVITY_BASE}/{href.lstrip('/')}"
+
+        results.append({
+            "id": contest_id,
+            "title": title,
+            "d_day": d_day or "-",
+            "host": host or "-",
+            "url": full_url,
+            "category": category,
+        })
+
+    return results
+
+
+def fetch_wevity_list_page(session: requests.Session, page: int) -> list[dict]:
+    url = f"{WEVITY_BASE}/?c=find&s=1&gbn=list&gp={page}"
+    resp = session.get(url, timeout=30)
+    resp.raise_for_status()
+    return parse_wevity_list_html(resp.text)
+
+
+def crawl_wevity_detail_html(contest_id: str) -> str | None:
+    """엣지 `crawlWevityDetail`과 동일: 본문 HTML (최대 50k)."""
+    url = f"{WEVITY_BASE}/?c=find&s=1&gbn=view&ix={contest_id}"
+    try:
+        time.sleep(0.5)
+        session = requests.Session()
+        session.headers.update(WEVITY_HEADERS)
+        resp = session.get(url, timeout=30, allow_redirects=True)
+        if resp.status_code == 403:
+            logger.error("위비티 상세 403: %s", url)
+            return None
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        body_el = soup.select_one("div.ct, div.view-cont, #viewContents, div.detail-cont, .board-cont")
+        if not body_el:
+            for tag in soup.find_all("div", class_=re.compile(r"view|content|body", re.I)):
+                body_el = tag
+                break
+        if not body_el:
+            body_el = soup.body
+        if not body_el:
+            return None
+        for tag in body_el.select("script, style, nav, header, footer, aside"):
+            tag.decompose()
+        for tag in body_el.select(".ad, .ads, [class*='ad']"):
+            tag.decompose()
+        html_out = body_el.decode_contents() if hasattr(body_el, "decode_contents") else str(body_el)
+        if not html_out or not html_out.strip():
+            return None
+        return html_out[:50000]
+    except requests.RequestException as e:
+        logger.error("위비티 상세 HTML 실패 %s: %s", contest_id, e)
+        return None
+
+
+def parse_allforyoung_contest_list_html(html: str) -> list[dict]:
+    """엣지 `parseContestPage`와 동일 필드."""
+    soup = BeautifulSoup(html, "html.parser")
+    results: list[dict] = []
+    seen_ids: set[str] = set()
+
+    for a in soup.select('a[href*="/posts/"]'):
+        href = a.get("href", "")
+        m = re.search(r"/posts/(\d+)(?:\?|$)", href)
+        if not m:
+            continue
+        post_id = m.group(1)
+        if post_id in seen_ids:
+            continue
+        li = a.find_parent("li")
+        if not li:
+            continue
+        seen_ids.add(post_id)
+
+        img = li.find("img", alt=True)
+        title = img["alt"].strip() if img else "(제목 없음)"
+
+        badge_span = li.find(attrs={"data-slot": "badge"})
+        d_day = badge_span.get_text(strip=True) if badge_span else ""
+
+        card_footer = li.find(attrs={"data-slot": "card-footer"})
+        host = card_footer.get_text(strip=True) if card_footer else ""
+
+        category = "공모전"
+        card_content = li.find(attrs={"data-slot": "card-content"})
+        if card_content:
+            cat_badge = card_content.find(attrs={"data-slot": "badge"})
+            if cat_badge:
+                category = cat_badge.get_text(strip=True)
+
+        full_url = urljoin(BASE_URL, href)
+        results.append({
+            "id": post_id,
+            "title": title or "(제목 없음)",
+            "d_day": d_day,
+            "host": host,
+            "url": full_url,
+            "category": category,
+        })
+
+    return results
+
+
+def fetch_allforyoung_contest_page(session: requests.Session, page: int) -> list[dict]:
+    url = f"{BASE_URL}/posts/contest?page={page}"
+    resp = session.get(url, timeout=30)
+    resp.raise_for_status()
+    return parse_allforyoung_contest_list_html(resp.text)
+
+
+def crawl_post_detail_html(post_id: str) -> str | None:
+    """엣지 `crawlPostDetail`과 동일: article/prose HTML (최대 50k)."""
+    url = f"{BASE_URL}/posts/{post_id}"
+    try:
+        time.sleep(0.5)
+        session = requests.Session()
+        session.headers.update(HEADERS)
+        resp = session.get(url, timeout=30, allow_redirects=True)
+        if resp.status_code == 403:
+            logger.error("요즘것들 상세 403: %s", url)
+            return None
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        article = soup.find("article") or soup.find("main") or soup.body
+        if not article:
+            return None
+        prose = article.select_one(".prose, .markdown, .content") or article
+        for tag in prose.select("script, style, nav, header, footer, aside"):
+            tag.decompose()
+        for tag in prose.select(".ad, .ads, [class*='ad']"):
+            tag.decompose()
+        html_out = prose.decode_contents() if hasattr(prose, "decode_contents") else str(prose)
+        if not html_out or not html_out.strip():
+            return None
+        return html_out[:50000]
+    except requests.RequestException as e:
+        logger.error("요즘것들 상세 HTML 실패 %s: %s", post_id, e)
         return None
