@@ -17,6 +17,8 @@ export const EXP_ACTIVITY_LABELS: Record<string, string> = {
   support_complete: '지원완료',
   finalist: '본선진출',
   award: '수상',
+  /** exp_events 기록용. 지급량은 행의 exp_amount 사용 */
+  admin_grant: '관리자 지급·차감',
 }
 
 const EXP_UI_ORDER: string[] = [

@@ -219,6 +219,24 @@
   flex-shrink: 0;
 }
 
+.app-topbar-admin-link {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--main-purple);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid #c4b5fd;
+  background: var(--soft-purple);
+  white-space: nowrap;
+}
+
+.app-topbar-admin-link:hover {
+  border-color: var(--main-purple);
+  background: #ede9fe;
+}
+
 .app-topbar-profile {
   text-decoration: none;
   color: inherit;
@@ -283,6 +301,13 @@
   min-height: calc(100vh - var(--app-topbar-stack));
   padding-bottom: 40px;
   box-sizing: border-box;
+}
+
+/* 일반 공지·건의: 메인 컬럼 배경도 흰색으로 맞춤 */
+.app-main-with-sidebars:has(> .content-route-wrap.content-route-wrap--paper) {
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
 }
 
 @media (max-width: 1200px) {

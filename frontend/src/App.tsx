@@ -13,6 +13,15 @@ import { TeamDashboardPage } from './pages/TeamDashboardPage'
 import { BookmarksPage } from './pages/BookmarksPage'
 import { SignupCompletePage } from './pages/SignupCompletePage'
 import { SignupPage } from './pages/SignupPage'
+import { AdminLayout } from './components/admin/AdminLayout'
+import { AdminRootLayout } from './components/admin/AdminRootLayout'
+import { AdminDashboardPage } from './pages/AdminDashboardPage'
+import { AdminUsersPage } from './pages/AdminUsersPage'
+import { AdminUserDetailPage } from './pages/AdminUserDetailPage'
+import { AdminExpPage } from './pages/AdminExpPage'
+import { AdminNoticesPage } from './pages/AdminNoticesPage'
+import { AdminFeedbackListPage } from './pages/AdminFeedbackListPage'
+import { AdminFeedbackDetailPage } from './pages/AdminFeedbackDetailPage'
 
 export default function App() {
   return (
@@ -27,6 +36,17 @@ export default function App() {
           <Route path="/feedback" element={<FeedbackPage />} />
           <Route path="/participation-status" element={<ParticipationStatusPage />} />
           <Route path="/team" element={<TeamDashboardPage />} />
+        </Route>
+        <Route path="/admin" element={<AdminRootLayout />}>
+          <Route element={<AdminLayout />}>
+            <Route index element={<AdminDashboardPage />} />
+            <Route path="users" element={<AdminUsersPage />} />
+            <Route path="users/:userId" element={<AdminUserDetailPage />} />
+            <Route path="exp" element={<AdminExpPage />} />
+            <Route path="notices" element={<AdminNoticesPage />} />
+            <Route path="feedback" element={<AdminFeedbackListPage />} />
+            <Route path="feedback/:feedbackId" element={<AdminFeedbackDetailPage />} />
+          </Route>
         </Route>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/logout" element={<LogoutPage />} />

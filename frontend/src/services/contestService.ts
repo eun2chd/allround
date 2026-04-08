@@ -1,10 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { DEFAULT_CONTEST_SOURCE, contestKey } from '../features/contests/contestTypes'
 import { getSupabase } from './supabaseClient'
-import { EXP_ACTIVITY_AMOUNTS } from './expRewardsConfig'
+import { getExpAmountForActivity } from './expRewardRuntime'
 import { computeLevelFromExpRows, type LevelConfigRow } from './levelUtils'
-
-const EXP_AMOUNTS: Record<string, number> = { ...EXP_ACTIVITY_AMOUNTS }
 
 type ContestMetaPayload = {
   bookmarks: { source: string; contest_id: string }[]
@@ -54,7 +52,7 @@ async function loadLevelRows(): Promise<LevelConfigRow[]> {
 }
 
 async function grantExp(userId: string, activityType: string, source: string, contestId: string): Promise<number> {
-  const amt = EXP_AMOUNTS[activityType]
+  const amt = await getExpAmountForActivity(activityType)
   if (!amt) return 0
   const sb = getSupabase()
   const { data: dup } = await sb

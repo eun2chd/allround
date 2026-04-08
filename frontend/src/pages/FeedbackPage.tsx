@@ -8,7 +8,6 @@ import {
   deleteFeedback,
   fetchFeedbackDetail,
   fetchFeedbackList,
-  submitFeedbackAdminReply,
   updateFeedback,
   uploadFeedbackImage,
   type FeedbackCategory,
@@ -31,8 +30,6 @@ export function FeedbackPage() {
   const ctx = useMainLayoutOutletContext()
   const me = ctx?.me
   const confirm = useConfirm()
-  const isAdmin = me?.role === 'admin'
-
   const [category, setCategory] = useState<'' | FeedbackCategory>('')
   const [list, setList] = useState<FeedbackListRow[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,7 +44,6 @@ export function FeedbackPage() {
 
   const [detailOpen, setDetailOpen] = useState(false)
   const [detail, setDetail] = useState<FeedbackDetailRow | null>(null)
-  const [adminReplyText, setAdminReplyText] = useState('')
 
   const showToast = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
     appToast(msg, type)
@@ -59,7 +55,7 @@ export function FeedbackPage() {
     try {
       const r = await fetchFeedbackList({
         category: category || undefined,
-        isAdmin,
+        isAdmin: false,
         currentUserId: me.user_id,
       })
       if (!r.success) {
@@ -69,7 +65,7 @@ export function FeedbackPage() {
     } finally {
       setLoading(false)
     }
-  }, [me, isAdmin, category, showToast])
+  }, [me, category, showToast])
 
   useEffect(() => {
     void load()
@@ -139,13 +135,12 @@ export function FeedbackPage() {
 
   const openDetail = async (id: string) => {
     if (!me) return
-    const r = await fetchFeedbackDetail(id, { isAdmin, currentUserId: me.user_id })
+    const r = await fetchFeedbackDetail(id, { isAdmin: false, currentUserId: me.user_id })
     if (!r.success || !r.data) {
       showToast(r.error || '상세 조회 실패', 'error')
       return
     }
     setDetail(r.data)
-    setAdminReplyText(r.data.admin_reply?.trim() || '')
     setDetailOpen(true)
   }
 
@@ -179,29 +174,10 @@ export function FeedbackPage() {
     }
   }
 
-  const submitAdminReply = async () => {
-    if (!detail) return
-    const r = await submitFeedbackAdminReply(detail.id, adminReplyText)
-    if (!r.success) showToast(r.error || '답변 실패', 'error')
-    else {
-      showToast('답변이 등록되었습니다.')
-      setDetail((d) =>
-        d
-          ? {
-              ...d,
-              admin_reply: adminReplyText.trim() || null,
-              admin_replied_at: r.data?.admin_replied_at ?? null,
-            }
-          : null,
-      )
-      void load()
-    }
-  }
-
   if (!me) return null
 
   return (
-    <div className="content-route-wrap">
+    <div className="content-route-wrap content-route-wrap--paper">
     <div className="content-page feedback-layout">
       <div className="feedback-section-head">
         <header className="content-page-header" style={{ marginBottom: 0 }}>
@@ -407,27 +383,6 @@ export function FeedbackPage() {
                 ) : (
                   <div style={{ color: 'var(--gray-muted)', fontSize: '0.9rem' }}>아직 답변이 없습니다.</div>
                 )}
-                {isAdmin ? (
-                  <div style={{ marginTop: 12 }}>
-                    <textarea
-                      value={adminReplyText}
-                      onChange={(e) => setAdminReplyText(e.target.value)}
-                      placeholder="답변을 입력하세요"
-                      rows={4}
-                      style={{
-                        width: '100%',
-                        padding: '10px 14px',
-                        border: '1px solid var(--border-gray)',
-                        borderRadius: 'var(--radius)',
-                        fontFamily: 'inherit',
-                        fontSize: '0.9rem',
-                      }}
-                    />
-                    <button type="button" className="btn-write" style={{ marginTop: 10 }} onClick={() => void submitAdminReply()}>
-                      답변 등록
-                    </button>
-                  </div>
-                ) : null}
               </div>
 
               {detail.is_own ? (

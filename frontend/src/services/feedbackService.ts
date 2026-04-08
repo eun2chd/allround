@@ -2,6 +2,14 @@ import { getSupabase } from './supabaseClient'
 
 export type FeedbackCategory = 'error' | 'feature'
 
+export type FeedbackStatus = 'pending' | 'processing' | 'done'
+
+export const FEEDBACK_STATUS_LABEL: Record<FeedbackStatus, string> = {
+  pending: '대기',
+  processing: '처리 중',
+  done: '완료',
+}
+
 export type FeedbackListRow = {
   id: string
   user_id: string
@@ -50,6 +58,7 @@ async function attachNicknames(rows: FeedbackListRow[]): Promise<FeedbackListRow
 
 export async function fetchFeedbackList(params: {
   category?: '' | FeedbackCategory
+  status?: '' | FeedbackStatus
   isAdmin: boolean
   currentUserId: string
 }): Promise<{ success: boolean; data?: FeedbackListRow[]; error?: string }> {
@@ -62,6 +71,9 @@ export async function fetchFeedbackList(params: {
     .order('created_at', { ascending: false })
   if (!params.isAdmin) q = q.eq('user_id', params.currentUserId)
   if (params.category === 'error' || params.category === 'feature') q = q.eq('category', params.category)
+  if (params.status === 'pending' || params.status === 'processing' || params.status === 'done') {
+    q = q.eq('status', params.status)
+  }
   const { data, error } = await q
   if (error) return { success: false, error: error.message }
   const rows = (data || []) as FeedbackListRow[]
@@ -202,4 +214,25 @@ export async function submitFeedbackAdminReply(
     .eq('id', id)
   if (error) return { success: false, error: error.message }
   return { success: true, data: { admin_replied_at: reply ? now : null } }
+}
+
+/** 관리자 상세 화면: 답변 + 처리 상태 한 번에 저장 */
+export async function updateFeedbackAsAdmin(
+  id: string,
+  payload: { admin_reply: string; status: FeedbackStatus },
+): Promise<{ success: boolean; error?: string }> {
+  const sb = getSupabase()
+  const now = new Date().toISOString()
+  const reply = payload.admin_reply.trim()
+  const { error } = await sb
+    .from('feedback_requests')
+    .update({
+      admin_reply: reply || null,
+      admin_replied_at: reply ? now : null,
+      status: payload.status,
+      updated_at: now,
+    })
+    .eq('id', id)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
 }

@@ -5,6 +5,7 @@ import { appToast } from '../../lib/appToast'
 import { useNotificationsFeed } from '../../hooks/useNotificationsFeed'
 import type { MeData } from '../../hooks/useAuthMe'
 import { HiBell } from 'react-icons/hi2'
+import { signOutEverywhere } from '../../services/authService'
 import { NotificationPanel } from './NotificationPanel'
 
 const NOTI_REFETCH_MS = 30_000
@@ -93,6 +94,11 @@ export function AppNav({ me, hubTab, onHubTab }: Props) {
           <h1 className="app-topbar-title">{title}</h1>
           {me ? (
             <div className="app-topbar-actions navbar-user">
+              {me.role === 'admin' ? (
+                <Link to="/admin" className="app-topbar-admin-link">
+                  관리자 페이지
+                </Link>
+              ) : null}
               <Link to={`/mypage/${me.user_id}`} className="app-topbar-profile user-profile">
                 <div
                   className="user-avatar"
@@ -155,7 +161,9 @@ export function AppNav({ me, hubTab, onHubTab }: Props) {
                         message: '로그아웃할까요?',
                         confirmText: '로그아웃',
                       })
-                      if (ok) navigate('/logout')
+                      if (!ok) return
+                      await signOutEverywhere()
+                      navigate('/login', { replace: true })
                     }}
                   >
                     로그아웃

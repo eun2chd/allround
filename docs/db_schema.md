@@ -182,7 +182,21 @@ ON CONFLICT (level) DO NOTHING;
 - L2 도달: 25, L3: 50, … L21: 500
 - L71 도달: 2,500, L121: 5,500, L141: 7,500
 
-**경험치 획득**: `exp_events` 테이블에 액션별 기록, `profiles.total_exp` 갱신. 액션별 XP는 `/api/exp/amounts` 참고.
+**경험치 획득**: `exp_events` 테이블에 액션별 기록, `profiles.total_exp` 갱신. 행위별 기본 XP는 프론트 `expRewardsConfig` 및 (선택) DB `exp_reward_config` 오버라이드.
+
+---
+
+### 3-0. exp_reward_config (행위별 EXP 오버라이드, 선택)
+
+관리자 화면에서 밸런스 패치 시 사용. 행이 없으면 코드 기본값만 사용. 마이그레이션: `supabase/migrations/20260412_exp_admin_reward_config.sql`.
+
+```sql
+CREATE TABLE public.exp_reward_config (
+  activity_type text PRIMARY KEY,
+  exp_amount integer NOT NULL CHECK (exp_amount >= 0 AND exp_amount <= 1000000),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+```
 
 ---
 
@@ -198,7 +212,7 @@ CREATE TABLE public.exp_events (
     contest_id text NOT NULL,
     exp_amount int4 NOT NULL,
     created_at timestamptz DEFAULT now(),
-    CONSTRAINT exp_events_activity_type_check CHECK (activity_type = ANY (ARRAY['content_check','participate','pass','support_complete','finalist','award'])),
+    CONSTRAINT exp_events_activity_type_check CHECK (activity_type = ANY (ARRAY['content_check','participate','pass','support_complete','finalist','award','admin_grant'])),
     CONSTRAINT exp_events_pkey PRIMARY KEY (user_id, activity_type, source, contest_id)
 );
 CREATE INDEX idx_exp_events_created ON exp_events (created_at DESC);
@@ -213,6 +227,7 @@ CREATE INDEX idx_exp_events_user ON exp_events (user_id);
 | support_complete | 지원완료 (참가상세 제출) | 20 |
 | finalist | 본선진출 | 300 |
 | award | 수상 | 1000 |
+| admin_grant | 관리자 수동 지급·차감 | 행의 `exp_amount` (음수 가능) |
 
 ---
 
