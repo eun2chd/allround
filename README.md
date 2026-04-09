@@ -130,8 +130,11 @@ allround/
 - **K-Startup 단계 건너뜀**  
   로그에 `K_START_UP_SERVICE 미설정`이면 `.env`에 공공데이터포털 키 추가.
 
-- **공모전(HTML 소스) 수집이 0건만 나옴**  
-  `crawler.py`의 `Accept-Encoding`에 `br`(Brotli)이 있으면, 일부 환경에서 본문이 깨져 파싱이 0건이 될 수 있습니다. `urllib3`가 Brotli를 쓰려면 `brotli` 패키지가 필요하거나, 헤더에서 `gzip, deflate`만 요청하는 방식으로 맞출 수 있습니다. 요즘것들 사이트는 프런트 구조 변경으로 **목록이 초기 HTML에 없을 수 있어** 별도 대응이 필요할 수 있습니다.
+- **위비티 목록이 0건**  
+  `Accept-Encoding`에 `br`만 오는 환경에서 디코딩이 깨지면 HTML 파싱이 비어 나올 수 있습니다. 현재 `crawler.py`는 `gzip, deflate`만 요청합니다.
+
+- **요즘것들 목록이 0건**  
+  웹 페이지 초기 HTML에는 공모 카드가 없고, 목록은 **`https://api.allforyoung.com/api/v2/posts?category=공모전`** JSON으로 내려옵니다. 최신 코드는 이 API를 사용합니다.
 
 ---
 

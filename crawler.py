@@ -1,6 +1,7 @@
 """
 allforyoung.com 공모전/대외활동 크롤러
-HTML 파싱 방식 (API 미지원 사이트)
+- 목록: 공식 JSON API (`api.allforyoung.com/api/v2/posts`, category=공모전)
+- 상세 HTML: www HTML 파싱 (`crawl_post_*`)
 """
 
 import logging
@@ -15,11 +16,12 @@ logger = logging.getLogger("allyoung.crawler")
 
 
 BASE_URL = "https://www.allforyoung.com"
+# `br` 요청 시 Brotli 미설치·디코딩 이슈로 본문이 깨질 수 있어 gzip/deflate만 허용
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Encoding": "gzip, deflate",
     "Referer": "https://www.allforyoung.com/",
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
@@ -33,66 +35,18 @@ HEADERS = {
 
 def crawl_contest_page(page: int = 1, max_pages: int = 1) -> list[dict]:
     """
-    공모전 목록 페이지 크롤링
-    /posts/contest?page=N
+    공모전 목록 (요즘것들 API). `page` 인자는 무시되고 1..max_pages 를 순회합니다.
     """
     results = []
     session = requests.Session()
     session.headers.update(HEADERS)
 
     for p in range(1, max_pages + 1):
-        url = f"{BASE_URL}/posts/contest?page={p}"
         try:
-            resp = session.get(url, timeout=15)
-            resp.raise_for_status()
-            soup = BeautifulSoup(resp.text, "html.parser")
-
-            # li > a[href="/posts/ID"] 구조 (nav 링크 제외)
-            seen_ids = set()
-            for a in soup.select('a[href*="/posts/"]'):
-                href = a.get("href", "")
-                m = re.search(r"/posts/(\d+)(?:\?|$)", href)
-                if not m:
-                    continue
-                post_id = m.group(1)
-                if post_id in seen_ids:
-                    continue
-
-                li = a.find_parent("li")
-                if not li:
-                    continue  # nav 등
-                seen_ids.add(post_id)
-
-                # 카드 구조 파싱
-                img = li.find("img", alt=True)
-                title = img["alt"].strip() if img else ""
-
-                badge_span = li.find(attrs={"data-slot": "badge"})
-                d_day = badge_span.get_text(strip=True) if badge_span else ""
-
-                card_footer = li.find(attrs={"data-slot": "card-footer"})
-                host = card_footer.get_text(strip=True) if card_footer else ""
-
-                card_content = li.find(attrs={"data-slot": "card-content"})
-                category = "공모전"
-                if card_content:
-                    cat_badge = card_content.find(attrs={"data-slot": "badge"})
-                    if cat_badge:
-                        category = cat_badge.get_text(strip=True)
-
-                full_url = urljoin(BASE_URL, href)
-                results.append({
-                    "id": post_id,
-                    "title": title or "(제목 없음)",
-                    "d_day": d_day,
-                    "host": host,
-                    "url": full_url,
-                    "category": category,
-                    "source": "요즘것들",
-                })
-
+            rows = fetch_allforyoung_contest_page(session, p)
+            for r in rows:
+                results.append({**r, "source": "요즘것들"})
             time.sleep(1)
-
         except requests.RequestException as e:
             results.append({"error": str(e), "page": p})
 
@@ -209,12 +163,16 @@ def crawl_post_detail(post_id: str) -> dict | None:
 SOURCE_WEVITY = "위비티"
 SOURCE_ALLFORYOUNG = "요즘것들"
 
+ALLFORYOUNG_API_POSTS = "https://api.allforyoung.com/api/v2/posts"
+ALLFORYOUNG_LIST_CATEGORY = "공모전"
+ALLFORYOUNG_LIST_PAGE_SIZE = 24
+
 WEVITY_BASE = "https://www.wevity.com"
 WEVITY_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
-    "Accept-Encoding": "gzip, deflate, br",
+    "Accept-Encoding": "gzip, deflate",
     "Referer": "https://www.wevity.com/",
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
@@ -502,10 +460,47 @@ def parse_allforyoung_contest_list_html(html: str) -> list[dict]:
 
 
 def fetch_allforyoung_contest_page(session: requests.Session, page: int) -> list[dict]:
-    url = f"{BASE_URL}/posts/contest?page={page}"
-    resp = session.get(url, timeout=30)
+    """목록은 공식 v2 API. (www 초기 HTML에는 카드가 없어 BeautifulSoup만으로는 0건)"""
+    params = {
+        "page": page,
+        "size": ALLFORYOUNG_LIST_PAGE_SIZE,
+        "category": ALLFORYOUNG_LIST_CATEGORY,
+    }
+    headers = {
+        "User-Agent": session.headers.get("User-Agent") or HEADERS["User-Agent"],
+        "Accept": "application/json",
+        "Accept-Encoding": "gzip, deflate",
+    }
+    resp = session.get(ALLFORYOUNG_API_POSTS, params=params, headers=headers, timeout=30)
     resp.raise_for_status()
-    return parse_allforyoung_contest_list_html(resp.text)
+    body = resp.json()
+    if not body.get("success"):
+        logger.warning("요즘것들 API 오류 응답: %s", str(body)[:500])
+        return []
+    rows = body.get("data") or []
+    out: list[dict] = []
+    for row in rows:
+        if not isinstance(row, dict):
+            continue
+        pid = row.get("id")
+        if pid is None:
+            continue
+        sid = str(pid).strip()
+        if not sid:
+            continue
+        title = (row.get("title") or "").strip() or "(제목 없음)"
+        d_day = (row.get("dday") or "").strip()
+        host = (row.get("organization") or "").strip()
+        cat = (row.get("category") or ALLFORYOUNG_LIST_CATEGORY).strip()
+        out.append({
+            "id": sid,
+            "title": title,
+            "d_day": d_day,
+            "host": host,
+            "url": f"{BASE_URL}/posts/{sid}",
+            "category": cat,
+        })
+    return out
 
 
 def crawl_post_detail_html(post_id: str) -> str | None:
