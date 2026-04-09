@@ -161,12 +161,12 @@ export function AdminExpPage() {
     if (tab === 'balance') void loadBalance()
   }, [tab, loadBalance])
 
-  const [manualUserId, setManualUserId] = useState('')
+  const [manualNickname, setManualNickname] = useState('')
   const [manualDelta, setManualDelta] = useState('')
   const [manualNote, setManualNote] = useState('')
   const [manualBusy, setManualBusy] = useState(false)
 
-  const [syncUserId, setSyncUserId] = useState('')
+  const [syncNickname, setSyncNickname] = useState('')
   const [syncBusy, setSyncBusy] = useState(false)
 
   const onDeleteEvent = async (r: AdminExpEventRow) => {
@@ -245,7 +245,7 @@ export function AdminExpPage() {
     setManualBusy(true)
     try {
       const res = await adminApplyExpDelta({
-        userId: manualUserId,
+        userId: manualNickname,
         deltaExp: Math.trunc(delta),
         note: manualNote,
       })
@@ -274,7 +274,7 @@ export function AdminExpPage() {
     if (!ok) return
     setSyncBusy(true)
     try {
-      const res = await reconcileProfileTotalExpFromEvents(syncUserId)
+      const res = await reconcileProfileTotalExpFromEvents(syncNickname)
       if (!res.ok) {
         appToast(res.error, 'error')
         return
@@ -581,13 +581,13 @@ export function AdminExpPage() {
                 <code>admin_grant</code> 이벤트를 남기고 프로필 EXP를 조정합니다. 차감은 음수로 입력하세요.
               </p>
               <label className="admin-exp-manual-field">
-                <span>사용자 UUID (profiles.id)</span>
+                <span>닉네임</span>
                 <input
                   type="text"
                   className="admin-exp-manual-input"
-                  value={manualUserId}
-                  onChange={(e) => setManualUserId(e.target.value)}
-                  placeholder="00000000-0000-0000-0000-000000000000"
+                  value={manualNickname}
+                  onChange={(e) => setManualNickname(e.target.value)}
+                  placeholder="프로필에 표시되는 닉네임"
                   autoComplete="off"
                   required
                 />
@@ -625,13 +625,13 @@ export function AdminExpPage() {
                 해당 유저의 모든 <code>exp_events.exp_amount</code> 합을 구해 <code>profiles.total_exp</code>를 덮어씁니다.
               </p>
               <label className="admin-exp-manual-field">
-                <span>사용자 UUID</span>
+                <span>닉네임</span>
                 <input
                   type="text"
                   className="admin-exp-manual-input"
-                  value={syncUserId}
-                  onChange={(e) => setSyncUserId(e.target.value)}
-                  placeholder="profiles.id"
+                  value={syncNickname}
+                  onChange={(e) => setSyncNickname(e.target.value)}
+                  placeholder="프로필에 표시되는 닉네임"
                   autoComplete="off"
                   required
                 />

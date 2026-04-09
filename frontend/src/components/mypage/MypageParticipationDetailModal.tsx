@@ -149,7 +149,6 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
     <div
       className="modal-overlay active mypage-participation-detail-overlay"
       role="presentation"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="modal-box mypage-participation-detail-modal" role="dialog" aria-modal="true">
         <div className="modal-header">
@@ -164,7 +163,7 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
           ) : (
             <>
               <div className="form-group">
-                <label>참가 상태</label>
+                <label>지원·심사 단계</label>
                 <select
                   value={status}
                   onChange={(e) => {

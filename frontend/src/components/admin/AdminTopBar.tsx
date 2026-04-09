@@ -14,6 +14,16 @@ function adminPageTitle(pathname: string): string {
   if (pathname === '/admin' || pathname === '/admin/') return '관리자 대시보드'
   if (/^\/admin\/users\/[^/]+$/.test(pathname)) return '사용자 상세'
   if (pathname.startsWith('/admin/users')) return '사용자 관리'
+  if (pathname.startsWith('/admin/hashtags')) return '해시태그 관리'
+  if (pathname.startsWith('/admin/level')) return '레벨·티어 설정'
+  if (pathname.startsWith('/admin/startup')) return '창업 허브 데이터'
+  if (pathname.startsWith('/admin/comments')) return '댓글 관리'
+  if (pathname.startsWith('/admin/representative-works')) return '대표작품 관리'
+  if (pathname.startsWith('/admin/exp')) return '경험치 관리'
+  if (pathname.startsWith('/admin/notices')) return '공지사항'
+  if (pathname.startsWith('/admin/contests')) return '공모전 관리'
+  if (pathname.startsWith('/admin/feedback')) return '건의·신고'
+  if (pathname.startsWith('/admin/team-settings')) return '팀 설정'
   return '관리자'
 }
 

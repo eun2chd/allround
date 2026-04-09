@@ -112,7 +112,6 @@ export function NoticesPage() {
         <div
           className="cp-modal-overlay"
           role="presentation"
-          onClick={(e) => e.target === e.currentTarget && setDetailOpen(false)}
         >
           <div className="cp-modal">
             <div className="cp-modal-header">

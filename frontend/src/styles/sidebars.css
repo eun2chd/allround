@@ -355,8 +355,8 @@
 }
 .sidebar-users .sidebar-title {
   font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--gray-muted);
+  font-weight: 800;
+  color: #212121;
   margin: 0;
   flex: 1;
 }

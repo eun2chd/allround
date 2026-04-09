@@ -97,7 +97,10 @@ export function ContestDetailRow({
 
   const submitComment = async () => {
     const body = commentText.trim()
-    if (!body) return
+    if (!body) {
+      showToast('글을 작성해주세요.', 'error')
+      return
+    }
     try {
       const j = await createContestComment(source, contestId, body)
       if (j.success) {

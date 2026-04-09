@@ -3,8 +3,15 @@ import {
   HiBolt,
   HiChartPie,
   HiChatBubbleLeftRight,
+  HiClipboardDocumentList,
   HiMegaphone,
   HiUsers,
+  HiUserGroup,
+  HiHashtag,
+  HiAdjustmentsVertical,
+  HiBuildingOffice,
+  HiChatBubbleBottomCenterText,
+  HiPhoto,
 } from 'react-icons/hi2'
 import { Link, NavLink, Outlet, useOutletContext } from 'react-router-dom'
 import type { AdminOutletContext } from './adminLayoutContext'
@@ -36,7 +43,19 @@ export function AdminLayout() {
             <HiBolt aria-hidden className="admin-shell-navlink-icon" />
             경험치 관리
           </NavLink>
+          <NavLink to="/admin/hashtags" className={({ isActive }) => 'admin-shell-navlink' + (isActive ? ' is-active' : '')}>
+            <HiHashtag aria-hidden className="admin-shell-navlink-icon" />
+            해시태그
+          </NavLink>
+          <NavLink to="/admin/level" className={({ isActive }) => 'admin-shell-navlink' + (isActive ? ' is-active' : '')}>
+            <HiAdjustmentsVertical aria-hidden className="admin-shell-navlink-icon" />
+            레벨·티어
+          </NavLink>
           <div className="admin-shell-sidenav-divider" />
+          <NavLink to="/admin/contests" className={({ isActive }) => 'admin-shell-navlink' + (isActive ? ' is-active' : '')}>
+            <HiClipboardDocumentList aria-hidden className="admin-shell-navlink-icon" />
+            공모전 관리
+          </NavLink>
           <NavLink to="/admin/notices" className={({ isActive }) => 'admin-shell-navlink' + (isActive ? ' is-active' : '')}>
             <HiMegaphone aria-hidden className="admin-shell-navlink-icon" />
             공지사항
@@ -44,6 +63,22 @@ export function AdminLayout() {
           <NavLink to="/admin/feedback" className={({ isActive }) => 'admin-shell-navlink' + (isActive ? ' is-active' : '')}>
             <HiChatBubbleLeftRight aria-hidden className="admin-shell-navlink-icon" />
             건의·신고
+          </NavLink>
+          <NavLink to="/admin/team-settings" className={({ isActive }) => 'admin-shell-navlink' + (isActive ? ' is-active' : '')}>
+            <HiUserGroup aria-hidden className="admin-shell-navlink-icon" />
+            팀 설정
+          </NavLink>
+          <NavLink to="/admin/startup" className={({ isActive }) => 'admin-shell-navlink' + (isActive ? ' is-active' : '')}>
+            <HiBuildingOffice aria-hidden className="admin-shell-navlink-icon" />
+            창업 허브
+          </NavLink>
+          <NavLink to="/admin/comments" className={({ isActive }) => 'admin-shell-navlink' + (isActive ? ' is-active' : '')}>
+            <HiChatBubbleBottomCenterText aria-hidden className="admin-shell-navlink-icon" />
+            댓글 관리
+          </NavLink>
+          <NavLink to="/admin/representative-works" className={({ isActive }) => 'admin-shell-navlink' + (isActive ? ' is-active' : '')}>
+            <HiPhoto aria-hidden className="admin-shell-navlink-icon" />
+            대표작품
           </NavLink>
         </nav>
         <div className="admin-shell-sidenav-foot">

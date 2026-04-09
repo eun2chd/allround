@@ -531,6 +531,13 @@
     }
     .participation-badge.participate { background: #dbeafe; color: #2563eb; }
     .participation-badge.pass { background: #e5e7eb; color: #212121; }
+    .participation-mode-text {
+      margin-left: 2px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--gray-muted);
+      vertical-align: middle;
+    }
     .participation-type-badge {
       flex-shrink: 0;
       padding: 4px 10px;
@@ -751,6 +758,41 @@
       justify-content: center;
       width: 100%;
       box-sizing: border-box;
+    }
+    .participation-view-footer--stack {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .participation-view-open-app {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: 700;
+      text-decoration: none;
+      background: var(--main-purple);
+      color: #fff;
+      border: none;
+    }
+    .participation-view-open-app:hover {
+      filter: brightness(1.05);
+    }
+    .participation-open-self-wrap {
+      margin-top: 10px;
+    }
+    .participation-open-self-link {
+      display: inline-block;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--main-purple);
+      text-decoration: none;
+    }
+    .participation-open-self-link:hover {
+      text-decoration: underline;
     }
     .modal-header {
       padding: 20px 24px;

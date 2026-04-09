@@ -28,6 +28,7 @@ function rowMatchesSourceFilter(row: ContestRow, filterSrc: string): boolean {
 function alignMetaKeysToListRows(meta: ContestMeta, rows: ContestRow[]): ContestMeta {
   if (!rows.length) return meta
   const participation = { ...meta.participation }
+  const participationApply = { ...meta.participationApply }
   const contentChecks = new Set(meta.contentChecks)
   const commented = new Set(meta.commented)
   const bookmarkSet = new Set(meta.bookmarkSet)
@@ -63,6 +64,26 @@ function alignMetaKeysToListRows(meta: ContestMeta, rows: ContestRow[]): Contest
       }
     }
 
+    if (!participationApply[canonical]) {
+      const matchesApply = Object.entries(meta.participationApply).filter(
+        ([k, v]) => !!v && contestIdFromMetaKey(k) === rid,
+      )
+      if (matchesApply.length === 1) {
+        participationApply[canonical] = matchesApply[0][1]
+      } else if (matchesApply.length > 1) {
+        const rs = rowNormSource(row)
+        const pickA =
+          matchesApply.find(([k]) => k === canonical) ||
+          matchesApply.find(([k]) => srcPartOfKey(k) === rs) ||
+          matchesApply.find(([k]) => {
+            const s = srcPartOfKey(k)
+            return s === DEFAULT_CONTEST_SOURCE || s === ''
+          }) ||
+          matchesApply[0]
+        participationApply[canonical] = pickA[1]
+      }
+    }
+
     if (!contentChecks.has(canonical)) {
       const srcHas = [...meta.contentChecks].some((k) => contestIdFromMetaKey(k) === rid)
       if (srcHas) contentChecks.add(canonical)
@@ -77,15 +98,20 @@ function alignMetaKeysToListRows(meta: ContestMeta, rows: ContestRow[]): Contest
     }
   }
 
-  return { ...meta, participation, contentChecks, commented, bookmarkSet }
+  return { ...meta, participation, participationApply, contentChecks, commented, bookmarkSet }
 }
 
 /** contest_participation 테이블 값으로 참가/패스 덮어씀 (RPC·키 정규화와 무관하게 표시 정합) */
 async function mergeParticipationFromTable(meta: ContestMeta, rows: ContestRow[]): Promise<ContestMeta> {
   if (!rows.length) return meta
   const patch = await fetchParticipationForContestRows(rows)
-  if (!Object.keys(patch).length) return meta
-  return { ...meta, participation: { ...meta.participation, ...patch } }
+  if (!Object.keys(patch.participation).length && !Object.keys(patch.participationApply).length) return meta
+  const nextP = { ...meta.participation, ...patch.participation }
+  const nextA = { ...meta.participationApply, ...patch.participationApply }
+  for (const k of Object.keys(nextP)) {
+    if (nextP[k] !== 'participate') delete nextA[k]
+  }
+  return { ...meta, participation: nextP, participationApply: nextA }
 }
 
 /** contests_list_with_user_state 뷰 행 → ContestMeta (목록 1쿼리) */
@@ -102,7 +128,7 @@ function metaFromViewRows(rows: Record<string, unknown>[]): ContestMeta {
     if (ps === 'participate' || ps === 'pass') participation[k] = ps
     if (raw.my_has_commented === true) commented.add(k)
   }
-  return { bookmarkSet, contentChecks, participation, commented }
+  return { bookmarkSet, contentChecks, participation, participationApply: {}, commented }
 }
 
 function parseMetaPayload(data: Record<string, unknown> | undefined): ContestMeta {
@@ -115,6 +141,7 @@ function parseMetaPayload(data: Record<string, unknown> | undefined): ContestMet
     bookmarkSet: new Set(bookmarks.map((x) => contestKey(x.source, x.contest_id))),
     contentChecks: new Set(content_checks),
     participation: { ...participation },
+    participationApply: {},
     commented: new Set(commented),
   }
 }
@@ -136,6 +163,7 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     bookmarkSet: new Set(),
     contentChecks: new Set(),
     participation: {},
+    participationApply: {},
     commented: new Set(),
   }
 

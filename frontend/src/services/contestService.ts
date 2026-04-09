@@ -1,5 +1,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { DEFAULT_CONTEST_SOURCE, contestKey } from '../features/contests/contestTypes'
+import {
+  DEFAULT_CONTEST_SOURCE,
+  type ParticipationApplyInfo,
+  contestKey,
+} from '../features/contests/contestTypes'
 import { getSupabase } from './supabaseClient'
 import { getExpAmountForActivity } from './expRewardRuntime'
 import { computeLevelFromExpRows, type LevelConfigRow } from './levelUtils'
@@ -593,16 +597,18 @@ export async function assignBookmarkToFolder(
 }
 
 /**
- * ?? ?? contestKey? ??? ?? contest_participation?? ?? (??/?? ??? ??)
+ * 목록 행에 대해 contest_participation 참가/패스 및 참가 방식(개인·팀) 보강
  */
-export async function fetchParticipationForContestRows(
-  rows: { source?: string; id?: string }[],
-): Promise<Record<string, 'participate' | 'pass'>> {
+export async function fetchParticipationForContestRows(rows: { source?: string; id?: string }[]): Promise<{
+  participation: Record<string, 'participate' | 'pass'>
+  participationApply: Record<string, ParticipationApplyInfo>
+}> {
+  const empty = { participation: {} as Record<string, 'participate' | 'pass'>, participationApply: {} }
   const sb = getSupabase()
   const {
     data: { session },
   } = await sb.auth.getSession()
-  if (!session?.user) return {}
+  if (!session?.user) return empty
 
   const wanted = new Set<string>()
   for (const row of rows) {
@@ -610,22 +616,50 @@ export async function fetchParticipationForContestRows(
     if (!cid) continue
     wanted.add(contestKey(row.source, row.id))
   }
-  if (!wanted.size) return {}
+  if (!wanted.size) return empty
 
   const { data, error } = await sb
     .from('contest_participation')
-    .select('source, contest_id, status')
+    .select('source, contest_id, status, participation_type, team_id')
     .eq('user_id', session.user.id)
-  if (error || !data?.length) return {}
+  if (error || !data?.length) return empty
 
   const out: Record<string, 'participate' | 'pass'> = {}
+  const teamIds = new Set<string>()
   for (const row of data) {
     const key = contestKey(row.source != null ? String(row.source) : undefined, String(row.contest_id ?? ''))
     if (!wanted.has(key)) continue
     const st = String(row.status ?? '').trim()
-    if (st === 'participate' || st === 'pass') out[key] = st
+    if (st === 'participate' || st === 'pass') out[key] = st as 'participate' | 'pass'
+    if (st === 'participate') {
+      const pt = String((row as { participation_type?: string }).participation_type ?? 'individual').trim()
+      const tid = (row as { team_id?: string | null }).team_id
+      if (pt === 'team' && tid) teamIds.add(String(tid))
+    }
   }
-  return out
+
+  const nameById: Record<string, string> = {}
+  if (teamIds.size) {
+    const { data: teams } = await sb.from('contest_team').select('id, team_name').in('id', [...teamIds])
+    for (const t of teams || []) nameById[String(t.id)] = String(t.team_name || '')
+  }
+
+  const apply: Record<string, ParticipationApplyInfo> = {}
+  for (const row of data) {
+    const key = contestKey(row.source != null ? String(row.source) : undefined, String(row.contest_id ?? ''))
+    if (!wanted.has(key)) continue
+    if (String(row.status ?? '').trim() !== 'participate') continue
+    const pt = String((row as { participation_type?: string }).participation_type ?? 'individual').trim()
+    const tid = (row as { team_id?: string | null }).team_id
+    if (pt === 'team' && tid) {
+      const tn = nameById[String(tid)] || ''
+      apply[key] = { mode: 'team', teamName: tn || undefined }
+    } else {
+      apply[key] = { mode: 'individual' }
+    }
+  }
+
+  return { participation: out, participationApply: apply }
 }
 
 export async function fetchContestUserMeta(idsParam?: string): Promise<{ success: boolean; data: ContestMetaPayload }> {
@@ -716,6 +750,50 @@ const PARTICIPATE_BODY = '\uacf5\ubaa8\uc804 \ucc38\uac00'
 const PASS_BODY = '\uacf5\ubaa8\uc804 \ud328\uc2a4'
 const ANON = '\uc775\uba85'
 
+/** 현재 로그인 사용자의 해당 공모전 내용확인·참가/패스·참가방식 (집중 페이지용) */
+export async function fetchMyContestActionState(
+  source: string,
+  contestId: string,
+): Promise<{
+  contentChecked: boolean
+  participation: 'participate' | 'pass' | null
+  apply: ParticipationApplyInfo | null
+}> {
+  const sb = getSupabase()
+  const {
+    data: { session },
+  } = await sb.auth.getSession()
+  if (!session?.user) return { contentChecked: false, participation: null, apply: null }
+  const uid = session.user.id
+  const src = String(source || '').trim()
+  const cid = String(contestId || '').trim()
+  if (!src || !cid) return { contentChecked: false, participation: null, apply: null }
+  const [{ data: cc }, { data: cp }] = await Promise.all([
+    sb.from('contest_content_checks').select('user_id').eq('user_id', uid).eq('source', src).eq('contest_id', cid).maybeSingle(),
+    sb
+      .from('contest_participation')
+      .select('status, participation_type, team_id')
+      .eq('user_id', uid)
+      .eq('source', src)
+      .eq('contest_id', cid)
+      .maybeSingle(),
+  ])
+  const st = cp?.status != null ? String(cp.status).trim() : ''
+  const participation = st === 'participate' || st === 'pass' ? st : null
+  let apply: ParticipationApplyInfo | null = null
+  if (participation === 'participate' && cp) {
+    const pt = String((cp as { participation_type?: string }).participation_type ?? 'individual').trim()
+    const tid = (cp as { team_id?: string | null }).team_id
+    if (pt === 'team' && tid) {
+      const { data: tm } = await sb.from('contest_team').select('team_name').eq('id', String(tid)).maybeSingle()
+      apply = { mode: 'team', teamName: String(tm?.team_name || '') || undefined }
+    } else {
+      apply = { mode: 'individual' }
+    }
+  }
+  return { contentChecked: Boolean(cc), participation, apply }
+}
+
 export async function postContentCheck(source: string, contestId: string) {
   const sb = getSupabase()
   const {
@@ -797,14 +875,24 @@ export async function setContestParticipation(
     .eq('contest_id', contestId)
     .maybeSingle()
   if (!chk) return { success: false as const, error: MSG_NEED_CONTENT_CHECK }
+  const pType =
+    body.status === 'pass'
+      ? 'individual'
+      : String(body.participation_type || 'individual').trim() === 'team'
+        ? 'team'
+        : 'individual'
+  const teamId = body.status === 'pass' ? null : pType === 'team' ? body.team_id ?? null : null
+  if (body.status === 'participate' && pType === 'team' && !teamId) {
+    return { success: false as const, error: '팀 참가일 때 팀을 선택해 주세요.' }
+  }
   const { error: uerr } = await sb.from('contest_participation').upsert(
     {
       user_id: uid,
       source,
       contest_id: contestId,
       status: body.status,
-      participation_type: body.participation_type || 'individual',
-      team_id: body.team_id ?? null,
+      participation_type: pType,
+      team_id: teamId,
     },
     { onConflict: 'user_id,source,contest_id' },
   )

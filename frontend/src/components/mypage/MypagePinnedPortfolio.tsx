@@ -247,7 +247,6 @@ export function MypagePinnedPortfolio({ data, onChanged }: Props) {
         <div
           className="modal-overlay active"
           role="presentation"
-          onClick={(e) => e.target === e.currentTarget && closeAdd()}
         >
           <div className="modal-box modal-add-representative" role="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">
@@ -327,7 +326,6 @@ export function MypagePinnedPortfolio({ data, onChanged }: Props) {
         <div
           className="modal-overlay active"
           role="presentation"
-          onClick={(e) => e.target === e.currentTarget && setEditItem(null)}
         >
           <div className="modal-box modal-edit-representative" role="dialog" onClick={(e) => e.stopPropagation()}>
             <div className="modal-header">

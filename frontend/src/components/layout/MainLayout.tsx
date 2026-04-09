@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuthMe } from '../../hooks/useAuthMe'
+import { usePresenceHeartbeat } from '../../hooks/usePresenceHeartbeat'
 import { AppLnb } from './AppLnb'
 import { AppNav } from './AppNav'
 import { LayoutShortcutBar } from './LayoutShortcutBar'
@@ -10,6 +11,7 @@ import { UsersSidebar } from './UsersSidebar'
 export function MainLayout() {
   const navigate = useNavigate()
   const { me, loading } = useAuthMe()
+  usePresenceHeartbeat(me?.user_id)
   const [hubTab, setHubTab] = useState<'allyoung' | 'startup'>('allyoung')
 
   useEffect(() => {

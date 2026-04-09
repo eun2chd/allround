@@ -1,4 +1,5 @@
 import { getSupabase } from './supabaseClient'
+import { upsertPresenceOffline } from './presenceService'
 
 export const PASSWORD_RULE_MESSAGE =
   '비밀번호는 6자 이상, 문자 또는 숫자만 사용해 주세요. 숫자만·문자만도 가능하고 연속해서 입력해도 되며, 반드시 섞지 않아도 됩니다. 특수문자·공백은 넣을 수 없습니다.'
@@ -144,6 +145,16 @@ export async function requestPasswordResetEmail(email: string): Promise<{ messag
 
 export async function signOutEverywhere() {
   const sb = getSupabase()
+  try {
+    const {
+      data: { user },
+    } = await sb.auth.getUser()
+    if (user?.id) {
+      await upsertPresenceOffline(user.id)
+    }
+  } catch {
+    /* ignore presence update errors on signout */
+  }
   await sb.auth.signOut()
 }
 

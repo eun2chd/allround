@@ -26,7 +26,6 @@ function formatWon(n: number | null | undefined): string {
 export function useTeamDashboardData() {
   const [teamYears, setTeamYears] = useState<number[]>([])
   const [year, setYear] = useState<number | null>(null)
-  const [canEdit, setCanEdit] = useState(false)
 
   const [teamName, setTeamName] = useState('로딩 중...')
   const [teamDesc, setTeamDesc] = useState('')
@@ -38,30 +37,25 @@ export function useTeamDashboardData() {
   const [goalPct, setGoalPct] = useState(0)
   const [goalHint, setGoalHint] = useState('')
   const [goalClosed, setGoalClosed] = useState(false)
-  const [goalSetLabel, setGoalSetLabel] = useState('새로운 목표 설정하기')
 
   const [members, setMembers] = useState<SidebarMemberRow[]>([])
   const [membersErr, setMembersErr] = useState<string | null>(null)
   const [activities, setActivities] = useState<SidebarActivityRow[]>([])
   const [actErr, setActErr] = useState<string | null>(null)
 
-  const [modalOpen, setModalOpen] = useState(false)
-  const [modalMode, setModalMode] = useState<'add' | 'edit'>('add')
-  const [modalInitial, setModalInitial] = useState<TeamSettingRow | null>(null)
-
   const applyTeamSettingsUi = useCallback((d: TeamSettingRow | null, hasYears: boolean, y: number | null) => {
     if (!hasYears || !y) {
       setTeamName('우리 팀')
       setAvatarText('팀')
       setAvatarBg(undefined)
-      setTeamDesc('팀 목표를 설정해 보세요')
+      setTeamDesc('연도별 팀 소개가 등록되면 여기에 표시됩니다.')
       return
     }
     if (!d) {
       setTeamName('우리 팀')
       setAvatarText('팀')
       setAvatarBg(undefined)
-      setTeamDesc('팀 목표를 설정해 보세요')
+      setTeamDesc('이 연도 설정이 없습니다.')
       return
     }
     const name = ((d.team_name || '우리 팀') as string).trim() || '우리 팀'
@@ -74,7 +68,7 @@ export function useTeamDashboardData() {
       setAvatarBg(undefined)
       setAvatarText(name.charAt(0).toUpperCase() || '팀')
     }
-    setTeamDesc(((d.team_desc || '') as string).trim() || '팀 목표를 설정해 보세요')
+    setTeamDesc(((d.team_desc || '') as string).trim() || '등록된 설명이 없습니다.')
   }, [])
 
   const applyPrizeProgressUi = useCallback((j: Record<string, unknown>, hasYears: boolean, y: number | null) => {
@@ -82,8 +76,7 @@ export function useTeamDashboardData() {
       setGoalPrizeMan(0)
       setAchieved(0)
       setGoalPct(0)
-      setGoalHint('목표를 설정해 주세요')
-      setGoalSetLabel('새로운 목표 설정하기')
+      setGoalHint('목표가 등록되면 여기에 표시됩니다.')
       setGoalClosed(false)
       return
     }
@@ -100,12 +93,11 @@ export function useTeamDashboardData() {
       const remaining = goalWon - ach
       hint = remaining <= 0 ? '목표 달성!' : `${formatWon(ach)} / 목표 ${formatWon(goalWon)}, ${formatWon(remaining)} 남음`
     } else {
-      hint = ach > 0 ? `달성 ${formatWon(ach)} (목표 미설정)` : '목표를 설정해 주세요'
+      hint = ach > 0 ? `달성 ${formatWon(ach)} (목표 미설정)` : '관리자에서 올해 목표 금액(만원)을 넣으면 진행률이 표시됩니다.'
     }
     setGoalPct(pct)
     setGoalHint(hint + (closed ? ' (마감)' : ''))
     setGoalClosed(closed)
-    setGoalSetLabel(closed ? '새로운 목표 설정하기' : '해당 목표 수정하기')
   }, [])
 
   const refreshForYear = useCallback(
@@ -137,8 +129,7 @@ export function useTeamDashboardData() {
 
   const loadTeamYears = useCallback(async () => {
     try {
-      const { rows, canEdit: ce } = await fetchSiteTeamSettingsList()
-      setCanEdit(ce)
+      const { rows } = await fetchSiteTeamSettingsList()
       if (rows.length) {
         const years = rows
           .map((x) => (x.year != null ? parseInt(String(x.year), 10) : NaN))
@@ -157,7 +148,6 @@ export function useTeamDashboardData() {
     } catch {
       setTeamYears([])
       setYear(null)
-      setCanEdit(false)
       await refreshForYear(null, false)
     }
   }, [refreshForYear])
@@ -207,44 +197,12 @@ export function useTeamDashboardData() {
     }
   }, [])
 
-  async function openGoalSetOrEdit() {
-    if (year && teamYears.length > 0) {
-      const row = await fetchTeamSettingByYear(year)
-      if (row && !row.closed) {
-        setModalInitial(row)
-        setModalMode('edit')
-        setModalOpen(true)
-        return
-      }
-    }
-    setModalInitial(null)
-    setModalMode('add')
-    setModalOpen(true)
-  }
-
-  async function openEditCurrentYear() {
-    if (!year) return
-    const row = await fetchTeamSettingByYear(year)
-    if (row) {
-      setModalInitial(row)
-      setModalMode('edit')
-      setModalOpen(true)
-    }
-  }
-
-  function openAddModal() {
-    setModalInitial(null)
-    setModalMode('add')
-    setModalOpen(true)
-  }
-
   const hasYears = teamYears.length > 0
 
   return {
     teamYears,
     year,
     setYear,
-    canEdit,
     teamName,
     teamDesc,
     avatarText,
@@ -254,21 +212,13 @@ export function useTeamDashboardData() {
     goalPct,
     goalHint,
     goalClosed,
-    goalSetLabel,
     members,
     membersErr,
     activities,
     actErr,
-    modalOpen,
-    setModalOpen,
-    modalMode,
-    modalInitial,
     hasYears,
     refreshForYear,
     loadTeamYears,
-    openGoalSetOrEdit,
-    openEditCurrentYear,
-    openAddModal,
     formatPrize,
     formatWon,
   }

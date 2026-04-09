@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { HiChevronDoubleLeft, HiChevronDoubleRight } from 'react-icons/hi2'
 import { fetchSidebarUsers } from '../../services/sidebarSupabaseService'
+import { getSupabase } from '../../services/supabaseClient'
 
 const SIDEBAR_KEY = 'allyoung_sidebar_collapsed'
 const CACHE_KEY = 'allyoung_sidebar_users_v3'
 const CACHE_TTL = 20 * 60 * 1000
 
 const ONLINE_MS = 30 * 60 * 1000
+const USERS_REFRESH_MS = 60 * 1000
 
 type UserRow = {
   id: string
@@ -48,6 +50,7 @@ export function UsersSidebar({ currentUserId }: Props) {
   })
   const [users, setUsers] = useState<UserRow[]>([])
   const [listHint, setListHint] = useState('로딩 중...')
+  const [, setTick] = useState(0)
 
   useEffect(() => {
     try {
@@ -75,12 +78,13 @@ export function UsersSidebar({ currentUserId }: Props) {
     }
     try {
       const data = await fetchSidebarUsers()
+      const now = Date.now()
       try {
         sessionStorage.setItem(
           CACHE_KEY,
           JSON.stringify({
             data,
-            ts: Date.now(),
+            ts: now,
           }),
         )
       } catch {
@@ -96,10 +100,54 @@ export function UsersSidebar({ currentUserId }: Props) {
 
   useEffect(() => {
     const t = window.setTimeout(() => void loadUsers(false), 0)
-    const id = window.setInterval(() => void loadUsers(true), CACHE_TTL)
+    const id = window.setInterval(() => void loadUsers(true), USERS_REFRESH_MS)
     return () => {
       window.clearTimeout(t)
       window.clearInterval(id)
+    }
+  }, [])
+
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((v) => v + 1), USERS_REFRESH_MS)
+    return () => window.clearInterval(id)
+  }, [])
+
+  useEffect(() => {
+    const sb = getSupabase()
+    let refreshTimer: number | null = null
+    const scheduleRefresh = () => {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      refreshTimer = window.setTimeout(() => {
+        void loadUsers(true)
+      }, 1000)
+    }
+
+    const channel = sb
+      .channel('sidebar-users-realtime')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'presence' },
+        scheduleRefresh,
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        scheduleRefresh,
+      )
+      .subscribe()
+
+    const onFocus = () => void loadUsers(true)
+    const onVisible = () => {
+      if (!document.hidden) void loadUsers(true)
+    }
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', onVisible)
+
+    return () => {
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer)
+      window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisible)
+      void sb.removeChannel(channel)
     }
   }, [])
 

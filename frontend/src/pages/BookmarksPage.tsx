@@ -51,17 +51,8 @@ function BookmarkFolderModal({
   }, [initial])
 
   return (
-    <div
-      className="bm-modal-overlay"
-      role="presentation"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose()
-      }}
-      onKeyDown={(e) => {
-        if (e.key === 'Escape') onClose()
-      }}
-    >
-      <div className="bm-modal" role="dialog" aria-labelledby="modal-folder-title" onClick={(e) => e.stopPropagation()}>
+    <div className="bm-modal-overlay" role="presentation">
+      <div className="bm-modal" role="dialog" aria-labelledby="modal-folder-title">
         <h3 id="modal-folder-title">{title}</h3>
         <input
           type="text"

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
-const INTERVAL_SEC = 10 * 60
-const STORAGE_KEY = 'countdown_next_refresh_startup'
+const INTERVAL_SEC = 30 * 60
+/** 공모전 카운트다운과 동일 30분 주기; 이전 10분 저장값과 분리 */
+const STORAGE_KEY = 'countdown_next_refresh_startup_30m'
 
 function formatMmSs(seconds: number) {
   const m = Math.floor(Math.max(0, seconds) / 60)
@@ -9,7 +10,7 @@ function formatMmSs(seconds: number) {
   return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
 }
 
-/** Flask index.html 창업 탭 `createCountdown`과 동일 (10분 주기, localStorage 동기화) */
+/** 30분 주기·공모전 목록과 동일 (localStorage로 탭 이동 후에도 이어짐) */
 export function useStartupRefreshCountdown() {
   const [countdownText, setCountdownText] = useState('')
   const [dateTimeText, setDateTimeText] = useState('')
@@ -41,7 +42,7 @@ export function useStartupRefreshCountdown() {
     else storeNextRefresh()
 
     const updateCountdown = () => {
-      setCountdownText(`(데이터는 10분마다 업데이트·다음 갱신까지 ${formatMmSs(countdownSec)})`)
+      setCountdownText(`(데이터는 30분마다 업데이트·다음 갱신까지 ${formatMmSs(countdownSec)})`)
     }
     const tickClock = () => {
       setDateTimeText(

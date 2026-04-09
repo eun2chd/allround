@@ -14,6 +14,7 @@ export type TeamSettingRow = {
   image_path?: string
   achieved_amount?: number
   closed?: boolean
+  updated_at?: string | null
 }
 
 export type SidebarMemberRow = {
@@ -79,28 +80,15 @@ export async function fetchTeamPrizeProgress(year: number): Promise<{
   return { goal_prize: goal, total_achieved: totalAchieved, closed }
 }
 
-export async function fetchCurrentUserCanEditTeamSettings(): Promise<boolean> {
+export async function fetchSiteTeamSettingsList(): Promise<{ rows: TeamSettingRow[] }> {
   const sb = getSupabase()
-  const {
-    data: { user },
-  } = await sb.auth.getUser()
-  if (!user?.id) return false
-  const { data: prof } = await sb.from('profiles').select('role').eq('id', user.id).maybeSingle()
-  return String(prof?.role || '').toLowerCase().trim() === 'admin'
-}
-
-export async function fetchSiteTeamSettingsList(): Promise<{ rows: TeamSettingRow[]; canEdit: boolean }> {
-  const sb = getSupabase()
-  const [canEdit, res] = await Promise.all([
-    fetchCurrentUserCanEditTeamSettings(),
-    sb
-      .from('site_team_settings')
-      .select('year, team_name, team_desc, goal_prize, image_path, achieved_amount, closed')
-      .order('year', { ascending: false }),
-  ])
-  if (res.error) return { rows: [], canEdit }
+  const res = await sb
+    .from('site_team_settings')
+    .select('year, team_name, team_desc, goal_prize, image_path, achieved_amount, closed')
+    .order('year', { ascending: false })
+  if (res.error) return { rows: [] }
   const rows = (res.data || []) as TeamSettingRow[]
-  return { rows, canEdit }
+  return { rows }
 }
 
 export async function fetchTeamSettingByYear(year: number): Promise<TeamSettingRow | null> {
@@ -227,19 +215,27 @@ export async function upsertTeamSettings(payload: {
   team_name: string
   team_desc: string
   goal_prize: number
+  /** 관리자 화면에서만 전달 (일반 팀 설정 모달에서는 생략) */
+  achieved_amount?: number
+  closed?: boolean
 }): Promise<{ ok: boolean; error?: string }> {
   const sb = getSupabase()
-  const { error } = await sb.from('site_team_settings').upsert(
-    {
-      year: payload.year,
-      team_name: payload.team_name,
-      team_desc: payload.team_desc,
-      goal_prize: payload.goal_prize,
-    },
-    { onConflict: 'year' },
-  )
+  const row: Record<string, unknown> = {
+    year: payload.year,
+    team_name: payload.team_name,
+    team_desc: payload.team_desc,
+    goal_prize: payload.goal_prize,
+  }
+  if (payload.achieved_amount !== undefined) row.achieved_amount = Math.max(0, Math.floor(Number(payload.achieved_amount)))
+  if (payload.closed !== undefined) row.closed = Boolean(payload.closed)
+  const { error } = await sb.from('site_team_settings').upsert(row, { onConflict: 'year' })
   if (error) return { ok: false, error: error.message }
   return { ok: true }
+}
+
+/** 수상 인정 금액 합계(원) — 팀 목표 달성 계산과 동일 기준 */
+export async function fetchSumPrizeAchieved(): Promise<number> {
+  return sumPrizeAchieved()
 }
 
 export async function uploadTeamProfileImage(year: number, file: File): Promise<{ ok: boolean; error?: string }> {

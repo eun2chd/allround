@@ -135,21 +135,45 @@ function makeAdminContestId(note?: string): string {
   return slug ? `admin_${slug}_${tail}` : `admin_${tail}`
 }
 
-/** 관리자 수동 지급·차감. activity_type = admin_grant, exp_amount는 양수/음수 허용. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+/** 닉네임 또는 UUID 형식의 profiles.id → 내부용 user id */
+async function resolveProfileIdForAdminInput(raw: string): Promise<
+  { ok: true; userId: string } | { ok: false; error: string }
+> {
+  const t = raw.trim()
+  if (!t) return { ok: false, error: '닉네임을 입력하세요.' }
+
+  const sb = getSupabase()
+  if (UUID_RE.test(t)) {
+    const { data, error } = await sb.from('profiles').select('id').eq('id', t).maybeSingle()
+    if (error) return { ok: false, error: error.message || '프로필 조회에 실패했습니다.' }
+    if (!data) return { ok: false, error: '해당 프로필이 없습니다.' }
+    return { ok: true, userId: t }
+  }
+
+  const { data: rows, error: nErr } = await sb.from('profiles').select('id').eq('nickname', t).limit(2)
+  if (nErr) return { ok: false, error: nErr.message || '프로필 조회에 실패했습니다.' }
+  if (!rows?.length) return { ok: false, error: '일치하는 닉네임의 회원이 없습니다.' }
+  if (rows.length > 1) return { ok: false, error: '같은 닉네임이 여러 계정에 있습니다. 구분 후 다시 시도해 주세요.' }
+  return { ok: true, userId: String((rows[0] as { id: string }).id) }
+}
+
+/** 관리자 수동 지급·차감. activity_type = admin_grant, exp_amount는 양수/음수 허용. userId는 닉네임 또는 UUID.profiles.id */
 export async function adminApplyExpDelta(params: {
   userId: string
   deltaExp: number
   note?: string
 }): Promise<{ ok: true } | { ok: false; error: string }> {
-  const userId = params.userId.trim()
-  if (!userId) return { ok: false, error: '사용자 ID를 입력하세요.' }
   const delta = Math.trunc(params.deltaExp)
   if (!Number.isFinite(delta) || delta === 0) return { ok: false, error: '0이 아닌 정수 EXP를 입력하세요.' }
   if (delta > 1000000 || delta < -1000000) return { ok: false, error: '한 번에 ±1,000,000 EXP를 넘을 수 없습니다.' }
 
+  const resolved = await resolveProfileIdForAdminInput(params.userId)
+  if (!resolved.ok) return resolved
+  const userId = resolved.userId
+
   const sb = getSupabase()
-  const { data: exists } = await sb.from('profiles').select('id').eq('id', userId).maybeSingle()
-  if (!exists) return { ok: false, error: '해당 프로필이 없습니다.' }
 
   const { data: prof } = await sb.from('profiles').select('total_exp').eq('id', userId).maybeSingle()
   const cur = Math.max(0, Number(prof?.total_exp ?? 0))
@@ -183,15 +207,15 @@ export async function adminApplyExpDelta(params: {
   return { ok: true }
 }
 
-/** exp_events 합계로 profiles.total_exp를 맞춤 (정리·복구용). */
+/** exp_events 합계로 profiles.total_exp를 맞춤 (정리·복구용). userId는 닉네임 또는 UUID.profiles.id */
 export async function reconcileProfileTotalExpFromEvents(
   userId: string,
 ): Promise<{ ok: true; sum: number } | { ok: false; error: string }> {
-  const uid = userId.trim()
-  if (!uid) return { ok: false, error: '사용자 ID를 입력하세요.' }
+  const resolved = await resolveProfileIdForAdminInput(userId)
+  if (!resolved.ok) return resolved
+  const uid = resolved.userId
+
   const sb = getSupabase()
-  const { data: exists } = await sb.from('profiles').select('id').eq('id', uid).maybeSingle()
-  if (!exists) return { ok: false, error: '해당 프로필이 없습니다.' }
 
   let sum = 0
   let from = 0

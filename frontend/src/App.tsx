@@ -10,6 +10,7 @@ import { FeedbackPage } from './pages/FeedbackPage'
 import { NoticesPage } from './pages/NoticesPage'
 import { ParticipationStatusPage } from './pages/ParticipationStatusPage'
 import { TeamDashboardPage } from './pages/TeamDashboardPage'
+import { ContestFocusPage } from './pages/ContestFocusPage'
 import { BookmarksPage } from './pages/BookmarksPage'
 import { SignupCompletePage } from './pages/SignupCompletePage'
 import { SignupPage } from './pages/SignupPage'
@@ -20,8 +21,15 @@ import { AdminUsersPage } from './pages/AdminUsersPage'
 import { AdminUserDetailPage } from './pages/AdminUserDetailPage'
 import { AdminExpPage } from './pages/AdminExpPage'
 import { AdminNoticesPage } from './pages/AdminNoticesPage'
+import { AdminContestsPage } from './pages/AdminContestsPage'
 import { AdminFeedbackListPage } from './pages/AdminFeedbackListPage'
 import { AdminFeedbackDetailPage } from './pages/AdminFeedbackDetailPage'
+import { AdminTeamSettingsPage } from './pages/AdminTeamSettingsPage'
+import { AdminHashtagsPage } from './pages/AdminHashtagsPage'
+import { AdminLevelPage } from './pages/AdminLevelPage'
+import { AdminStartupHubPage } from './pages/AdminStartupHubPage'
+import { AdminCommentsPage } from './pages/AdminCommentsPage'
+import { AdminRepresentativeWorksPage } from './pages/AdminRepresentativeWorksPage'
 
 export default function App() {
   return (
@@ -29,6 +37,7 @@ export default function App() {
       <Routes>
         <Route element={<MainLayout />}>
           <Route path="/" element={<HomePage />} />
+          <Route path="/contest/:source/:contestId" element={<ContestFocusPage />} />
           <Route path="/mypage/:userId" element={<MypagePage />} />
           <Route path="/mypage/password" element={<PasswordChangePage />} />
           <Route path="/bookmarks" element={<BookmarksPage />} />
@@ -44,8 +53,15 @@ export default function App() {
             <Route path="users/:userId" element={<AdminUserDetailPage />} />
             <Route path="exp" element={<AdminExpPage />} />
             <Route path="notices" element={<AdminNoticesPage />} />
+            <Route path="contests" element={<AdminContestsPage />} />
             <Route path="feedback" element={<AdminFeedbackListPage />} />
             <Route path="feedback/:feedbackId" element={<AdminFeedbackDetailPage />} />
+            <Route path="team-settings" element={<AdminTeamSettingsPage />} />
+            <Route path="hashtags" element={<AdminHashtagsPage />} />
+            <Route path="level" element={<AdminLevelPage />} />
+            <Route path="startup" element={<AdminStartupHubPage />} />
+            <Route path="comments" element={<AdminCommentsPage />} />
+            <Route path="representative-works" element={<AdminRepresentativeWorksPage />} />
           </Route>
         </Route>
         <Route path="/login" element={<LoginPage />} />

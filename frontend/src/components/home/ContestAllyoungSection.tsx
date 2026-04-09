@@ -21,9 +21,16 @@ import {
   toggleBookmark as toggleContestBookmark,
 } from '../../services/contestService'
 import { loadContestList } from '../../features/contests/contestListEngine'
-import type { ContestMeta, ContestRow, FilterState } from '../../features/contests/contestTypes'
+import type {
+  ContestMeta,
+  ContestRow,
+  FilterState,
+  ParticipationApplyInfo,
+} from '../../features/contests/contestTypes'
 import { DEFAULT_CONTEST_SOURCE, PAGE_SIZE, contestKey } from '../../features/contests/contestTypes'
 import { PaginationBar } from '../common/PaginationBar'
+import { ParticipateApplyModal } from '../contests/ParticipateApplyModal'
+import type { ParticipateApplyResult } from '../contests/ParticipateApplyModal'
 import { ContestSummaryCards } from './ContestSummaryCards'
 import { ContestDetailRow } from './ContestDetailRow'
 import { fetchContestDashboardSummary } from '../../services/contestDashboardSummaryService'
@@ -118,6 +125,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     bookmarkSet: new Set(),
     contentChecks: new Set(),
     participation: {},
+    participationApply: {},
     commented: new Set(),
   })
   const [total, setTotal] = useState(0)
@@ -127,6 +135,12 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
   const [summary, setSummary] = useState<Awaited<ReturnType<typeof fetchContestDashboardSummary>>>(null)
   const [openDetail, setOpenDetail] = useState<{ source: string; id: string } | null>(null)
   const participationPatchRef = useRef<ParticipationPatch>({})
+  const [applyModal, setApplyModal] = useState<{
+    source: string
+    contestId: string
+    title: string
+    row: ContestRow
+  } | null>(null)
 
   const userLevel = me.user_level ?? 1
   const canBulk = userLevel >= 71
@@ -260,7 +274,16 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     }
   }
 
-  const toggleParticipation = async (row: ContestRow, status: 'participate' | 'pass') => {
+  const applyBodyFromResult = (r: ParticipateApplyResult) => {
+    if (r.mode === 'individual') return { participation_type: 'individual' as const, team_id: null as string | null }
+    return { participation_type: 'team' as const, team_id: r.teamId }
+  }
+
+  const toggleParticipation = async (
+    row: ContestRow,
+    status: 'participate' | 'pass',
+    participateApply?: ParticipateApplyResult,
+  ) => {
     const source =
       row.source != null && String(row.source).trim() !== ''
         ? String(row.source).trim()
@@ -284,7 +307,9 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
           setMeta((m) => {
             const p = { ...m.participation }
             delete p[k]
-            return { ...m, participation: p }
+            const a = { ...m.participationApply }
+            delete a[k]
+            return { ...m, participation: p, participationApply: a }
           })
           showToast('참가/패스를 해제했습니다.')
         }
@@ -300,10 +325,27 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
           })
           if (!ok) return
         }
-        const j = await setContestParticipation(source, id, { status })
+        const body =
+          status === 'participate'
+            ? { status, ...applyBodyFromResult(participateApply || { mode: 'individual' }) }
+            : { status }
+        const j = await setContestParticipation(source, id, body)
         if (j.success) {
           participationPatchRef.current[k] = status
-          setMeta((m) => ({ ...m, participation: { ...m.participation, [k]: status } }))
+          const applyPatch =
+            status === 'participate'
+              ? participateApply
+                ? participateApply.mode === 'team'
+                  ? { mode: 'team' as const, teamName: participateApply.teamName }
+                  : { mode: 'individual' as const }
+                : { mode: 'individual' as const }
+              : null
+          setMeta((m) => {
+            const nextA = { ...m.participationApply }
+            if (status === 'participate' && applyPatch) nextA[k] = applyPatch
+            else delete nextA[k]
+            return { ...m, participation: { ...m.participation, [k]: status }, participationApply: nextA }
+          })
           showToast(status === 'participate' ? '참가로 표시했습니다.' : '패스로 표시했습니다.')
           const expAct = status === 'participate' ? 'participate' : 'pass'
           const expLine = formatExpGainedToast(expAct, j.exp_gained)
@@ -314,6 +356,21 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     } catch {
       showToast('처리 실패', 'error')
     }
+  }
+
+  const openParticipateFlow = (row: ContestRow) => {
+    const source =
+      row.source != null && String(row.source).trim() !== ''
+        ? String(row.source).trim()
+        : DEFAULT_CONTEST_SOURCE
+    const id = String(row.id ?? '')
+    const k = contestKey(row.source, row.id)
+    const cur = meta.participation[k]
+    if (cur === 'participate') {
+      void toggleParticipation(row, 'participate')
+      return
+    }
+    setApplyModal({ source, contestId: id, title: row.title || '', row })
   }
 
   const contentCheck = async (row: ContestRow) => {
@@ -414,26 +471,6 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
           </button>
         </div>
 
-        <div className="contest-filter-search-row">
-          <div className="filter-search filter-search--primary">
-            <HiMagnifyingGlass className="filter-search__icon" aria-hidden />
-            <input
-              type="text"
-              id="searchInput"
-              className="filter-search__input"
-              placeholder="제목, 주최·주관 검색"
-              autoComplete="off"
-              value={uiQ}
-              onChange={(e) => setUiQ(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && applySearch()}
-              aria-label="검색어"
-            />
-            <button type="button" id="searchButton" className="filter-search__submit" onClick={applySearch}>
-              검색
-            </button>
-          </div>
-        </div>
-
         <div className="contest-filter-detail-row">
           <span className="contest-filter-detail-label">상세 조건</span>
           <div className="filter-pill-group" role="group" aria-label="상세 필터">
@@ -516,9 +553,29 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
             초기화
           </button>
         </div>
+
+        <div className="contest-filter-search-row">
+          <div className="filter-search filter-search--primary">
+            <HiMagnifyingGlass className="filter-search__icon" aria-hidden />
+            <input
+              type="text"
+              id="searchInput"
+              className="filter-search__input"
+              placeholder="제목, 주최·주관 검색"
+              autoComplete="off"
+              value={uiQ}
+              onChange={(e) => setUiQ(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && applySearch()}
+              aria-label="검색어"
+            />
+            <button type="button" id="searchButton" className="filter-search__submit" onClick={applySearch}>
+              검색
+            </button>
+          </div>
+        </div>
       </div>
 
-      <div className="card">
+      <div className="card contest-list-card">
         <div className="list-toolbar">
           <button
             type="button"
@@ -565,95 +622,112 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
             전체 내용확인
           </button>
         </div>
-        <div className="table-wrap">
-          <table>
-            <thead>
+        <div className="contest-list-x-scroll">
+        <table className="contest-table">
+          <thead>
+            <tr>
+              <th style={{ width: 40 }} title="북마크" className="th-ico-cell">
+                <HiStar className="th-bookmark-ico" aria-hidden />
+              </th>
+              <th style={{ width: 60 }}>No</th>
+              <th style={{ width: 60 }}>D-day</th>
+              <th style={{ width: 200 }}>제목</th>
+              <th style={{ width: 180 }}>주최/주관</th>
+              <th style={{ width: 100 }}>카테고리</th>
+              <th style={{ width: 80 }}>출처</th>
+              <th style={{ width: 100 }}>생성시간</th>
+              <th style={{ width: 100 }}>업데이트시간</th>
+              <th style={{ width: 108 }}>참가·패스</th>
+              <th style={{ width: 100 }}>메뉴</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading ? (
               <tr>
-                <th style={{ width: 40 }} title="북마크" className="th-ico-cell">
-                  <HiStar className="th-bookmark-ico" aria-hidden />
-                </th>
-                <th style={{ width: 60 }}>No</th>
-                <th style={{ width: 60 }}>D-day</th>
-                <th style={{ width: 200 }}>제목</th>
-                <th style={{ width: 180 }}>주최/주관</th>
-                <th style={{ width: 100 }}>카테고리</th>
-                <th style={{ width: 80 }}>출처</th>
-                <th style={{ width: 100 }}>생성시간</th>
-                <th style={{ width: 100 }}>업데이트시간</th>
-                <th style={{ width: 88 }}>참가상태</th>
-                <th style={{ width: 100 }}>메뉴</th>
+                <td colSpan={11} className="loading">
+                  로딩 중
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr>
-                  <td colSpan={11} className="loading">
-                    로딩 중
-                  </td>
-                </tr>
-              ) : rows.length === 0 ? (
-                <tr>
-                  <td colSpan={11} className="empty-state">
-                    표시할 공모전이 없습니다.
-                  </td>
-                </tr>
-              ) : (
-                rows.map((row, idx) => {
-                  const rk = contestKey(row.source, row.id)
-                  const open =
-                    openDetail && openDetail.id === String(row.id) && openDetail.source === (row.source || '요즘것들')
-                  const bookmarked = meta.bookmarkSet.has(rk)
-                  const checked = meta.contentChecks.has(rk)
-                  const part = meta.participation[rk]
-                  const rowNo = (page - 1) * PAGE_SIZE + idx + 1
-                  return (
-                    <FragmentWithDetail
-                      key={rk + String(idx)}
-                      row={row}
-                      rowNo={rowNo}
-                      open={!!open}
-                      bookmarked={bookmarked}
-                      checked={checked}
-                      part={part}
-                      ddayClassName={ddayClass(row.d_day)}
-                      onRowClick={() => {
-                        const src = row.source || '요즘것들'
-                        const id = String(row.id || '')
-                        setOpenDetail((o) => (o && o.id === id && o.source === src ? null : { source: src, id }))
-                      }}
-                      onToggleBookmark={() => toggleBookmark(row)}
-                      onParticipate={() => toggleParticipation(row, 'participate')}
-                      onPass={() => toggleParticipation(row, 'pass')}
-                      onContentCheck={() => contentCheck(row)}
-                      showToast={showToast}
-                      formatFetchTime={formatFetchTime}
-                      truncate={truncate}
-                      detail={
-                        open ? (
-                          <ContestDetailRow
-                            source={row.source || '요즘것들'}
-                            contestId={String(row.id || '')}
-                            showToast={showToast}
-                            currentUserId={me.user_id}
-                            commented={() => {
-                              setMeta((m) => {
-                                const next = new Set(m.commented)
-                                next.add(contestKey(row.source, row.id))
-                                return { ...m, commented: next }
-                              })
-                            }}
-                          />
-                        ) : null
-                      }
-                    />
-                  )
-                })
-              )}
-            </tbody>
-          </table>
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={11} className="empty-state">
+                  표시할 공모전이 없습니다.
+                </td>
+              </tr>
+            ) : (
+              rows.map((row, idx) => {
+                const rk = contestKey(row.source, row.id)
+                const open =
+                  openDetail && openDetail.id === String(row.id) && openDetail.source === (row.source || '요즘것들')
+                const bookmarked = meta.bookmarkSet.has(rk)
+                const checked = meta.contentChecks.has(rk)
+                const part = meta.participation[rk]
+                const participateApply = meta.participationApply[rk]
+                const rowNo = (page - 1) * PAGE_SIZE + idx + 1
+                return (
+                  <FragmentWithDetail
+                    key={rk + String(idx)}
+                    row={row}
+                    rowNo={rowNo}
+                    menuFlipUp={rows.length > 0 && idx >= rows.length - 2}
+                    open={!!open}
+                    bookmarked={bookmarked}
+                    checked={checked}
+                    part={part}
+                    participateApply={participateApply}
+                    ddayClassName={ddayClass(row.d_day)}
+                    onRowClick={() => {
+                      const src = row.source || '요즘것들'
+                      const id = String(row.id || '')
+                      setOpenDetail((o) => (o && o.id === id && o.source === src ? null : { source: src, id }))
+                    }}
+                    onToggleBookmark={() => toggleBookmark(row)}
+                    onParticipate={() => openParticipateFlow(row)}
+                    onPass={() => toggleParticipation(row, 'pass')}
+                    onContentCheck={() => contentCheck(row)}
+                    showToast={showToast}
+                    formatFetchTime={formatFetchTime}
+                    truncate={truncate}
+                    detail={
+                      open ? (
+                        <ContestDetailRow
+                          source={row.source || '요즘것들'}
+                          contestId={String(row.id || '')}
+                          showToast={showToast}
+                          currentUserId={me.user_id}
+                          commented={() => {
+                            setMeta((m) => {
+                              const next = new Set(m.commented)
+                              next.add(contestKey(row.source, row.id))
+                              return { ...m, commented: next }
+                            })
+                          }}
+                        />
+                      ) : null
+                    }
+                  />
+                )
+              })
+            )}
+          </tbody>
+        </table>
         </div>
         <PaginationBar total={total} page={page} pageSize={PAGE_SIZE} onGo={goPage} />
       </div>
+      {applyModal ? (
+        <ParticipateApplyModal
+          open
+          contestTitle={applyModal.title}
+          source={applyModal.source}
+          contestId={applyModal.contestId}
+          onClose={() => setApplyModal(null)}
+          onConfirm={(result) => {
+            const r = applyModal.row
+            setApplyModal(null)
+            void toggleParticipation(r, 'participate', result)
+          }}
+        />
+      ) : null}
     </div>
   )
 }
@@ -661,10 +735,12 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
 function FragmentWithDetail({
   row,
   rowNo,
+  menuFlipUp,
   open,
   bookmarked,
   checked,
   part,
+  participateApply,
   ddayClassName,
   onRowClick,
   onToggleBookmark,
@@ -678,10 +754,13 @@ function FragmentWithDetail({
 }: {
   row: ContestRow
   rowNo: number
+  /** 목록 하단부: 더보기 패널을 위로 펼쳐 잘림 방지 */
+  menuFlipUp: boolean
   open: boolean
   bookmarked: boolean
   checked: boolean
   part?: string
+  participateApply?: ParticipationApplyInfo
   ddayClassName: string
   onRowClick: () => void
   onToggleBookmark: () => void
@@ -753,11 +832,18 @@ function FragmentWithDetail({
         <td>{formatFetchTime(row.updated_at)}</td>
         <td className="participation-status-cell" onClick={(e) => e.stopPropagation()}>
           {part === 'participate' ? (
-            <span className="participation-badge participation-badge--participate">참가</span>
+            <span className="participation-status-stack">
+              <span className="participation-badge participation-badge--participate">참가</span>
+              {participateApply?.mode === 'team' ? (
+                <span className="participation-apply-sub">{participateApply.teamName || '팀'}</span>
+              ) : participateApply?.mode === 'individual' ? (
+                <span className="participation-apply-sub">개인</span>
+              ) : null}
+            </span>
           ) : part === 'pass' ? (
             <span className="participation-badge participation-badge--pass">패스</span>
           ) : (
-            <span className="participation-badge participation-badge--none">—</span>
+            '-'
           )}
         </td>
         <td className="action-cell" onClick={(e) => e.stopPropagation()}>
@@ -773,7 +859,12 @@ function FragmentWithDetail({
               <HiChevronDown className="contest-menu-caret-ico" aria-hidden />
             </button>
             {menuOpen ? (
-              <ul className="contest-menu-panel" role="menu">
+              <ul
+                className={
+                  'contest-menu-panel' + (menuFlipUp ? ' contest-menu-panel--flip-up' : '')
+                }
+                role="menu"
+              >
                 <li role="none">
                   <button
                     type="button"

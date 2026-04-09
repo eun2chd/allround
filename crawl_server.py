@@ -466,6 +466,9 @@ def run_kstartup(
                 existed = _fetch_existing_ids(client, "startup_business", "id", ids)
                 biz_new_pg = sum(1 for i in ids if i not in existed)
                 biz_upd_pg = len(biz_rows) - biz_new_pg
+                ts = iso_now()
+                for r in biz_rows:
+                    r["updated_at"] = ts
                 client.table("startup_business").upsert(biz_rows, on_conflict="id").execute()
                 biz_new_total += biz_new_pg
                 biz_upd_total += biz_upd_pg
@@ -475,6 +478,9 @@ def run_kstartup(
                 existed = _fetch_existing_ids(client, "startup_announcement", "pbanc_sn", sns)
                 ann_new_pg = sum(1 for s in sns if s not in existed)
                 ann_upd_pg = len(ann_rows) - ann_new_pg
+                ts_ann = iso_now()
+                for r in ann_rows:
+                    r["updated_at"] = ts_ann
                 client.table("startup_announcement").upsert(ann_rows, on_conflict="pbanc_sn").execute()
                 ann_new_total += ann_new_pg
                 ann_upd_total += ann_upd_pg

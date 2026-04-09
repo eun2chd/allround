@@ -1,11 +1,10 @@
 import { useId } from 'react'
 import { Link } from 'react-router-dom'
 import { useTeamDashboardData } from '../../hooks/useTeamDashboardData'
-import { TeamSettingsModal } from '../layout/TeamSettingsModal'
 import type { SidebarMemberRow } from '../../services/sidebarSupabaseService'
 
 function formatActivityAgo(iso: string | null | undefined): string {
-  if (!iso) return ''
+  if (iso == null || iso === '') return ''
   const t = new Date(iso).getTime()
   if (Number.isNaN(t)) return ''
   const sec = Math.floor((Date.now() - t) / 1000)
@@ -13,41 +12,6 @@ function formatActivityAgo(iso: string | null | undefined): string {
   if (sec < 3600) return `${Math.floor(sec / 60)}분 전`
   if (sec < 86400) return `${Math.floor(sec / 3600)}시간 전`
   return `${Math.floor(sec / 86400)}일 전`
-}
-
-function GoalDonut({ pct, achievedLabel, pctLabel }: { pct: number; achievedLabel: string; pctLabel: string }) {
-  const gid = useId().replace(/:/g, '')
-  const r = 52
-  const c = 2 * Math.PI * r
-  const p = Math.min(100, Math.max(0, pct))
-  const dash = (p / 100) * c
-
-  return (
-    <div className="td-donut-wrap">
-      <svg className="td-donut-svg" viewBox="0 0 120 120" aria-hidden>
-        <defs>
-          <linearGradient id={`tdGrad-${gid}`} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#3b82f6" />
-            <stop offset="100%" stopColor="#93c5fd" />
-          </linearGradient>
-        </defs>
-        <circle className="td-donut-track" cx="60" cy="60" r={r} />
-        <circle
-          className="td-donut-progress"
-          cx="60"
-          cy="60"
-          r={r}
-          stroke={`url(#tdGrad-${gid})`}
-          strokeDasharray={`${dash} ${c}`}
-          transform="rotate(-90 60 60)"
-        />
-      </svg>
-      <div className="td-donut-center">
-        <span className="td-donut-pct">{pctLabel}</span>
-        <span className="td-donut-sub">{achievedLabel}</span>
-      </div>
-    </div>
-  )
 }
 
 const TROPHY = ['🥇', '🥈', '🥉'] as const
@@ -82,13 +46,59 @@ function PodiumCard({ m, rank }: { m: SidebarMemberRow; rank: number }) {
   )
 }
 
+function truncate(s: string | undefined, max = 20): string {
+  const str = (s || '').trim() || '공모전'
+  return str.length > max ? str.slice(0, max) + '...' : str
+}
+
+const DONUT_R = 39
+
+function GoalDonut({
+  pct,
+  achievedLabel,
+}: {
+  pct: number
+  achievedLabel: string
+}) {
+  const uid = useId().replace(/:/g, '')
+  const c = 2 * Math.PI * DONUT_R
+  const p = Math.min(100, Math.max(0, pct))
+  const dash = (p / 100) * c
+
+  return (
+    <div className="td-donut-wrap">
+      <svg className="td-donut-svg" viewBox="0 0 100 100" aria-hidden>
+        <defs>
+          <linearGradient id={`td-donut-grad-${uid}`} x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="var(--main-purple)" />
+            <stop offset="100%" stopColor="var(--brand-light)" />
+          </linearGradient>
+        </defs>
+        <circle className="td-donut-track" cx="50" cy="50" r={DONUT_R} transform="rotate(-90 50 50)" />
+        <circle
+          className="td-donut-progress"
+          cx="50"
+          cy="50"
+          r={DONUT_R}
+          transform="rotate(-90 50 50)"
+          stroke={`url(#td-donut-grad-${uid})`}
+          strokeDasharray={`${dash} ${c}`}
+        />
+      </svg>
+      <div className="td-donut-center">
+        <span className="td-donut-pct">{Math.round(p)}%</span>
+        <span className="td-donut-sub">{achievedLabel}</span>
+      </div>
+    </div>
+  )
+}
+
 export function TeamDashboardView() {
   const d = useTeamDashboardData()
   const {
     teamYears,
     year,
     setYear,
-    canEdit,
     teamName,
     teamDesc,
     avatarText,
@@ -98,21 +108,12 @@ export function TeamDashboardView() {
     goalPct,
     goalHint,
     goalClosed,
-    goalSetLabel,
     members,
     membersErr,
     activities,
     actErr,
-    modalOpen,
-    setModalOpen,
-    modalMode,
-    modalInitial,
     hasYears,
     refreshForYear,
-    loadTeamYears,
-    openGoalSetOrEdit,
-    openEditCurrentYear,
-    openAddModal,
     formatPrize,
     formatWon,
   } = d
@@ -148,37 +149,20 @@ export function TeamDashboardView() {
       </div>
     )
   }
-  const pctRounded = Math.round(goalPct)
-  const achievedLabel = `달성 ${formatWon(achieved)}`
 
   return (
     <div className="td-page">
       <header className="td-header">
         <div>
           <h1 className="td-title">팀 대시보드</h1>
-          <p className="td-subtitle">목표 달성률과 최근 활동, 멤버 성과를 한눈에 확인하세요.</p>
+          <p className="td-subtitle">팀 소개와 최근 활동, 멤버 랭킹을 한눈에 확인하세요. 팀 이름·프로필 등은 관리자 메뉴에서 설정됩니다.</p>
         </div>
       </header>
 
       <div className="td-grid-top">
-        <section className="td-widget td-widget--goal">
+        <section className="td-widget td-widget--profile">
           <div className="td-widget-head">
-            <h2 className="td-widget-title">팀 목표</h2>
-            {canEdit ? (
-              <div className="td-admin-btns">
-                <button type="button" className="td-btn-ghost" onClick={() => void openAddModal()}>
-                  추가
-                </button>
-                <button
-                  type="button"
-                  className="td-btn-ghost"
-                  style={{ display: hasYears ? 'inline-flex' : 'none' }}
-                  onClick={() => void openEditCurrentYear()}
-                >
-                  편집
-                </button>
-              </div>
-            ) : null}
+            <h2 className="td-widget-title">팀 소개</h2>
           </div>
 
           {hasYears ? (
@@ -216,16 +200,20 @@ export function TeamDashboardView() {
           </div>
 
           <div className="td-goal-split">
-            <GoalDonut pct={goalPct} achievedLabel={achievedLabel} pctLabel={`${pctRounded}%`} />
+            <GoalDonut pct={goalPct} achievedLabel={`달성 ${formatWon(achieved)}`} />
             <div className="td-goal-figures">
-              <div className="td-figure">
+              <div>
                 <span className="td-figure-label">올해 목표</span>
                 <p className="td-figure-value td-figure-value--goal">
                   {formatPrize(goalPrizeMan)}
-                  {goalClosed ? <span className="td-closed-pill">마감</span> : null}
+                  {goalClosed ? (
+                    <span className="td-closed-pill" title="마감">
+                      마감
+                    </span>
+                  ) : null}
                 </p>
               </div>
-              <div className="td-figure">
+              <div>
                 <span className="td-figure-label">현재 달성</span>
                 <p className="td-figure-value td-figure-value--achieved">{formatWon(achieved)}</p>
               </div>
@@ -233,16 +221,11 @@ export function TeamDashboardView() {
           </div>
 
           <div className="td-bar-wrap">
-            <div className="td-bar">
-              <div className="td-bar-fill" style={{ width: `${Math.min(100, goalPct)}%` }} />
+            <div className="td-bar" role="progressbar" aria-valuenow={Math.round(goalPct)} aria-valuemin={0} aria-valuemax={100}>
+              <div className="td-bar-fill" style={{ width: `${Math.min(100, Math.max(0, goalPct))}%` }} />
             </div>
           </div>
           <p className="td-hint">{goalHint}</p>
-          {canEdit ? (
-            <button type="button" className="td-btn-primary" onClick={() => void openGoalSetOrEdit()}>
-              {goalSetLabel}
-            </button>
-          ) : null}
         </section>
 
         <section className="td-widget td-widget--activity">
@@ -264,7 +247,7 @@ export function TeamDashboardView() {
                     </div>
                     <a href={a.url || '#'} className="td-timeline-link" target="_blank" rel="noopener noreferrer">
                       <span className="td-timeline-action">공모전 참가</span>
-                      <span className="td-timeline-title">{a.title}</span>
+                      <span className="td-timeline-title">{truncate(a.title, 48)}</span>
                     </a>
                   </div>
                 </li>
@@ -315,15 +298,6 @@ export function TeamDashboardView() {
           </>
         )}
       </section>
-
-      <TeamSettingsModal
-        open={modalOpen}
-        mode={modalMode}
-        initial={modalInitial}
-        yearOptions={teamYears}
-        onClose={() => setModalOpen(false)}
-        onSaved={() => void loadTeamYears()}
-      />
     </div>
   )
 }

@@ -1312,8 +1312,9 @@
     font-weight: 500;
   }
 
-  /* 관리자 — 공지사항 관리 */
-  .admin-shell .admin-notices-page .content-page-header.admin-users-header {
+  /* 관리자 — 공지사항 · 해시태그 관리 (헤더 동일 레이아웃) */
+  .admin-shell .admin-notices-page .content-page-header.admin-users-header,
+  .admin-shell .admin-hashtags-page .content-page-header.admin-users-header {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -1321,9 +1322,100 @@
     gap: 16px 24px;
   }
 
-  .admin-shell .admin-notices-page .content-page-header.admin-users-header > div:first-child {
+  .admin-shell .admin-notices-page .content-page-header.admin-users-header > div:first-child,
+  .admin-shell .admin-hashtags-page .content-page-header.admin-users-header > div:first-child {
     min-width: 0;
     flex: 1;
+  }
+
+  .admin-shell .admin-hashtag-name {
+    font-weight: 600;
+    color: #e9d5ff;
+  }
+
+  .admin-shell .admin-level-inline-input {
+    width: 100%;
+    max-width: 220px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-border);
+    background: var(--admin-bg-main);
+    color: #fff;
+    font-size: 0.85rem;
+    font-family: inherit;
+    box-sizing: border-box;
+  }
+
+  .admin-shell .admin-level-inline-input.admin-level-num {
+    max-width: 88px;
+  }
+
+  .admin-shell .admin-level-tier-select {
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-border);
+    background: var(--admin-bg-main);
+    color: #fff;
+    font-family: inherit;
+    cursor: pointer;
+  }
+
+  .admin-shell .admin-level-new-row {
+    margin-top: 24px;
+    padding: 16px;
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.2);
+  }
+
+  .admin-shell .admin-level-new-row--top {
+    margin-top: 12px;
+    margin-bottom: 16px;
+  }
+
+  .admin-shell .admin-level-new-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    align-items: flex-end;
+  }
+
+  .admin-shell .admin-level-new-grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .admin-shell .admin-level-new-grid input,
+  .admin-shell .admin-level-new-grid select {
+    min-width: 100px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--admin-border);
+    background: var(--admin-bg-main);
+    color: #fff;
+    font-family: inherit;
+  }
+
+  .admin-shell .admin-startup-page .cp-modal.cp-modal--wide {
+    max-width: 920px;
+    width: min(96vw, 920px);
+  }
+
+  .admin-shell .admin-startup-form-grid {
+    display: grid;
+    gap: 12px 16px;
+    grid-template-columns: 1fr;
+    max-height: min(70vh, 640px);
+    overflow-y: auto;
+  }
+
+  @media (min-width: 640px) {
+    .admin-shell .admin-startup-form-grid {
+      grid-template-columns: 1fr 1fr;
+    }
   }
 
   .admin-shell .admin-notices-header-actions {
@@ -1457,7 +1549,8 @@
   }
 
   @media (max-width: 720px) {
-    .admin-shell .admin-notices-page .content-page-header.admin-users-header {
+    .admin-shell .admin-notices-page .content-page-header.admin-users-header,
+    .admin-shell .admin-hashtags-page .content-page-header.admin-users-header {
       flex-wrap: wrap;
     }
 
@@ -1465,6 +1558,280 @@
       width: 100%;
       justify-content: flex-start;
     }
+  }
+
+  /* 관리자 — 공모전 게시글(contests) */
+  .admin-shell .admin-contests-page .content-page-header.admin-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px 24px;
+  }
+
+  .admin-shell .admin-contests-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px 20px;
+    margin-bottom: 14px;
+  }
+
+  .admin-shell .admin-contests-filter {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .admin-shell .admin-contests-filter-label {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.65);
+  }
+
+  .admin-shell .admin-contests-search {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    flex: 1;
+    min-width: 200px;
+  }
+
+  .admin-shell .admin-contests-search-input {
+    flex: 1;
+    min-width: 160px;
+    max-width: 360px;
+    padding: 10px 12px;
+    border-radius: var(--radius);
+    border: 1px solid var(--admin-border);
+    background: rgba(0, 0, 0, 0.2);
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.9rem;
+  }
+
+  .admin-shell .admin-contests-table-wrap {
+    overflow-x: auto;
+  }
+
+  .admin-shell .admin-contests-table {
+    min-width: 920px;
+  }
+
+  .admin-shell .admin-contests-cell-title {
+    max-width: 240px;
+    text-align: left;
+  }
+
+  .admin-shell .admin-contests-cell-host {
+    max-width: 140px;
+    text-align: left;
+  }
+
+  .admin-shell .admin-contests-cell-id {
+    font-size: 0.8rem;
+    font-family: ui-monospace, monospace;
+  }
+
+  .admin-shell .admin-contests-cell-nowrap {
+    white-space: nowrap;
+  }
+
+  .admin-shell .admin-contests-cell-date {
+    white-space: nowrap;
+    font-size: 0.82rem;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .admin-shell .admin-contests-table th:last-child,
+  .admin-shell .admin-contests-table td:last-child {
+    text-align: center;
+    vertical-align: middle;
+  }
+
+  .admin-shell .admin-contests-edit-keys {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.72);
+    margin: 0 0 14px;
+    word-break: break-all;
+  }
+
+  .admin-shell .admin-contests-edit-body .cp-form-row-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px 16px;
+  }
+
+  @media (max-width: 560px) {
+    .admin-shell .admin-contests-edit-body .cp-form-row-2 {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .admin-shell .admin-contests-content-textarea {
+    width: 100%;
+    min-height: 200px;
+    font-family: ui-monospace, monospace;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    resize: vertical;
+  }
+
+  .admin-shell .admin-contests-html-editor {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .admin-shell .admin-contests-html-editor-tabs {
+    display: inline-flex;
+    gap: 0;
+    border-radius: var(--radius);
+    border: 1px solid var(--admin-border);
+    overflow: hidden;
+    width: fit-content;
+  }
+
+  .admin-shell .admin-contests-html-editor-tab {
+    padding: 8px 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border: none;
+    background: rgba(0, 0, 0, 0.25);
+    color: rgba(255, 255, 255, 0.65);
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+
+  .admin-shell .admin-contests-html-editor-tab:hover {
+    color: rgba(255, 255, 255, 0.9);
+    background: rgba(255, 255, 255, 0.06);
+  }
+
+  .admin-shell .admin-contests-html-editor-tab.is-active {
+    background: rgba(99, 102, 241, 0.35);
+    color: #fff;
+  }
+
+  .admin-shell .admin-contests-cm-host {
+    border-radius: var(--radius);
+    border: 1px solid var(--admin-border);
+    overflow: hidden;
+  }
+
+  .admin-shell .admin-contests-cm-root {
+    font-size: 0.82rem !important;
+  }
+
+  .admin-shell .admin-contests-cm-root .cm-editor {
+    outline: none !important;
+  }
+
+  .admin-shell .admin-contests-cm-root .cm-scroller {
+    font-family: ui-monospace, 'Cascadia Code', 'Consolas', monospace !important;
+  }
+
+  .admin-shell .admin-contests-html-editor-preview-outer {
+    min-height: 280px;
+    max-height: min(52vh, 440px);
+    overflow: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--admin-border);
+    background: #f8fafc;
+    padding: 16px 18px;
+  }
+
+  .admin-shell .admin-contests-html-editor-preview {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: #0f172a;
+    word-break: break-word;
+  }
+
+  .admin-shell .admin-contests-html-editor-preview img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .admin-shell .admin-contests-html-editor-preview table {
+    max-width: 100%;
+    display: block;
+    overflow-x: auto;
+  }
+
+  .admin-shell .admin-contests-html-editor-preview-empty-inner {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #64748b;
+    line-height: 1.5;
+  }
+
+  .admin-shell .admin-contests-row-actions {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .admin-shell .admin-contests-preview-modal.cp-modal--wide {
+    max-width: min(96vw, 920px);
+    width: min(96vw, 920px);
+  }
+
+  .admin-shell .admin-contests-preview-body {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .admin-shell .admin-contests-preview-original {
+    margin: 0;
+    font-size: 0.88rem;
+  }
+
+  .admin-shell .admin-contests-preview-original a {
+    color: var(--accent, #a78bfa);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .admin-shell .admin-contests-preview-empty {
+    margin: 0;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.7);
+    line-height: 1.5;
+  }
+
+  .admin-shell .admin-contests-preview-scroll {
+    max-height: min(70vh, 680px);
+    overflow: auto;
+    border-radius: var(--radius);
+    border: 1px solid var(--admin-border);
+    background: #f8fafc;
+    padding: 16px 18px;
+  }
+
+  .admin-shell .admin-contests-preview-html {
+    font-size: 0.95rem;
+    line-height: 1.55;
+    color: #0f172a;
+    word-break: break-word;
+  }
+
+  .admin-shell .admin-contests-preview-html img {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .admin-shell .admin-contests-preview-html table {
+    max-width: 100%;
+    display: block;
+    overflow-x: auto;
+  }
+
+  .admin-shell .cp-modal.cp-modal--wide {
+    max-width: 760px;
+    width: min(96vw, 760px);
   }
 
   .admin-shell .cp-modal-overlay {
@@ -1548,6 +1915,226 @@
     background: rgba(248, 113, 113, 0.28);
   }
 
+  /* 관리자 — 팀 설정 */
+  .admin-shell .admin-team-settings-page .content-page-header.admin-users-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px 24px;
+  }
+
+  .admin-shell .admin-team-settings-page .admin-dashboard-lead code {
+    font-size: 0.85em;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(0, 0, 0, 0.25);
+  }
+
+  .admin-shell .admin-team-settings-table .admin-team-settings-cell-name {
+    max-width: 200px;
+    text-align: left;
+    word-break: break-all;
+  }
+
+  .admin-shell .admin-team-settings-table .admin-team-settings-cell-dt {
+    font-size: 0.82rem;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.75);
+  }
+
+  .admin-shell .admin-team-year-modal.cp-modal--wide {
+    max-width: min(96vw, 680px);
+    width: min(96vw, 680px);
+  }
+
+  /* 팀 설정 모달: 헤더·푸터 고정, 본문만 스크롤 */
+  .admin-shell .cp-modal-overlay.admin-team-year-overlay {
+    align-items: flex-start;
+    justify-content: center;
+    padding: 24px 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .admin-shell .admin-team-year-modal.cp-modal {
+    display: flex;
+    flex-direction: column;
+    max-height: min(88vh, 820px);
+    overflow: hidden;
+    min-height: 0;
+  }
+
+  .admin-shell .admin-team-year-modal .cp-modal-header {
+    flex-shrink: 0;
+  }
+
+  .admin-shell .admin-team-year-form {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .admin-shell .admin-team-year-modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 4px;
+  }
+
+  .admin-shell .admin-team-year-modal .cp-modal-footer {
+    flex-shrink: 0;
+    margin-top: auto;
+  }
+
+  .admin-shell .admin-team-year-modal .cp-form-row-2 {
+    min-width: 0;
+  }
+
+  .admin-shell .admin-team-year-modal .cp-form-row-2 > div {
+    min-width: 0;
+  }
+
+  .admin-shell .admin-team-year-error {
+    color: #fca5a5;
+    font-size: 0.88rem;
+    margin: 0 0 12px;
+  }
+
+  .admin-shell .admin-team-year-section {
+    margin-top: 8px;
+    padding-top: 16px;
+    border-top: 1px solid var(--admin-border);
+  }
+
+  .admin-shell .admin-team-year-section-title {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: -0.02em;
+  }
+
+  .admin-shell .admin-team-year-section-lead {
+    margin: 0 0 14px;
+    font-size: 0.82rem;
+    line-height: 1.55;
+    color: rgba(255, 255, 255, 0.68);
+  }
+
+  .admin-shell .admin-team-year-section-lead strong {
+    color: rgba(255, 255, 255, 0.88);
+    font-weight: 600;
+  }
+
+  .admin-shell .admin-team-year-advanced {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: var(--radius);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    background: rgba(0, 0, 0, 0.18);
+  }
+
+  .admin-shell .admin-team-year-avatar-preview {
+    width: 88px;
+    height: 88px;
+    border-radius: 12px;
+    background: rgba(0, 0, 0, 0.25) center/cover no-repeat;
+    border: 1px solid var(--admin-border);
+    margin-bottom: 8px;
+  }
+
+  .admin-shell .admin-team-year-file {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.85);
+  }
+
+  .admin-shell .admin-team-year-hint {
+    margin: 6px 0 0;
+    font-size: 0.76rem;
+    color: rgba(255, 255, 255, 0.55);
+    line-height: 1.4;
+  }
+
+  .admin-shell .admin-team-year-modal .admin-team-year-check-label {
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 10px;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    writing-mode: horizontal-tb;
+    font-size: 0.88rem;
+    color: rgba(255, 255, 255, 0.9);
+    cursor: pointer;
+    line-height: 1.45;
+  }
+
+  .admin-shell .admin-team-year-modal .admin-team-year-check-label input {
+    margin-top: 3px;
+    flex-shrink: 0;
+  }
+
+  .admin-shell .admin-team-year-modal .admin-team-year-check-text {
+    flex: 1;
+    min-width: 0;
+    white-space: normal;
+    word-break: keep-all;
+    writing-mode: horizontal-tb;
+    line-height: 1.45;
+  }
+
+  /* 세로로 한 글자씩 깨지는 현상 방지: 가로 쓰기 + 폼 너비에 맞춤 */
+  .admin-shell .admin-team-year-modal .admin-team-year-fill-btn {
+    margin-top: 10px;
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    writing-mode: horizontal-tb;
+    white-space: normal;
+    word-break: keep-all;
+    line-height: 1.45;
+    text-align: center;
+    padding: 10px 14px;
+  }
+
+  .admin-shell .admin-team-year-modal .admin-team-year-actions-row .btn-secondary {
+    writing-mode: horizontal-tb;
+    white-space: normal;
+    word-break: keep-all;
+    line-height: 1.45;
+    text-align: center;
+    max-width: 100%;
+    padding: 10px 14px;
+    box-sizing: border-box;
+  }
+
+  .admin-shell .admin-team-year-actions-row {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .admin-shell .admin-team-year-actions-row--danger {
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px dashed rgba(248, 113, 113, 0.35);
+  }
+
+  .admin-shell .admin-team-year-action-note {
+    font-size: 0.78rem;
+    line-height: 1.45;
+    color: rgba(255, 255, 255, 0.55);
+    max-width: 100%;
+  }
+
   /* 관리자 — 건의·신고 */
   .admin-shell .admin-feedback-filters {
     display: flex;
@@ -1628,6 +2215,19 @@
   .admin-shell .admin-feedback-status-pill[data-status='processing'] {
     background: rgba(251, 191, 36, 0.18);
     color: #fcd34d;
+  }
+
+  .admin-shell .admin-feedback-table th.admin-feedback-col-actions,
+  .admin-shell .admin-feedback-table td.admin-feedback-actions-cell {
+    text-align: center;
+    white-space: nowrap;
+    vertical-align: middle;
+  }
+
+  .admin-shell .admin-feedback-table .admin-feedback-actions-cell .btn-secondary {
+    writing-mode: horizontal-tb;
+    white-space: nowrap;
+    padding: 8px 14px;
   }
 
   .admin-shell .admin-feedback-detail-layout {

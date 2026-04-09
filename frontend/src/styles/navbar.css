@@ -140,7 +140,7 @@
 .navbar-user .user-nickname {
   font-size: 0.9rem;
   font-weight: 600;
-  color: var(--main-purple);
+  color: #212121;
   white-space: nowrap;
 }
 .navbar-user .nav-notification-wrap { position: relative; display: inline-flex; }
@@ -198,7 +198,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  color: var(--main-purple, #3b82f6) !important;
+  color: #212121 !important;
 }
 .nav-dropdown-toggle::after {
   content: '▼';
@@ -230,7 +230,7 @@
 .nav-dropdown-item {
   display: block;
   padding: 10px 16px;
-  color: var(--main-purple, #3b82f6);
+  color: #212121;
   text-decoration: none;
   font-size: 0.9rem;
   transition: background 0.2s;
@@ -238,10 +238,10 @@
 }
 .nav-dropdown-item:hover {
   background: var(--soft-purple, #dbeafe);
-  color: var(--main-purple);
+  color: #212121;
 }
-.nav-dropdown-item-danger { color: #dc2626; }
-.nav-dropdown-item-danger:hover { background: #fee2e2; color: #b91c1c; }
+.nav-dropdown-item-danger { color: #212121; }
+.nav-dropdown-item-danger:hover { background: var(--soft-purple, #dbeafe); color: #212121; }
 .nav-dropdown-divider {
   height: 1px;
   background: var(--border-gray, #d1d5db);

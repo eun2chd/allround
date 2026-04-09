@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { contestFocusPath } from '../../features/contests/contestTypes'
 import {
   fetchUserParticipationPage,
   type ParticipationRow,
@@ -76,7 +78,13 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
     <section className="participation-section" id="participationSection" data-user-id={profileId} data-own-profile={isOwnProfile ? '1' : '0'}>
       <div className="participation-section-header">
         <h3>참가 / 패스 공모전</h3>
-        {isOwnProfile ? <span className="participation-section-hint">해당 목록의 상세 정보를 입력해보세요!</span> : null}
+        {isOwnProfile ? (
+          <span className="participation-section-hint">해당 목록의 상세 정보를 입력해보세요!</span>
+        ) : (
+          <span className="participation-section-hint">
+            카드를 눌러 상대 방의 요약을 보거나, 「내 참가·패스」로 저장된 본문에서 바로 나도 참가·패스할 수 있습니다.
+          </span>
+        )}
       </div>
       <div className="participation-filter-row">
         <div className="participation-filter">
@@ -108,7 +116,7 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
             const cid = String(row.contest_id || '')
             const hasDetail = !!row.has_detail
             const detailItems: string[] = []
-            if (row.participation_status) detailItems.push(`참가상태: ${row.participation_status}`)
+            if (row.participation_status) detailItems.push(`지원·심사: ${row.participation_status}`)
             if (row.award_status) detailItems.push(`수상: ${row.award_status}`)
             return (
               <div
@@ -130,6 +138,11 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
                   <span className={`participation-badge ${row.status === 'pass' ? 'pass' : 'participate'}`}>
                     {row.status === 'pass' ? '패스' : '참가'}
                   </span>
+                  {row.status === 'participate' && row.participation_mode ? (
+                    <span className="participation-mode-text">
+                      {row.participation_mode === 'team' ? ` · 팀${row.team_name ? ` ${row.team_name}` : ''}` : ' · 개인'}
+                    </span>
+                  ) : null}
                   {hasDetail ? (
                     <span className="participation-detail-badge registered">상세등록</span>
                   ) : (
@@ -142,6 +155,18 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
                     <div className="participation-meta">{[row.d_day, row.host].filter(Boolean).join(' · ')}</div>
                     {detailItems.length > 0 ? (
                       <div className="participation-card-detail">{detailItems.join(' \u00a0|\u00a0 ')}</div>
+                    ) : null}
+                    {!isOwnProfile && src && cid ? (
+                      <div className="participation-open-self-wrap">
+                        <Link
+                          to={contestFocusPath(src, cid)}
+                          className="participation-open-self-link"
+                          onClick={(e) => e.stopPropagation()}
+                          onKeyDown={(e) => e.stopPropagation()}
+                        >
+                          내 계정으로 이 공고 열기 (본문·참가/패스)
+                        </Link>
+                      </div>
                     ) : null}
                   </div>
                 </div>

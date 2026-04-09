@@ -1,5 +1,7 @@
 import { useEffect, useState, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import { HiXMark } from 'react-icons/hi2'
+import { contestFocusPath } from '../../features/contests/contestTypes'
 import { fetchParticipationDetailRow } from '../../services/participationDetailService'
 
 export type ParticipationDetailViewCtx = {
@@ -84,7 +86,6 @@ export function MypageParticipationDetailViewModal({ ctx, onClose }: Props) {
     <div
       className="modal-overlay active mypage-participation-detail-overlay"
       role="presentation"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="modal-box mypage-participation-detail-modal" role="dialog" aria-modal="true">
         <div className="modal-header">
@@ -110,7 +111,7 @@ export function MypageParticipationDetailViewModal({ ctx, onClose }: Props) {
             <p className="participation-view-empty">상세 정보를 불러올 수 없습니다.</p>
           ) : (
             <div className="participation-view-fields">
-              <DetailField label="참가 상태">{String(data.participation_status || '—')}</DetailField>
+              <DetailField label="지원·심사 단계">{String(data.participation_status || '—')}</DetailField>
               {String(data.participation_status) === '수상' && data.award_status ? (
                 <DetailField label="수상 등급">{String(data.award_status)}</DetailField>
               ) : null}
@@ -151,13 +152,16 @@ export function MypageParticipationDetailViewModal({ ctx, onClose }: Props) {
             </div>
           )}
 
-          {showExternal ? (
-            <div className="participation-view-footer">
+          <div className="participation-view-footer participation-view-footer--stack">
+            <Link to={contestFocusPath(ctx.source, ctx.contestId)} className="participation-view-open-app">
+              상세 본문 보고 내 참가·패스하기
+            </Link>
+            {showExternal ? (
               <a href={ctx.contestUrl} target="_blank" rel="noreferrer" className="btn-outline">
-                공모전 페이지 열기
+                원문 사이트 열기
               </a>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

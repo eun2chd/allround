@@ -127,6 +127,8 @@ interface BusinessRow {
   supt_biz_chrct: string | null;
   supt_biz_intrd_info: string | null;
   detl_pg_url: string | null;
+  /** 크롤 upsert 시각(DB updated_at 갱신용, map 단계에서는 미설정) */
+  updated_at?: string;
 }
 
 function mapBusinessItem(col: Record<string, string>): BusinessRow | null {
@@ -277,6 +279,8 @@ interface AnnouncementRow {
   aply_mthd_pssr_rcpt_istc: string | null;
   aply_mthd_etc_istc: string | null;
   prfn_matr: string | null;
+  /** 크롤 upsert 시각(DB updated_at 갱신용, map 단계에서는 미설정) */
+  updated_at?: string;
 }
 
 function mapAnnouncementItem(col: Record<string, string>): AnnouncementRow | null {
@@ -499,10 +503,13 @@ Deno.serve(async (req) => {
         console.log(`[crawl-kstartup] [3단계] 🔄 업데이트 ID: ${updateBizIds.join(", ")}`);
       }
 
+      const touchedAt = new Date().toISOString();
+      const businessPayload = businessRows.map((r) => ({ ...r, updated_at: touchedAt }));
+
       // 저장/업데이트 (없으면 저장, 있으면 업데이트)
       const { error: bizErr } = await supabase
         .from("startup_business")
-        .upsert(businessRows, {
+        .upsert(businessPayload, {
           onConflict: "id",
           ignoreDuplicates: false,
         });
@@ -558,10 +565,13 @@ Deno.serve(async (req) => {
         console.log(`[crawl-kstartup] [3단계] 🔄 업데이트 pbanc_sn: ${updateAnnIds.join(", ")}`);
       }
 
+      const annTouchedAt = new Date().toISOString();
+      const announcementPayload = announcementRows.map((r) => ({ ...r, updated_at: annTouchedAt }));
+
       // 저장/업데이트 (없으면 저장, 있으면 업데이트)
       const { error: annErr } = await supabase
         .from("startup_announcement")
-        .upsert(announcementRows, {
+        .upsert(announcementPayload, {
           onConflict: "pbanc_sn",
           ignoreDuplicates: false,
         });

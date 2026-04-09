@@ -7,7 +7,19 @@ import {
   fetchAdminDashboardBundle,
   type AdminDashboardBundle,
 } from '../services/adminDashboardService'
-import { HiMegaphone, HiChatBubbleLeftRight, HiHome, HiUsers } from 'react-icons/hi2'
+import {
+  HiMegaphone,
+  HiChatBubbleLeftRight,
+  HiHome,
+  HiUsers,
+  HiClipboardDocumentList,
+  HiUserGroup,
+  HiHashtag,
+  HiAdjustmentsVertical,
+  HiBuildingOffice,
+  HiChatBubbleBottomCenterText,
+  HiPhoto,
+} from 'react-icons/hi2'
 
 const EMPTY_BUNDLE: AdminDashboardBundle = {
   summary: {
@@ -108,6 +120,72 @@ export function AdminDashboardPage() {
             </Link>
           </li>
           <li>
+            <Link to="/admin/contests" className="admin-dashboard-card">
+              <span className="admin-dashboard-card-icon" aria-hidden>
+                <HiClipboardDocumentList />
+              </span>
+              <div className="admin-dashboard-card-body">
+                <h2>공모전 게시글</h2>
+                <p>contests 목록 수정·삭제</p>
+              </div>
+            </Link>
+          </li>
+          <li>
+            <Link to="/admin/hashtags" className="admin-dashboard-card">
+              <span className="admin-dashboard-card-icon" aria-hidden>
+                <HiHashtag />
+              </span>
+              <div className="admin-dashboard-card-body">
+                <h2>해시태그</h2>
+                <p>프로필 태그 목록 등록·수정·삭제</p>
+              </div>
+            </Link>
+          </li>
+          <li>
+            <Link to="/admin/level" className="admin-dashboard-card">
+              <span className="admin-dashboard-card-icon" aria-hidden>
+                <HiAdjustmentsVertical />
+              </span>
+              <div className="admin-dashboard-card-body">
+                <h2>레벨·티어</h2>
+                <p>level_config·level_tiers 밸런스 편집</p>
+              </div>
+            </Link>
+          </li>
+          <li>
+            <Link to="/admin/startup" className="admin-dashboard-card">
+              <span className="admin-dashboard-card-icon" aria-hidden>
+                <HiBuildingOffice />
+              </span>
+              <div className="admin-dashboard-card-body">
+                <h2>창업 허브</h2>
+                <p>지원사업·공고 데이터 및 크롤 페이지</p>
+              </div>
+            </Link>
+          </li>
+          <li>
+            <Link to="/admin/comments" className="admin-dashboard-card">
+              <span className="admin-dashboard-card-icon" aria-hidden>
+                <HiChatBubbleBottomCenterText />
+              </span>
+              <div className="admin-dashboard-card-body">
+                <h2>댓글 관리</h2>
+                <p>공모전·창업 댓글 삭제</p>
+              </div>
+            </Link>
+          </li>
+          <li>
+            <Link to="/admin/representative-works" className="admin-dashboard-card">
+              <span className="admin-dashboard-card-icon" aria-hidden>
+                <HiPhoto />
+              </span>
+              <div className="admin-dashboard-card-body">
+                <h2>대표작품</h2>
+                <p>마이페이지 대표 슬롯 정리</p>
+              </div>
+            </Link>
+          </li>
+          <li>
             <Link to="/admin/notices" className="admin-dashboard-card">
               <span className="admin-dashboard-card-icon" aria-hidden>
                 <HiMegaphone />
@@ -126,6 +204,17 @@ export function AdminDashboardPage() {
               <div className="admin-dashboard-card-body">
                 <h2>건의·신고</h2>
                 <p>접수 목록 확인 및 관리자 답변</p>
+              </div>
+            </Link>
+          </li>
+          <li>
+            <Link to="/admin/team-settings" className="admin-dashboard-card">
+              <span className="admin-dashboard-card-icon" aria-hidden>
+                <HiUserGroup />
+              </span>
+              <div className="admin-dashboard-card-body">
+                <h2>팀 설정</h2>
+                <p>연도별 팀 프로필·목표·달성액·마감 관리</p>
               </div>
             </Link>
           </li>

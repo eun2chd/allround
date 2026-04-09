@@ -197,6 +197,14 @@ export async function deleteFeedback(
   return { success: true }
 }
 
+/** 관리자 목록/상세: 본인 여부와 무관하게 삭제 (RLS로 admin만 허용) */
+export async function deleteFeedbackAsAdmin(id: string): Promise<{ success: boolean; error?: string }> {
+  const sb = getSupabase()
+  const { error } = await sb.from('feedback_requests').delete().eq('id', id)
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
 export async function submitFeedbackAdminReply(
   id: string,
   adminReply: string,

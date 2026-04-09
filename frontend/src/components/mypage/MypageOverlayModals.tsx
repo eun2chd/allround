@@ -68,17 +68,8 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
   if (!openId) return null
 
   const wrap = (body: React.ReactNode, wide = false) => (
-    <div
-      className="modal-overlay active"
-      role="presentation"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-      onKeyDown={(e) => e.key === 'Escape' && onClose()}
-    >
-      <div
-        className={'modal-box' + (wide ? ' modal-profile-theme' : '')}
-        role="dialog"
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div className="modal-overlay active" role="presentation">
+      <div className={'modal-box' + (wide ? ' modal-profile-theme' : '')} role="dialog">
         {body}
       </div>
     </div>

@@ -11,6 +11,9 @@ export type ParticipationRow = {
   has_detail?: boolean
   participation_status?: string | null
   award_status?: string | null
+  /** contest_participation: 개인/팀 */
+  participation_mode?: 'individual' | 'team'
+  team_name?: string | null
 }
 
 /** `/api/user/participation` 과 유사 (UI에 필요한 필드 위주) */
@@ -28,7 +31,7 @@ export async function fetchUserParticipationPage(opts: {
   const userId = opts.profileId
   let q = sb
     .from('contest_participation')
-    .select('source, contest_id, status, updated_at')
+    .select('source, contest_id, status, updated_at, participation_type, team_id')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
   if (opts.filter !== 'all') q = q.eq('status', opts.filter)
@@ -48,6 +51,18 @@ export async function fetchUserParticipationPage(opts: {
       participation_status: d.participation_status as string | null | undefined,
       award_status: d.award_status as string | null | undefined,
     })
+  }
+
+  const teamIdSet = new Set<string>()
+  for (const p of rows || []) {
+    const pt = String((p as { participation_type?: string }).participation_type ?? '').trim()
+    const tid = (p as { team_id?: string | null }).team_id
+    if (pt === 'team' && tid) teamIdSet.add(String(tid))
+  }
+  const teamNameById: Record<string, string> = {}
+  if (teamIdSet.size) {
+    const { data: trows } = await sb.from('contest_team').select('id, team_name').in('id', [...teamIdSet])
+    for (const t of trows || []) teamNameById[String(t.id)] = String(t.team_name || '')
   }
 
   const list = [...(rows || [])]
@@ -74,6 +89,10 @@ export async function fetchUserParticipationPage(opts: {
       .maybeSingle()
     const dkey = `${src}:${cid}`
     const detail = detailByKey.get(dkey)
+    const pt = String((p as { participation_type?: string }).participation_type ?? 'individual').trim()
+    const tid = (p as { team_id?: string | null }).team_id
+    const mode: 'individual' | 'team' = pt === 'team' && tid ? 'team' : 'individual'
+    const tn = mode === 'team' && tid ? teamNameById[String(tid)] || null : null
     result.push({
       source: src,
       contest_id: cid,
@@ -85,6 +104,8 @@ export async function fetchUserParticipationPage(opts: {
       has_detail: detail != null,
       participation_status: detail?.participation_status ?? null,
       award_status: detail?.award_status ?? null,
+      participation_mode: String(p.status || '') === 'participate' ? mode : undefined,
+      team_name: String(p.status || '') === 'participate' ? tn : null,
     })
   }
   return { success: true, data: result, total }

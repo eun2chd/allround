@@ -33,6 +33,21 @@ function str(val: unknown) {
   return t || '-'
 }
 
+function formatListTime(iso: unknown): string {
+  if (iso == null || iso === '') return '-'
+  try {
+    const d = new Date(String(iso))
+    if (Number.isNaN(d.getTime())) return '-'
+    const m = String(d.getMonth() + 1).padStart(2, '0')
+    const day = String(d.getDate()).padStart(2, '0')
+    const h = String(d.getHours()).padStart(2, '0')
+    const min = String(d.getMinutes()).padStart(2, '0')
+    return `${m}/${day} ${h}:${min}`
+  } catch {
+    return '-'
+  }
+}
+
 function loadDismissedInit(): Set<string> {
   try {
     const raw = sessionStorage.getItem(STORAGE_DISMISSED)
@@ -83,7 +98,12 @@ function StartupCommentsBlock({
   }, [load])
 
   const submit = async () => {
-    const r = await postStartupComment(itemType, itemId, text)
+    const body = text.trim()
+    if (!body) {
+      showToast('글을 작성해주세요.', 'error')
+      return
+    }
+    const r = await postStartupComment(itemType, itemId, body)
     if (r.success) {
       setText('')
       void load()
@@ -299,8 +319,8 @@ export function StartupHubSection({ currentUserId }: HubProps) {
     }
   }
 
-  const colSpanBiz = 5
-  const colSpanAnn = 4
+  const colSpanBiz = 6
+  const colSpanAnn = 5
 
   return (
     <div id="pageWavity">
@@ -368,16 +388,17 @@ export function StartupHubSection({ currentUserId }: HubProps) {
             검색
           </button>
         </div>
-        <div className="card">
-          <div className="table-wrap">
-            <table>
+        <div className="card startup-hub-table-card">
+          <div className="table-wrap startup-hub-table-wrap">
+            <table className="startup-hub-table">
               <thead>
                 <tr>
-                  <th style={{ minWidth: 50 }}>No</th>
-                  <th style={{ minWidth: 80 }}>내용확인</th>
-                  <th style={{ minWidth: 80 }}>사업연도</th>
-                  <th style={{ minWidth: 280 }}>지원사업명</th>
-                  <th style={{ minWidth: 80 }}>상세</th>
+                  <th style={{ minWidth: 40 }}>No</th>
+                  <th style={{ minWidth: 56 }}>사업연도</th>
+                  <th className="startup-hub-th-title">지원사업명</th>
+                  <th style={{ minWidth: 88 }}>생성시간</th>
+                  <th style={{ minWidth: 88 }}>업데이트시간</th>
+                  <th className="startup-hub-th-menu">원문보기</th>
                 </tr>
               </thead>
               <tbody
@@ -427,7 +448,20 @@ export function StartupHubSection({ currentUserId }: HubProps) {
                           }}
                         >
                           <td>{no}</td>
-                          <td>
+                          <td>{str(row.biz_yr)}</td>
+                          <td className="title-cell startup-hub-title-cell" style={{ textAlign: 'left' }} title={title}>
+                            <span className="title-cell__text">{truncate(title, 78)}</span>
+                          </td>
+                          <td>{formatListTime(row.created_at)}</td>
+                          <td>{formatListTime(row.updated_at)}</td>
+                          <td className="startup-hub-menu-cell" onClick={(e) => e.stopPropagation()}>
+                            {url ? (
+                              <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                                원문보기
+                              </a>
+                            ) : (
+                              <span className="startup-hub-menu-muted">-</span>
+                            )}
                             {checked ? (
                               <button type="button" className="btn btn-action" disabled title="이미 확인함">
                                 확인완료
@@ -446,25 +480,11 @@ export function StartupHubSection({ currentUserId }: HubProps) {
                               </button>
                             )}
                           </td>
-                          <td>{str(row.biz_yr)}</td>
-                          <td className="title-cell" style={{ textAlign: 'left' }} title={title}>
-                            <span className="title-cell__text">{truncate(title, 80)}</span>
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            {url ? (
-                              <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-                                상세
-                              </a>
-                            ) : (
-                              '-'
-                            )}
-                          </td>
                         </tr>
                         {expanded ? (
                           <tr className="startup-business-detail-row" data-for-id={id}>
                             <td colSpan={colSpanBiz}>
-                              <div className="startup-business-detail-inner">
-                                <div className="startup-detail-body">
+                              <div className="startup-hub-detail-body-wrap">
                                 <div className="detail-block">
                                   <div className="detail-label">지원대상</div>
                                   <div className="detail-value">{str(row.target)}</div>
@@ -481,15 +501,14 @@ export function StartupHubSection({ currentUserId }: HubProps) {
                                   <div className="detail-label">지원사업소개</div>
                                   <div className="detail-value">{str(row.intrd)}</div>
                                 </div>
-                                </div>
-                                <StartupCommentsBlock
-                                  itemType="business"
-                                  itemId={id}
-                                  refreshBust={commentsBust}
-                                  showToast={showToast}
-                                  currentUserId={currentUserId}
-                                />
                               </div>
+                              <StartupCommentsBlock
+                                itemType="business"
+                                itemId={id}
+                                refreshBust={commentsBust}
+                                showToast={showToast}
+                                currentUserId={currentUserId}
+                              />
                             </td>
                           </tr>
                         ) : null}
@@ -542,15 +561,16 @@ export function StartupHubSection({ currentUserId }: HubProps) {
             검색
           </button>
         </div>
-        <div className="card">
-          <div className="table-wrap">
-            <table>
+        <div className="card startup-hub-table-card">
+          <div className="table-wrap startup-hub-table-wrap">
+            <table className="startup-hub-table">
               <thead>
                 <tr>
-                  <th style={{ minWidth: 50 }}>No</th>
-                  <th style={{ minWidth: 80 }}>내용확인</th>
-                  <th style={{ minWidth: 280 }}>공고명</th>
-                  <th style={{ minWidth: 80 }}>상세</th>
+                  <th style={{ minWidth: 40 }}>No</th>
+                  <th className="startup-hub-th-title">공고명</th>
+                  <th style={{ minWidth: 88 }}>생성시간</th>
+                  <th style={{ minWidth: 88 }}>업데이트시간</th>
+                  <th className="startup-hub-th-menu">원문보기</th>
                 </tr>
               </thead>
               <tbody
@@ -600,7 +620,19 @@ export function StartupHubSection({ currentUserId }: HubProps) {
                           }}
                         >
                           <td>{no}</td>
-                          <td>
+                          <td className="title-cell startup-hub-title-cell" style={{ textAlign: 'left' }} title={title}>
+                            <span className="title-cell__text">{truncate(title, 78)}</span>
+                          </td>
+                          <td>{formatListTime(row.created_at)}</td>
+                          <td>{formatListTime(row.updated_at)}</td>
+                          <td className="startup-hub-menu-cell" onClick={(e) => e.stopPropagation()}>
+                            {url ? (
+                              <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+                                원문보기
+                              </a>
+                            ) : (
+                              <span className="startup-hub-menu-muted">-</span>
+                            )}
                             {checked ? (
                               <button type="button" className="btn btn-action" disabled title="이미 확인함">
                                 확인완료
@@ -619,24 +651,11 @@ export function StartupHubSection({ currentUserId }: HubProps) {
                               </button>
                             )}
                           </td>
-                          <td className="title-cell" style={{ textAlign: 'left' }} title={title}>
-                            <span className="title-cell__text">{truncate(title, 80)}</span>
-                          </td>
-                          <td onClick={(e) => e.stopPropagation()}>
-                            {url ? (
-                              <a href={url} target="_blank" rel="noopener noreferrer" className="btn btn-primary">
-                                상세
-                              </a>
-                            ) : (
-                              '-'
-                            )}
-                          </td>
                         </tr>
                         {expanded ? (
                           <tr className="startup-announcements-detail-row" data-for-id={id}>
                             <td colSpan={colSpanAnn}>
-                              <div className="startup-announcements-detail-inner">
-                                <div className="startup-detail-body">
+                              <div className="startup-hub-detail-body-wrap">
                                 <div className="detail-block">
                                   <div className="detail-label">공고명</div>
                                   <div className="detail-value">{str(row.title)}</div>
@@ -653,15 +672,14 @@ export function StartupHubSection({ currentUserId }: HubProps) {
                                   <div className="detail-label">대상연령</div>
                                   <div className="detail-value">{str(row.biz_trgt_age)}</div>
                                 </div>
-                                </div>
-                                <StartupCommentsBlock
-                                  itemType="announcement"
-                                  itemId={id}
-                                  refreshBust={commentsBust}
-                                  showToast={showToast}
-                                  currentUserId={currentUserId}
-                                />
                               </div>
+                              <StartupCommentsBlock
+                                itemType="announcement"
+                                itemId={id}
+                                refreshBust={commentsBust}
+                                showToast={showToast}
+                                currentUserId={currentUserId}
+                              />
                             </td>
                           </tr>
                         ) : null}

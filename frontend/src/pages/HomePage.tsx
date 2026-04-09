@@ -42,7 +42,7 @@ export function HomePage() {
 
   return (
     <>
-      <div className="container">
+      <div className="container home-container">
         {hubTab === 'allyoung' ? (
           <ContestAllyoungSection me={me} showToast={showToast} loadingOverlay={loadingOverlay} />
         ) : (

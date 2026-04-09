@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 
-const INTERVAL_SEC = 5 * 60
-const STORAGE_KEY = 'countdown_next_refresh_contest_allyoung'
+const INTERVAL_SEC = 30 * 60
+/** 키 변경 시 이전 주기(5분) 마감값과 섞이지 않음 */
+const STORAGE_KEY = 'countdown_next_refresh_contest_allyoung_30m'
 
 function formatMmSs(seconds: number) {
   const m = Math.floor(Math.max(0, seconds) / 60)
@@ -61,12 +62,12 @@ function snapshot(): { countdownText: string; dateTimeText: string } {
   const nextMs = ensureDeadlineMs()
   const remaining = Math.max(0, Math.ceil((nextMs - Date.now()) / 1000))
   return {
-    countdownText: `(다음 갱신까지 ${formatMmSs(remaining)})`,
+    countdownText: `(데이터는 30분마다 업데이트·다음 갱신까지 ${formatMmSs(remaining)})`,
     dateTimeText: formatDateTimeKo(),
   }
 }
 
-/** 5분 주기·다음 갱신 시각을 localStorage에 두어 탭/페이지 이동 후에도 타이머가 이어짐 */
+/** 30분 주기·다음 갱신 시각을 localStorage에 두어 탭/페이지 이동 후에도 타이머가 이어짐 */
 export function useContestRefreshCountdown() {
   const [{ countdownText, dateTimeText }, setTexts] = useState(snapshot)
 

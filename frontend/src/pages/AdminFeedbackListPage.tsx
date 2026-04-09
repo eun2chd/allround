@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAdminOutletContext } from '../components/admin/adminLayoutContext'
+import { useConfirm } from '../context/ConfirmContext'
 import { appToast } from '../lib/appToast'
 import {
+  deleteFeedbackAsAdmin,
   FEEDBACK_STATUS_LABEL,
   fetchFeedbackList,
   type FeedbackCategory,
@@ -29,6 +31,7 @@ function statusLabel(s: string): string {
 export function AdminFeedbackListPage() {
   const ctx = useAdminOutletContext()
   const me = ctx?.me
+  const confirm = useConfirm()
 
   const [category, setCategory] = useState<'' | FeedbackCategory>('')
   const [status, setStatus] = useState<'' | FeedbackStatus>('')
@@ -59,6 +62,23 @@ export function AdminFeedbackListPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  const removeRow = async (f: FeedbackListRow) => {
+    const ok = await confirm({
+      title: '접수 삭제',
+      message: `「${f.title}」건을 삭제할까요? 삭제 후 복구할 수 없습니다.`,
+      confirmText: '삭제',
+      danger: true,
+    })
+    if (!ok) return
+    const r = await deleteFeedbackAsAdmin(f.id)
+    if (!r.success) {
+      appToast(r.error || '삭제에 실패했습니다.', 'error')
+      return
+    }
+    appToast('삭제했습니다.')
+    void load()
+  }
 
   if (!ctx || !me) {
     return null
@@ -151,6 +171,9 @@ export function AdminFeedbackListPage() {
                   <th scope="col">상태</th>
                   <th scope="col">답변</th>
                   <th scope="col">접수일</th>
+                  <th scope="col" className="admin-feedback-col-actions">
+                    작업
+                  </th>
                 </tr>
               </thead>
               <tbody>
@@ -181,6 +204,15 @@ export function AdminFeedbackListPage() {
                       </td>
                       <td>{hasReply ? '등록됨' : '—'}</td>
                       <td className="admin-notice-date">{formatDate(f.created_at)}</td>
+                      <td className="admin-feedback-actions-cell">
+                        <button
+                          type="button"
+                          className="btn-secondary btn-delete"
+                          onClick={() => void removeRow(f)}
+                        >
+                          삭제
+                        </button>
+                      </td>
                     </tr>
                   )
                 })}

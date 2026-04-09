@@ -34,6 +34,10 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
   const [statusMsg, setStatusMsg] = useState((profile.status_message as string) || '')
 
   useEffect(() => {
+    setStatusMsg((profile.status_message as string) || '')
+  }, [profile.id, profile.status_message])
+
+  useEffect(() => {
     const syncTheme = () => {
       const el = document.getElementById('profileSection')
       if (!el) return
@@ -267,7 +271,19 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
             </button>
           </div>
         </div>
-      ) : null}
+      ) : (
+        <div className="profile-status-row profile-status-row--readonly">
+          <span className="status-readonly-label">상태 메시지</span>
+          <p
+            className={
+              'status-readonly-text' +
+              (!(profile.status_message as string)?.trim() ? ' is-empty' : '')
+            }
+          >
+            {(profile.status_message as string)?.trim() || '등록된 상태 메시지가 없습니다.'}
+          </p>
+        </div>
+      )}
     </section>
   )
 }
