@@ -44,7 +44,7 @@ export function MypagePage() {
   if (!userId) {
     return (
       <div className="mypage-surface">
-        <p style={{ padding: 48, textAlign: 'center' }}>잘못된 경로입니다.</p>
+        <p className="mypage-state-msg">잘못된 경로입니다.</p>
       </div>
     )
   }
@@ -52,7 +52,7 @@ export function MypagePage() {
   if (loadErr || !snapshot) {
     return (
       <div className="mypage-surface">
-        <p style={{ padding: 48, textAlign: 'center' }}>{loadErr || '로딩 중…'}</p>
+        <p className="mypage-state-msg">{loadErr || '로딩 중…'}</p>
       </div>
     )
   }

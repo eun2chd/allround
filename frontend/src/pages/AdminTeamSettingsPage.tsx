@@ -83,7 +83,7 @@ export function AdminTeamSettingsPage() {
           </div>
         </header>
 
-        <div className="admin-users-table-wrap">
+        <div className="admin-users-table-wrap admin-team-settings-table-wrap">
           {loading ? (
             <p className="admin-users-state">불러오는 중…</p>
           ) : rows.length === 0 ? (

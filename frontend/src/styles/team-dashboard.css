@@ -4,7 +4,11 @@
   max-width: 1200px;
   margin: 0 auto;
   padding: 28px 24px 56px;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px));
+  padding-bottom: max(56px, env(safe-area-inset-bottom, 0px));
   box-sizing: border-box;
+  min-width: 0;
 }
 
 .td-header {
@@ -531,6 +535,7 @@
 
 .td-ranking-table-wrap {
   overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: 12px;
   border: 1px solid #f3f4f6;
 }
@@ -574,4 +579,192 @@
 .team-dashboard-page {
   background: var(--page-tint);
   min-height: calc(100vh - var(--app-topbar-stack, 56px));
+  min-height: calc(100dvh - var(--app-topbar-stack, 56px));
+}
+
+@media (max-width: 768px) {
+  .td-grid-top {
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .td-page {
+    padding: 20px max(16px, env(safe-area-inset-left, 0px)) max(40px, env(safe-area-inset-bottom, 0px))
+      max(16px, env(safe-area-inset-right, 0px));
+  }
+
+  .td-header {
+    margin-bottom: 20px;
+  }
+
+  .td-title {
+    font-size: 1.35rem;
+    line-height: 1.25;
+  }
+
+  .td-subtitle {
+    font-size: 0.88rem;
+    max-width: none;
+    line-height: 1.5;
+  }
+
+  .td-widget {
+    padding: 16px 16px;
+    border-radius: 14px;
+  }
+
+  .td-widget-title {
+    font-size: 1rem;
+  }
+
+  .td-widget-desc {
+    margin: 6px 0 14px;
+    font-size: 0.8rem;
+  }
+
+  .td-year-row {
+    flex-wrap: wrap;
+  }
+
+  .td-year-select {
+    min-height: 40px;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  .td-team-hero {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+    margin-bottom: 18px;
+    padding-bottom: 16px;
+  }
+
+  .td-team-hero-text {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .td-team-name {
+    font-size: 1.1rem;
+    word-break: break-word;
+  }
+
+  .td-team-desc {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .td-goal-split {
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+  }
+
+  .td-goal-figures {
+    min-width: 0;
+    width: 100%;
+    text-align: center;
+  }
+
+  .td-figure-value {
+    font-size: 1.2rem;
+    justify-content: center;
+  }
+
+  .td-donut-pct {
+    font-size: 1.45rem;
+  }
+
+  .td-hint {
+    font-size: 0.82rem;
+    margin-bottom: 12px;
+    text-align: left;
+  }
+
+  .td-widget--activity .td-timeline {
+    max-height: min(52vh, 380px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-right: 6px;
+    margin-right: -4px;
+  }
+
+  .td-timeline-meta {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+  }
+
+  .td-timeline-name {
+    min-width: 0;
+    flex: 1 1 auto;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .td-timeline-link {
+    min-height: 44px;
+    box-sizing: border-box;
+    padding: 12px;
+  }
+
+  .td-timeline-title {
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+
+  .td-ranking-table th,
+  .td-ranking-table td {
+    padding: 10px 12px;
+    font-size: 0.82rem;
+  }
+
+  .td-podium-card {
+    padding: 16px 14px;
+  }
+
+  .td-podium--single {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .td-title {
+    font-size: 1.15rem;
+  }
+
+  .td-donut-wrap {
+    width: 118px;
+    height: 118px;
+  }
+
+  .td-donut-pct {
+    font-size: 1.3rem;
+  }
+
+  .td-figure-value {
+    font-size: 1.05rem;
+  }
+
+  .td-figure-label {
+    font-size: 0.7rem;
+  }
+
+  .td-podium-trophy {
+    font-size: 1.5rem;
+  }
+
+  .td-podium-card--1 .td-podium-avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .td-podium-avatar {
+    width: 64px;
+    height: 64px;
+    font-size: 1.35rem;
+  }
 }

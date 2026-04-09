@@ -105,11 +105,9 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
       </div>
       <div className="participation-list" id="participationList">
         {loading ? (
-          <div className="participation-loading" style={{ color: 'var(--gray-muted)', padding: 24, textAlign: 'center' }}>
-            불러오는 중...
-          </div>
+          <div className="participation-list-msg">불러오는 중...</div>
         ) : rows.length === 0 ? (
-          <div style={{ color: 'var(--gray-muted)', padding: 24, textAlign: 'center' }}>목록이 없습니다.</div>
+          <div className="participation-list-msg">목록이 없습니다.</div>
         ) : (
           rows.map((row, i) => {
             const src = String(row.source || '')
@@ -200,7 +198,7 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
           <button type="button" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
             이전
           </button>
-          <span style={{ padding: '0 12px' }}>
+          <span className="participation-page-indicator">
             {page} / {totalPages}
           </span>
           <button type="button" disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)}>

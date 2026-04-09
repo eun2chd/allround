@@ -691,6 +691,11 @@
   animation: badge-shine 3s ease-in-out infinite 0.5s;
 }
 .profile-section .info p { font-size: 0.9rem; color: var(--gray-muted); }
+.profile-section .profile-email-line {
+  font-size: 0.85rem;
+  margin-top: 8px;
+  word-break: break-all;
+}
 .profile-section .profile-top .profile-logout { flex-shrink: 0; margin-left: auto; }
 
 /* 레벨/EXP 바: 좌측 엠블럼(1) + 우측 성장 정보(3) */
@@ -995,13 +1000,63 @@
 }
 .btn-profile-apply:hover { background: var(--main-purple-hover, #2563eb); }
 
-/* 프로필 테마 모달 */
+/* 프로필 테마 모달 — 본문만 스크롤(모바일·데스크톱 공통) */
 .modal-box.modal-profile-theme,
 #modalProfileTheme .modal-box {
   max-width: min(1200px, 95vw);
   width: min(1200px, 95vw);
-  max-height: none;
-  overflow: visible;
+  max-height: min(90dvh, calc(100vh - 32px));
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.modal-box.modal-profile-theme .modal-header,
+#modalProfileTheme .modal-box .modal-header {
+  flex-shrink: 0;
+}
+.modal-box.modal-profile-theme .modal-body,
+#modalProfileTheme .modal-box .modal-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+}
+
+@media (max-width: 768px) {
+  .modal-box.modal-profile-theme,
+  #modalProfileTheme .modal-box {
+    max-height: min(
+      92dvh,
+      calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 20px)
+    );
+    width: calc(100vw - max(16px, env(safe-area-inset-left, 0px)) - max(16px, env(safe-area-inset-right, 0px)));
+    max-width: calc(100vw - max(16px, env(safe-area-inset-left, 0px)) - max(16px, env(safe-area-inset-right, 0px)));
+    border-radius: var(--radius-lg);
+  }
+  .modal-box.modal-profile-theme .modal-header,
+  #modalProfileTheme .modal-box .modal-header {
+    padding: 14px 16px;
+  }
+  .modal-box.modal-profile-theme .modal-header h4,
+  #modalProfileTheme .modal-box .modal-header h4 {
+    font-size: 1.02rem;
+    line-height: 1.35;
+    word-break: keep-all;
+    padding-right: 8px;
+  }
+  .modal-box.modal-profile-theme .modal-body,
+  #modalProfileTheme .modal-box .modal-body {
+    padding: 14px 16px max(18px, env(safe-area-inset-bottom, 0px));
+  }
+  .modal-box.modal-profile-theme .modal-close,
+  #modalProfileTheme .modal-box .modal-close {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 .modal-box.modal-tier-info { max-width: 560px; max-height: 85vh; overflow-y: auto; }
 .tier-desc-title { font-size: 1rem; font-weight: 700; color: var(--text-dark); margin: 20px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border-gray); }
@@ -1803,4 +1858,102 @@
 .profile-section .avatar.avatar-no-image:hover {
   border-color: #374151 !important;
   box-shadow: 0 0 12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* 마이페이지 프로필 카드 — 좁은 화면 */
+@media (max-width: 768px) {
+  .profile-section {
+    padding: 20px 16px;
+    margin-bottom: 20px;
+  }
+  .profile-section .profile-top {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+  .profile-section .avatar-wrap {
+    align-self: center;
+  }
+  .profile-section .profile-top .profile-logout {
+    margin-left: 0;
+    align-self: stretch;
+    justify-content: center;
+    box-sizing: border-box;
+  }
+  .profile-section .info h2 {
+    font-size: 1.15rem;
+    justify-content: center;
+    text-align: center;
+  }
+  .profile-section .info {
+    text-align: center;
+  }
+  .profile-section .hashtag-row,
+  .profile-section .headline-badges {
+    justify-content: center;
+  }
+  .profile-section .profile-email-line {
+    text-align: center;
+  }
+  .level-exp-row {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 12px;
+  }
+  .level-exp-info-col {
+    width: 100%;
+    align-items: center;
+  }
+  .level-tier-line {
+    justify-content: center;
+    width: 100%;
+  }
+  .level-exp-btns {
+    margin-left: 0;
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+  .level-total-exp,
+  .exp-next-hint {
+    text-align: center;
+  }
+  .exp-bar-wrap {
+    max-width: 100%;
+  }
+  .btn-tier-exp {
+    min-height: 36px;
+    padding: 6px 12px;
+  }
+  .profile-section .profile-status-row .status-row-inner {
+    flex-wrap: wrap;
+  }
+  .profile-section .profile-status-row .status-row-inner .status-input {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+  .profile-section .profile-status-row .btn-save-status,
+  .profile-section .profile-status-row .btn-clear-status {
+    flex: 1 1 auto;
+    min-height: 40px;
+  }
+  .headline-badge {
+    white-space: normal;
+    text-align: left;
+    max-width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-section .avatar {
+    width: 84px;
+    height: 84px;
+    font-size: 2rem;
+  }
+  .profile-section .info h2 {
+    font-size: 1.05rem;
+    flex-direction: column;
+    gap: 6px;
+  }
 }

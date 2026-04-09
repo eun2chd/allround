@@ -376,16 +376,16 @@ export function BookmarksPage() {
             <table className="bm-table">
               <thead>
                 <tr>
-                  <th style={{ width: 40 }} title="북마크 해제" className="bm-th-ico">
+                  <th title="북마크 해제" className="bm-th-ico bm-col-star">
                     <HiStar className="bm-th-star" aria-hidden />
                   </th>
-                  <th style={{ width: 50 }}>No</th>
-                  <th style={{ width: 70 }}>D-day</th>
-                  <th style={{ width: '28%' }}>제목</th>
-                  <th style={{ width: '18%' }}>주최/주관</th>
-                  <th style={{ width: 90 }}>카테고리</th>
-                  <th style={{ width: 70 }}>출처</th>
-                  <th style={{ width: 110 }}>폴더</th>
+                  <th className="bm-col-no">No</th>
+                  <th className="bm-col-dday">D-day</th>
+                  <th className="bm-col-title">제목</th>
+                  <th className="bm-col-host">주최/주관</th>
+                  <th className="bm-col-category">카테고리</th>
+                  <th className="bm-col-source">출처</th>
+                  <th className="bm-col-folder">폴더</th>
                 </tr>
               </thead>
               <tbody>

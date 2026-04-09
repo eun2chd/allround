@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
+import { VitePWA } from 'vite-plugin-pwa'
 
 /** 개발 서버 기동 시 터미널에 Supabase 연결 상태 출력 (브라우저 콘솔과 동일 메시지). */
 function supabaseDevTerminalLog(env: Record<string, string>): Plugin {
@@ -47,6 +48,54 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   return {
     /* Tailwind는 번들 파이프라인 앞쪽에서 두는 편이 안전 (CSS 후처리·스캔) */
-    plugins: [tailwindcss(), react(), supabaseDevTerminalLog(env)],
+    plugins: [
+      tailwindcss(),
+      react(),
+      supabaseDevTerminalLog(env),
+      VitePWA({
+        registerType: 'autoUpdate',
+        includeAssets: ['favicon.svg', 'favicon.png', 'logo.png'],
+        manifest: {
+          name: 'allround',
+          short_name: 'allround',
+          description: '공모전·창업 허브',
+          theme_color: '#1e293b',
+          background_color: '#f1f5f9',
+          display: 'standalone',
+          orientation: 'portrait-primary',
+          start_url: '/',
+          lang: 'ko',
+          scope: '/',
+          icons: [
+            {
+              src: '/logo.png',
+              sizes: '192x192',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: '/logo.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'any',
+            },
+            {
+              src: '/logo.png',
+              sizes: '512x512',
+              type: 'image/png',
+              purpose: 'maskable',
+            },
+          ],
+        },
+        workbox: {
+          globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff2}'],
+          navigateFallback: '/index.html',
+          navigateFallbackDenylist: [/^\/api\//],
+        },
+        devOptions: {
+          enabled: false,
+        },
+      }),
+    ],
   }
 })

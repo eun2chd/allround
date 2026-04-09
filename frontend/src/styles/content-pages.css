@@ -4,7 +4,7 @@
 .content-page {
     max-width: 900px;
     margin: 0 auto;
-    padding: 0 16px 48px;
+    padding: 0 clamp(12px, 3vw, 20px) 48px;
     font-family: var(--font, 'Pretendard', sans-serif);
   }
   .content-page--wide {
@@ -93,6 +93,7 @@
     font-size: 1rem;
     font-weight: 700;
     flex: 1;
+    min-width: 0;
     text-align: left;
   }
   .notice-pinned-tag {
@@ -122,6 +123,141 @@
     text-align: center;
     padding: 60px 20px;
     color: var(--gray-muted);
+  }
+
+  /* 공지사항 — 모바일·좁은 화면 */
+  @media (max-width: 768px) {
+    .content-route-wrap.content-route-wrap--paper {
+      margin: 0;
+      padding: 18px max(20px, env(safe-area-inset-left, 0px)) 40px max(20px, env(safe-area-inset-right, 0px));
+      padding-top: max(18px, env(safe-area-inset-top, 0px));
+    }
+
+    .participation-page,
+    .content-route-wrap:not(.content-route-wrap--paper) {
+      padding: 20px max(20px, env(safe-area-inset-left, 0px)) 40px max(20px, env(safe-area-inset-right, 0px));
+    }
+
+    .content-route-wrap.content-route-wrap--paper .content-page {
+      padding: 0 0 32px;
+    }
+
+    .content-page-header {
+      margin-bottom: 18px;
+    }
+
+    .content-page-header h1 {
+      font-size: 1.25rem;
+    }
+
+    .notice-list-box {
+      gap: 12px;
+    }
+
+    .notice-item-card {
+      padding: 14px 16px;
+      border-radius: 10px;
+    }
+
+    .notice-item-head {
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 8px;
+    }
+
+    .notice-item-title {
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+
+    .notice-item-meta {
+      font-size: 0.8rem;
+      line-height: 1.45;
+      word-break: break-word;
+    }
+
+    .notice-item-preview {
+      font-size: 0.86rem;
+      margin-top: 10px;
+    }
+
+    .notice-state-msg {
+      padding: 40px 16px;
+      font-size: 0.92rem;
+    }
+
+    .cp-modal-overlay {
+      align-items: center;
+      padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+        max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+    }
+
+    .cp-modal {
+      max-height: min(88dvh, calc(100vh - 24px));
+      border-radius: 12px;
+    }
+
+    .cp-modal-header {
+      padding: 16px 18px;
+      align-items: flex-start;
+      gap: 12px;
+    }
+
+    .cp-modal-header h2 {
+      font-size: 1.05rem;
+      line-height: 1.4;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .cp-modal-body {
+      padding: 18px;
+    }
+
+    .cp-detail-meta {
+      font-size: 0.8rem;
+      margin-bottom: 12px;
+      word-break: break-word;
+    }
+
+    .cp-detail-body {
+      font-size: 0.9rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .content-page-header h1 {
+      font-size: 1.1rem;
+    }
+
+    .notice-item-card {
+      padding: 12px 14px;
+    }
+
+    .notice-item-head {
+      gap: 6px;
+    }
+
+    .notice-pinned-tag {
+      flex-shrink: 0;
+    }
+
+    .cp-modal-header {
+      padding: 14px 14px;
+    }
+
+    .cp-modal-header h2 {
+      font-size: 0.98rem;
+    }
+
+    .cp-modal-body {
+      padding: 14px;
+    }
+
+    .cp-modal-close {
+      min-width: 40px;
+      min-height: 40px;
+    }
   }
 
   /* 모달 공통 */
@@ -383,20 +519,25 @@
     font-weight: 500;
   }
 
-  /* 참여현황 · 공지 · 건의 — 네비 하단과 본문 사이 여백 */
+  /* 참여현황 · 공지 · 건의 — 네비 하단과 본문 사이 여백 (양옆 화면에 붙지 않게 inset) */
   .participation-page,
   .content-route-wrap {
     background: #fff;
-    margin: 0 -16px;
-    padding: 24px 16px 48px;
+    margin: 0;
+    padding: 24px clamp(18px, 4vw, 28px) 48px;
+    padding-left: max(clamp(18px, 4vw, 28px), env(safe-area-inset-left, 0px));
+    padding-right: max(clamp(18px, 4vw, 28px), env(safe-area-inset-right, 0px));
     min-height: 40vh;
+    box-sizing: border-box;
   }
 
   /* 일반 공지·건의: 본문 전체 흰 배경 통일 */
   .content-route-wrap.content-route-wrap--paper {
     background: #ffffff;
-    margin: 0 -16px;
-    padding: 24px 16px 48px;
+    margin: 0;
+    padding: 24px clamp(18px, 4vw, 28px) 48px;
+    padding-left: max(clamp(18px, 4vw, 28px), env(safe-area-inset-left, 0px));
+    padding-right: max(clamp(18px, 4vw, 28px), env(safe-area-inset-right, 0px));
     min-height: calc(100vh - var(--app-topbar-stack, 56px) - 40px);
     box-sizing: border-box;
     flex: 1;
@@ -432,6 +573,22 @@
     color: var(--gray-muted);
     margin-top: 8px;
   }
+  .participation-page-header {
+    border-bottom: 1px solid var(--border-gray);
+    padding-bottom: 20px;
+  }
+  .member-name-block {
+    min-width: 0;
+  }
+  .contest-detail-tag {
+    font-weight: 600;
+  }
+  .contest-detail-tag--registered {
+    color: var(--main-purple);
+  }
+  .contest-detail-tag--unregistered {
+    color: var(--gray-muted);
+  }
   .member-grid {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -442,9 +599,37 @@
       grid-template-columns: repeat(2, 1fr);
     }
   }
-  @media (max-width: 640px) {
+  @media (max-width: 768px) {
     .member-grid {
       grid-template-columns: 1fr;
+      gap: 16px;
+    }
+    .participation-page .page-desc {
+      font-size: 0.85rem;
+      line-height: 1.5;
+    }
+    .member-card {
+      overflow: visible;
+    }
+    .member-card-header {
+      padding: 16px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      gap: 12px;
+    }
+    .member-contests {
+      padding: 14px;
+      max-height: min(40vh, 320px);
+    }
+    .contest-item-link {
+      padding: 12px 14px;
+      min-height: 48px;
+      box-sizing: border-box;
+    }
+    .contest-item-meta2 {
+      line-height: 1.45;
+      word-break: break-word;
+      overflow-wrap: anywhere;
     }
   }
   .member-card {
@@ -559,6 +744,7 @@
   /* 관리자 앱 루트 (홈 MainLayout과 완전 분리) */
   .admin-app-root {
     color-scheme: dark;
+    --admin-topbar-height: 56px;
 
     /* 탑바 아래 영역을 뷰포트에 맞춰 스크롤을 본문으로만 가두기 */
     min-height: 100vh;
@@ -607,19 +793,21 @@
   }
 
   .admin-app-topbar-inner {
-    height: 56px;
+    height: var(--admin-topbar-height, 56px);
     max-width: 100%;
     margin: 0 auto;
-    padding: 0 20px;
+    padding: 0 max(16px, env(safe-area-inset-right, 0px)) 0 max(16px, env(safe-area-inset-left, 0px));
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 16px;
+    gap: 10px;
     box-sizing: border-box;
   }
 
   .admin-app-topbar-title {
     margin: 0;
+    flex: 1;
+    min-width: 0;
     font-size: 1.05rem;
     font-weight: 500;
     color: #fff;
@@ -730,13 +918,30 @@
     font-weight: 500;
     font-family: inherit;
     cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+  }
+
+  .admin-app-topbar-menu-btn--compact {
+    min-width: 44px;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  .admin-app-topbar-menu-ico {
+    width: 1.45rem;
+    height: 1.45rem;
+    flex-shrink: 0;
   }
 
   .admin-app-topbar-dropdown-menu {
     position: absolute;
     top: calc(100% + 8px);
     right: 0;
-    min-width: 140px;
+    min-width: 188px;
     padding: 4px 0;
     background: var(--admin-bg-elevated);
     border: 1px solid var(--admin-border);
@@ -776,6 +981,42 @@
     color: #f87171;
   }
 
+  .admin-app-topbar-dropdown-item--with-ico {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .admin-app-topbar-dropdown-ico {
+    width: 1.1rem;
+    height: 1.1rem;
+    flex-shrink: 0;
+    opacity: 0.9;
+  }
+
+  a.admin-app-topbar-dropdown-item {
+    text-decoration: none;
+    box-sizing: border-box;
+  }
+
+  .admin-app-topbar-dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+  }
+
+  .admin-app-topbar-dropdown-item-danger:hover {
+    background: rgba(248, 113, 113, 0.14);
+  }
+
+  .admin-app-topbar-dropdown-sep {
+    height: 1px;
+    margin: 6px 10px;
+    background: var(--admin-border);
+  }
+
+  .admin-app-topbar-inner--compact .admin-app-topbar-actions {
+    gap: 6px;
+  }
+
   @media (max-width: 640px) {
     .admin-app-topbar-nick {
       display: none;
@@ -795,6 +1036,11 @@
     background: var(--admin-bg-root);
     color: #fff;
     font-weight: 500;
+  }
+
+  /* 데스크톱: 드로어 백드롭 숨김 (1024px 이하에서만 표시) */
+  .admin-shell-nav-backdrop {
+    display: none;
   }
 
   /* 관리자 내 모든 테이블: home-page 등 전역 `tr:hover td` 호버 배경 제거 */
@@ -1557,6 +1803,147 @@
     .admin-shell .admin-notices-header-actions {
       width: 100%;
       justify-content: flex-start;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-users-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table {
+      display: block;
+      width: 100%;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody td:nth-child(1)::before {
+      content: 'No';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody td:nth-child(2)::before {
+      content: '태그';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody td:nth-child(3)::before {
+      content: '카테고리';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody td:nth-child(4)::before {
+      content: '정렬';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody td:nth-child(5)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-hashtags-table tbody td:nth-child(4) {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-notices-row-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-notices-row-actions .btn-secondary,
+    .admin-shell .admin-hashtags-page .admin-notices-row-actions .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+      text-align: center;
+    }
+
+    .admin-shell .admin-hashtags-page .cp-modal {
+      width: min(100%, 520px);
+      max-width: calc(100vw - 32px);
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-hashtags-page .cp-modal-footer {
+      flex-wrap: wrap;
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .admin-shell .admin-hashtags-page .cp-modal-footer .btn-secondary,
+    .admin-shell .admin-hashtags-page .cp-modal-footer .btn-write {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
     }
   }
 
@@ -2551,6 +2938,65 @@
     color: rgba(255, 255, 255, 0.45);
   }
 
+  @media (max-width: 520px) {
+    .admin-shell .pagination {
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 8px;
+      padding: 10px max(4px, env(safe-area-inset-left)) 10px max(4px, env(safe-area-inset-right));
+    }
+
+    .admin-shell .pagination > button.pagination-arrow:first-of-type,
+    .admin-shell .pagination > button.pagination-arrow:last-of-type {
+      display: none;
+    }
+
+    .admin-shell .pagination-numbers {
+      flex: 1 1 auto;
+      min-width: 0;
+      max-width: 100%;
+      overflow-x: auto;
+      overscroll-behavior-x: contain;
+      flex-wrap: nowrap;
+      justify-content: center;
+      gap: 6px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      padding: 2px 0;
+    }
+
+    .admin-shell .pagination-numbers::-webkit-scrollbar {
+      display: none;
+    }
+
+    .admin-shell .pagination button {
+      min-width: 32px;
+      min-height: 40px;
+      font-size: 0.84rem;
+    }
+
+    .admin-shell .pagination-arrow {
+      min-width: 38px;
+      min-height: 40px;
+    }
+  }
+
+  @media (max-width: 380px) {
+    .admin-shell .pagination {
+      gap: 6px;
+    }
+
+    .admin-shell .pagination-numbers {
+      gap: 4px;
+    }
+
+    .admin-shell .pagination button {
+      min-width: 30px;
+      min-height: 38px;
+      font-size: 0.8rem;
+    }
+  }
+
   .admin-shell .admin-exp-inline-code {
     font-size: 0.82em;
     padding: 2px 6px;
@@ -2809,37 +3255,2406 @@
     word-break: break-word;
   }
 
-  @media (max-width: 900px) {
+  /* 관리자 — 좁은 화면: 탑바는 알림 + 메뉴(드롭다운), 사이드 드로어, 본문 전체 너비 */
+  @media (max-width: 1024px) {
     .admin-shell {
-      flex-direction: column;
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
+      position: relative;
+    }
+
+    .admin-shell-nav-backdrop {
+      display: none;
+      position: fixed;
+      top: var(--admin-topbar-height, 56px);
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 99;
+      margin: 0;
+      padding: 0;
+      border: none;
+      background: rgba(0, 0, 0, 0.52);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .admin-shell--nav-open .admin-shell-nav-backdrop {
+      display: block;
     }
 
     .admin-shell-sidenav {
-      width: 100%;
-      align-self: stretch;
-      max-height: none;
-      border-right: none;
-      border-bottom: 1px solid var(--admin-border);
+      position: fixed;
+      top: var(--admin-topbar-height, 56px);
+      left: 0;
+      bottom: 0;
+      width: min(290px, 90vw);
+      z-index: 100;
+      transform: translate3d(-100%, 0, 0);
+      transition: transform 0.22s ease;
+      box-shadow: none;
+      border-right: 1px solid var(--admin-border);
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-shell--nav-open .admin-shell-sidenav {
+      transform: translate3d(0, 0, 0);
+      box-shadow: 8px 0 36px rgba(0, 0, 0, 0.45);
     }
 
     .admin-shell-sidenav-nav {
-      flex-direction: row;
-      flex-wrap: wrap;
-      padding-bottom: 10px;
-      overflow-y: visible;
-    }
-
-    .admin-shell-sidenav-foot {
-      border-top: none;
-      padding-top: 0;
-    }
-
-    .admin-shell-body {
       flex: 1;
       min-height: 0;
       overflow-y: auto;
+    }
+
+    .admin-shell .content-route-wrap {
+      padding: 14px max(12px, env(safe-area-inset-left, 0px)) 32px max(12px, env(safe-area-inset-right, 0px));
+    }
+
+    .admin-shell .content-page-header,
+    .admin-shell .content-page-header.admin-users-header,
+    .admin-shell .content-page-header.admin-user-detail-header,
+    .admin-shell .content-page-header.admin-dashboard-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+    }
+
+    .admin-shell .admin-user-detail-header-actions {
+      width: 100%;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+    }
+
+    .admin-shell .admin-dashboard-header {
+      margin-bottom: 20px;
+    }
+
+    .admin-shell .admin-dashboard-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .admin-shell .admin-dash-stat-grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .admin-shell .admin-dash-chart-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .admin-shell .admin-users-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .admin-shell .admin-users-search-label {
+      width: 100%;
+    }
+
+    .admin-shell .admin-users-search-input {
+      width: 100%;
+      max-width: none;
+    }
+
+    .admin-shell .admin-contests-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-contests-search {
+      max-width: none;
+      width: 100%;
+    }
+
+    .admin-shell .admin-contests-search-input {
+      max-width: none;
+      width: 100%;
+    }
+
+    /* 관리자 — 공모전 /admin/contests */
+    .admin-shell .admin-contests-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-contests-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-contests-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-contests-page .admin-notices-header-actions {
+      flex-direction: column;
+      align-items: stretch;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: none;
+      flex-shrink: 1;
+    }
+
+    .admin-shell .admin-contests-page .admin-notices-header-actions .btn-secondary,
+    .admin-shell .admin-contests-page .admin-notices-header-actions .btn-write {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-filter {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-filter .admin-exp-select {
+      max-width: none;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-search {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-search .btn-secondary {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    /* 관리자 — 공지사항 /admin/notices */
+    .admin-shell .admin-notices-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-notices-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-notices-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-header-actions {
+      flex-direction: column;
+      align-items: stretch;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: none;
+      flex-shrink: 1;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-header-actions .btn-secondary,
+    .admin-shell .admin-notices-page .admin-notices-header-actions .btn-write {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-feedback-filters {
+      gap: 12px;
+    }
+
+    /* 건의·신고 목록 /admin/feedback */
+    .admin-shell .admin-feedback-list-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-feedback-list-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-feedback-list-page .content-page-header .btn-secondary {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-filter-btns button {
+      min-height: 40px;
+      padding: 10px 14px;
+    }
+
+    /* 팀 설정 /admin/team-settings */
+    .admin-shell .admin-team-settings-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-dashboard-lead code {
+      word-break: break-all;
+    }
+
+    .admin-shell .admin-team-settings-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-notices-header-actions {
+      flex-direction: column;
+      align-items: stretch;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: none;
+      flex-shrink: 1;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-notices-header-actions .btn-secondary,
+    .admin-shell .admin-team-settings-page .admin-notices-header-actions .btn-write {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-year-modal .admin-exp-select,
+    .admin-shell .admin-team-settings-page .admin-team-year-modal .admin-team-year-select {
+      max-width: none;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    /* 창업 허브 /admin/startup */
+    .admin-shell .admin-startup-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-startup-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-startup-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-startup-page .admin-users-toolbar.admin-exp-list-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .admin-shell .admin-startup-page .admin-users-toolbar .admin-users-search-input {
+      width: 100%;
+      max-width: none;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-startup-page .admin-users-toolbar .btn-secondary {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-crawl-panel .admin-exp-manual-form {
+      max-width: none;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 16px 14px;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-crawl-panel .admin-exp-manual-form .btn-secondary {
+      width: 100%;
+      min-height: 44px;
+    }
+
+    /* 댓글 관리 /admin/comments */
+    .admin-shell .admin-comments-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-comments-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-comments-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-comments-page .content-page-header .btn-secondary {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    /* 대표작품 관리 /admin/representative-works */
+    .admin-shell .admin-repworks-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-repworks-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-repworks-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-repworks-page .content-page-header .btn-secondary {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-exp-tabs {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      gap: 8px;
+      padding-bottom: 10px;
+      margin-bottom: 16px;
+      scrollbar-width: thin;
+    }
+
+    .admin-shell .admin-exp-tab {
+      flex-shrink: 0;
+    }
+
+    /* 관리자 — 경험치 /admin/exp (모니터링 · 보상 밸런스 · 수동 지급) */
+    .admin-shell .admin-exp-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-exp-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-toolbar {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-filter {
+      min-width: 0;
+      width: 100%;
+      max-width: none;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-select {
+      max-width: none;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-summary-band {
+      padding: 14px 14px 16px;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-summary-total-value {
+      display: block;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+      line-height: 1.45;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-manual-form {
+      max-width: none;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 16px 14px;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-actions .btn-secondary {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      justify-content: center;
+    }
+
+    /* 관리자 — 해시태그 /admin/hashtags */
+    .admin-shell .admin-hashtags-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-hashtags-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-notices-header-actions {
+      flex-direction: column;
+      align-items: stretch;
+      flex-wrap: wrap;
+      width: 100%;
+      max-width: none;
+      flex-shrink: 1;
+    }
+
+    .admin-shell .admin-hashtags-page .admin-notices-header-actions .btn-secondary,
+    .admin-shell .admin-hashtags-page .admin-notices-header-actions .btn-write {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    /* 관리자 — 레벨·티어 /admin/level */
+    .admin-shell .admin-level-page .content-page-header.admin-users-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-level-page .admin-dashboard-lead {
+      overflow-wrap: anywhere;
+      word-break: keep-all;
+    }
+
+    .admin-shell .admin-level-page .admin-dashboard-lead code {
+      font-size: 0.85em;
+      word-break: break-all;
+    }
+
+    .admin-shell .admin-level-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-level-page .content-page-header .btn-secondary {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-level-page .admin-level-new-row {
+      padding: 14px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-new-grid input,
+    .admin-shell .admin-level-page .admin-level-new-grid select {
+      width: 100%;
+      max-width: none;
+      min-width: 0;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-level-page .admin-level-new-grid .btn-write {
+      width: 100%;
+      min-height: 44px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-level-page .admin-level-inline-input {
+      max-width: none;
+      width: 100%;
+    }
+
+    .admin-shell .admin-level-page .admin-level-inline-input.admin-level-num {
+      max-width: none;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-select {
+      width: 100%;
+      max-width: none;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-level-new-grid {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-level-new-grid label {
+      width: 100%;
+    }
+
+    .admin-shell .admin-users-table-wrap,
+    .admin-shell .admin-contests-table-wrap,
+    .admin-shell .admin-exp-table-wrap {
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-shell .admin-startup-form-grid {
+      grid-template-columns: 1fr !important;
+    }
+
+    .admin-shell .cp-modal.cp-modal--wide,
+    .admin-shell .admin-contests-preview-modal.cp-modal--wide {
+      width: min(96vw, 900px);
+      max-width: 96vw;
+    }
+
+    /* 관리자 — 사용자 상세 /admin/users/:id (태블릿·모바일) */
+    .admin-shell .admin-user-detail-page .admin-user-detail-header-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-header-actions .btn-secondary {
+      width: 100%;
+      justify-content: center;
+      box-sizing: border-box;
+      min-height: 44px;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-user-detail-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-dashboard-lead {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-card {
+      border-radius: 12px;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-profile-head {
+      flex-direction: row;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-table {
+      display: block;
+      width: 100%;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-table tbody {
+      display: block;
+      width: 100%;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 4px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      border-bottom: 1px solid var(--admin-border);
+      padding: 12px 16px;
+    }
+
+    /* tr를 grid로 쪼갤 때 table-cell이 남으면 셀이 좁은 박스처럼 깨짐 */
+    .admin-shell .admin-user-detail-page .admin-user-detail-label,
+    .admin-shell .admin-user-detail-page .admin-user-detail-value {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      border: none;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-label {
+      padding: 0 0 4px;
+      text-align: left;
+      vertical-align: unset;
+      white-space: normal;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.55);
+      background: transparent;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-value {
+      padding: 0;
+      font-size: 0.92rem;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: unset;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-users-state {
+      padding: 8px 0 16px;
+      font-size: 0.9rem;
+    }
+
+    /* 건의·신고 상세 /admin/feedback/:id */
+    .admin-shell .admin-feedback-detail-page .admin-user-detail-header > div:first-child {
+      min-width: 0;
+    }
+
+    .admin-shell .admin-feedback-detail-page .content-page-header h1 {
+      font-size: clamp(1rem, 3.5vw, 1.35rem);
+      line-height: 1.25;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-dashboard-lead {
+      font-size: 0.88rem;
+      line-height: 1.5;
+      word-break: keep-all;
+      overflow-wrap: anywhere;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-user-detail-header-actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-user-detail-header-actions .btn-secondary {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-detail-card {
+      border-radius: 12px;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-detail-card .admin-user-detail-table {
+      display: block;
+      width: 100%;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-detail-card .admin-user-detail-table tbody {
+      display: block;
+      width: 100%;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-detail-card .admin-user-detail-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 4px;
+      width: 100%;
+      max-width: 100%;
+      box-sizing: border-box;
+      border-bottom: 1px solid var(--admin-border);
+      padding: 12px 16px;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-detail-card .admin-user-detail-label,
+    .admin-shell .admin-feedback-detail-page .admin-feedback-detail-card .admin-user-detail-value {
+      display: block;
+      width: 100%;
+      max-width: 100%;
+      min-width: 0;
+      box-sizing: border-box;
+      border: none;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-detail-card .admin-user-detail-label {
+      padding: 0 0 4px;
+      text-align: left;
+      vertical-align: unset;
+      white-space: normal;
+      font-size: 0.76rem;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.55);
+      background: transparent;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-detail-card .admin-user-detail-value {
+      padding: 0;
+      font-size: 0.92rem;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+      vertical-align: unset;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-detail-card .admin-user-detail-row:last-child {
+      border-bottom: none;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-reply-card {
+      max-width: none;
+      width: 100%;
+      box-sizing: border-box;
+      padding: 16px 16px 20px;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-select {
+      max-width: none;
+      width: 100%;
+    }
+
+    .admin-shell .admin-feedback-detail-page .admin-feedback-reply-card .btn-write {
+      width: 100%;
+      min-height: 44px;
+      box-sizing: border-box;
+      text-align: center;
+    }
+  }
+
+  @media (max-width: 720px) {
+    .admin-shell .admin-exp-page .content-page-header.admin-users-header .btn-secondary {
+      width: 100%;
+      box-sizing: border-box;
+      min-height: 44px;
+      justify-content: center;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-manual-form .btn-secondary {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-summary-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-row-delete {
+      width: 100%;
+      min-height: 44px;
+      justify-content: center;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-cell-code {
+      max-width: none;
+    }
+
+    /* 보상 밸런스: 가로 스크롤 대신 행 단위 카드 */
+    .admin-shell .admin-exp-page .admin-exp-balance-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table {
+      display: block;
+      width: 100%;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table tbody td:nth-child(2)::before {
+      content: '코드 기본값';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table tbody td:nth-child(3)::before {
+      content: '적용 EXP';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table tbody td:nth-child(4)::before {
+      content: '상태';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table tbody td:nth-child(5)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-table .admin-exp-balance-input {
+      max-width: none;
+      width: 100%;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-actions {
+      flex-direction: row;
+      flex-wrap: wrap;
+    }
+
+    .admin-shell .admin-exp-page .admin-exp-balance-actions .btn-secondary {
+      flex: 1 1 calc(50% - 4px);
+      min-width: min(100%, 140px);
+      width: auto;
+      min-height: 44px;
+    }
+
+    /* 레벨·티어: 테이블 카드형 */
+    .admin-shell .admin-level-page .admin-level-tier-table-wrap,
+    .admin-shell .admin-level-page .admin-level-config-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table,
+    .admin-shell .admin-level-page .admin-level-config-table {
+      display: block;
+      width: 100%;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table thead,
+    .admin-shell .admin-level-page .admin-level-config-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody,
+    .admin-shell .admin-level-page .admin-level-config-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody tr,
+    .admin-shell .admin-level-page .admin-level-config-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody tr:last-child,
+    .admin-shell .admin-level-page .admin-level-config-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td,
+    .admin-shell .admin-level-page .admin-level-config-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td + td,
+    .admin-shell .admin-level-page .admin-level-config-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td:nth-child(1)::before {
+      content: 'tier_id';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td:nth-child(2)::before {
+      content: '이름';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td:nth-child(3)::before {
+      content: 'level_min';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td:nth-child(4)::before {
+      content: 'level_max';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td:nth-child(5)::before {
+      content: 'exp/레벨';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td:nth-child(6)::before {
+      content: 'sort';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td:nth-child(7)::before {
+      content: '저장';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-tier-table tbody td:nth-child(7) .btn-secondary {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-level-page .admin-level-config-table tbody td:nth-child(1)::before {
+      content: 'level';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-config-table tbody td:nth-child(2)::before {
+      content: 'exp_to_next';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-config-table tbody td:nth-child(3)::before {
+      content: 'tier_id';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-config-table tbody td:nth-child(4)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-level-page .admin-level-config-table tbody td:nth-child(4) {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-level-page .admin-level-config-table tbody td:nth-child(1) {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .admin-shell .admin-level-page .admin-level-config-table tbody td:nth-child(4) .btn-secondary,
+    .admin-shell .admin-level-page .admin-level-config-table tbody td:nth-child(4) .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    /* 공모전 목록: 카드형 */
+    .admin-shell .admin-contests-page .admin-contests-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table {
+      display: block;
+      width: 100%;
+      min-width: 0 !important;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td.admin-contests-cell-nowrap,
+    .admin-shell .admin-contests-page .admin-contests-table tbody td.admin-contests-cell-date {
+      white-space: normal;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(1)::before {
+      content: 'No';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(2)::before {
+      content: '출처';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(3)::before {
+      content: 'ID';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(4)::before {
+      content: '제목';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(5)::before {
+      content: 'D-day';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(6)::before {
+      content: '주최/주관';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(7)::before {
+      content: '카테고리';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(8)::before {
+      content: '업데이트';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(9)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(9) {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(9) .admin-contests-row-actions {
+      flex-direction: column;
+      width: 100%;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(9) .btn-secondary,
+    .admin-shell .admin-contests-page .admin-contests-table tbody td:nth-child(9) .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-contests-page .cp-modal.cp-modal--wide {
+      width: min(100%, 760px);
+      max-width: calc(100vw - 32px);
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-contests-page .cp-modal-footer {
+      flex-wrap: wrap;
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .admin-shell .admin-contests-page .cp-modal-footer .btn-secondary,
+    .admin-shell .admin-contests-page .cp-modal-footer .btn-write {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-html-editor-preview-outer {
+      max-height: min(40vh, 340px);
+      padding: 12px 14px;
+    }
+
+    .admin-shell .admin-contests-page .admin-contests-preview-scroll {
+      max-height: min(55vh, 520px);
+      padding: 12px 14px;
+    }
+
+    /* 공지사항 목록 카드형 */
+    .admin-shell .admin-notices-page .admin-users-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table {
+      display: block;
+      width: 100%;
+      min-width: 0 !important;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td.admin-notice-date {
+      white-space: normal;
+      font-size: 0.88rem;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(1)::before {
+      content: 'No';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(2)::before {
+      content: '제목';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(2) .admin-notice-title-link {
+      display: block;
+      width: 100%;
+      text-align: left;
+      box-sizing: border-box;
+      word-break: break-word;
+      padding: 8px 0;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(3)::before {
+      content: '고정';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(4)::before {
+      content: '작성자';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(5)::before {
+      content: '등록일';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(6)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(6) {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(6) .admin-notices-row-actions {
+      flex-direction: column;
+      width: 100%;
+      gap: 8px;
+    }
+
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(6) .btn-secondary,
+    .admin-shell .admin-notices-page .admin-notices-table tbody td:nth-child(6) .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-notices-page .cp-modal {
+      width: min(100%, 560px);
+      max-width: calc(100vw - 32px);
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-notices-page .cp-modal-footer {
+      flex-wrap: wrap;
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .admin-shell .admin-notices-page .cp-modal-footer .btn-secondary,
+    .admin-shell .admin-notices-page .cp-modal-footer .btn-write {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-notices-page .cp-detail-actions {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .admin-shell .admin-notices-page .cp-detail-actions .btn-write,
+    .admin-shell .admin-notices-page .cp-detail-actions .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-notices-page .cp-detail-body {
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+
+    /* 건의·신고 목록: 카드형 */
+    .admin-shell .admin-feedback-list-page .admin-users-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table {
+      display: block;
+      width: 100%;
+      min-width: 0 !important;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td.admin-feedback-actions-cell {
+      white-space: normal;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td.admin-notice-date {
+      white-space: normal;
+      font-size: 0.88rem;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(1)::before {
+      content: 'No';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(2)::before {
+      content: '구분';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(3)::before {
+      content: '제목';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(3) .admin-feedback-title-link {
+      display: inline-block;
+      word-break: break-word;
+      max-width: 100%;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(4)::before {
+      content: '신청자';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(5)::before {
+      content: '상태';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(6)::before {
+      content: '답변';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(7)::before {
+      content: '접수일';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(8)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(8) .btn-secondary,
+    .admin-shell .admin-feedback-list-page .admin-feedback-table tbody td:nth-child(8) .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    /* 팀 설정 목록: 카드형 */
+    .admin-shell .admin-team-settings-page .admin-team-settings-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table {
+      display: block;
+      width: 100%;
+      min-width: 0 !important;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td.admin-team-settings-cell-name {
+      max-width: none;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td.admin-team-settings-cell-dt {
+      white-space: normal;
+      font-size: 0.88rem;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td:nth-child(1)::before {
+      content: '연도';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td:nth-child(2)::before {
+      content: '팀 이름';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td:nth-child(3)::before {
+      content: '목표(만원)';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td:nth-child(4)::before {
+      content: '달성(원)';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td:nth-child(5)::before {
+      content: '마감';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td:nth-child(6)::before {
+      content: '갱신';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td:nth-child(7)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-table tbody td:nth-child(7) .btn-secondary {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-year-overlay {
+      padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+        max(16px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-year-modal.cp-modal--wide {
+      width: min(100%, 680px);
+      max-width: calc(100vw - 24px);
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-year-modal .cp-modal-footer {
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-year-modal .cp-modal-footer .btn-secondary,
+    .admin-shell .admin-team-settings-page .admin-team-year-modal .cp-modal-footer .btn-write {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    /* 창업 허브: 목록 카드형 */
+    .admin-shell .admin-startup-page .admin-startup-biz-table-wrap,
+    .admin-shell .admin-startup-page .admin-startup-ann-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table,
+    .admin-shell .admin-startup-page .admin-startup-ann-table {
+      display: block;
+      width: 100%;
+      min-width: 0 !important;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table thead,
+    .admin-shell .admin-startup-page .admin-startup-ann-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody,
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody tr,
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody tr:last-child,
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td,
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td + td,
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td.admin-exp-cell-code,
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td.admin-exp-cell-code {
+      white-space: normal;
+      word-break: break-all;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td:nth-child(1)::before {
+      content: 'ID';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td:nth-child(2)::before {
+      content: '사업명';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td:nth-child(3)::before {
+      content: '연도';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td:nth-child(4)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td:nth-child(4) {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td:nth-child(4) .btn-secondary,
+    .admin-shell .admin-startup-page .admin-startup-biz-table tbody td:nth-child(4) .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td:nth-child(1)::before {
+      content: 'pbanc_sn';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td:nth-child(2)::before {
+      content: '공고명';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td:nth-child(3)::before {
+      content: '마감';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td:nth-child(4)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td:nth-child(4) {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: stretch;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td:nth-child(4) .btn-secondary,
+    .admin-shell .admin-startup-page .admin-startup-ann-table tbody td:nth-child(4) .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-startup-page .cp-modal.cp-modal--wide {
+      width: min(100%, 920px);
+      max-width: calc(100vw - 32px);
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-startup-page .cp-modal-footer {
+      flex-direction: column-reverse;
+      align-items: stretch;
+      gap: 10px;
+    }
+
+    .admin-shell .admin-startup-page .cp-modal-footer .btn-secondary,
+    .admin-shell .admin-startup-page .cp-modal-footer .btn-write {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-startup-page .admin-startup-form-grid {
+      max-height: min(58vh, 520px);
+    }
+
+    /* 댓글 목록 카드형 */
+    .admin-shell .admin-comments-page .admin-comments-contest-table-wrap,
+    .admin-shell .admin-comments-page .admin-comments-startup-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table,
+    .admin-shell .admin-comments-page .admin-comments-startup-table {
+      display: block;
+      width: 100%;
+      min-width: 0 !important;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table thead,
+    .admin-shell .admin-comments-page .admin-comments-startup-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody,
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody tr,
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody tr:last-child,
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td,
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td + td,
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td.admin-exp-cell-muted,
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td.admin-exp-cell-muted {
+      white-space: normal;
+      font-size: 0.86rem;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td.admin-exp-cell-code,
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td.admin-exp-cell-code {
+      white-space: normal;
+      word-break: break-all;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td:nth-child(1)::before {
+      content: '일시';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td:nth-child(2)::before {
+      content: '작성자';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td:nth-child(3)::before {
+      content: '공모전';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td:nth-child(4)::before {
+      content: '내용';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td:nth-child(4) {
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td:nth-child(5)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-contest-table tbody td:nth-child(5) .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td:nth-child(1)::before {
+      content: '일시';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td:nth-child(2)::before {
+      content: '작성자';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td:nth-child(3)::before {
+      content: '유형·ID';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td:nth-child(4)::before {
+      content: '내용';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td:nth-child(4) {
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td:nth-child(5)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-comments-page .admin-comments-startup-table tbody td:nth-child(5) .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+
+    /* 대표작품 목록 카드형 */
+    .admin-shell .admin-repworks-page .admin-repworks-table-wrap {
+      overflow-x: visible;
+      border: none;
+      background: transparent;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table {
+      display: block;
+      width: 100%;
+      min-width: 0 !important;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table thead {
+      display: none;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody {
+      display: block;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody tr {
+      display: block;
+      border: 1px solid var(--admin-border);
+      border-radius: var(--radius, 8px);
+      background: var(--admin-bg-elevated);
+      margin-bottom: 12px;
+      padding: 4px 14px 14px;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody tr:last-child {
+      margin-bottom: 0;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td {
+      display: block;
+      width: 100% !important;
+      max-width: none !important;
+      border: none !important;
+      text-align: left !important;
+      vertical-align: top !important;
+      padding: 12px 0 !important;
+      box-sizing: border-box;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td + td {
+      border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td.admin-exp-cell-muted {
+      white-space: normal;
+      font-size: 0.86rem;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td.admin-exp-cell-code {
+      white-space: normal;
+      word-break: break-all;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td:nth-child(2) {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td:nth-child(1)::before {
+      content: '회원';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td:nth-child(2)::before {
+      content: '슬롯';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td:nth-child(3)::before {
+      content: '공모전';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td:nth-child(4)::before {
+      content: '수상';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td:nth-child(5)::before {
+      content: '등록일';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td:nth-child(6)::before {
+      content: '작업';
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.5);
+      margin-bottom: 6px;
+    }
+
+    .admin-shell .admin-repworks-page .admin-repworks-table tbody td:nth-child(6) .btn-delete {
+      width: 100%;
+      min-height: 44px;
+      text-align: center;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .admin-app-topbar-link-home {
+      font-size: 0.76rem;
+      padding: 6px 8px;
+    }
+
+    .admin-shell .admin-dash-stat-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-profile-head {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-avatar,
+    .admin-shell .admin-user-detail-page .admin-user-detail-avatar-fallback {
+      width: 56px;
+      height: 56px;
+    }
+
+    .admin-shell .admin-user-detail-page .admin-user-detail-display-name {
+      font-size: 1.02rem;
+      word-break: break-word;
+    }
+
+    .admin-shell .admin-feedback-detail-block {
+      padding: 14px 16px;
+    }
+
+    .admin-shell .admin-hashtags-page .hashtag-chips {
+      gap: 6px;
+    }
+
+    .admin-shell .admin-team-settings-page .admin-team-settings-cell-dt {
+      font-size: 0.78rem;
     }
   }

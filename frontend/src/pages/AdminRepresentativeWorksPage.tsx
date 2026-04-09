@@ -75,13 +75,13 @@ export function AdminRepresentativeWorksPage() {
           </button>
         </header>
 
-        <div className="admin-users-table-wrap">
+        <div className="admin-users-table-wrap admin-repworks-table-wrap">
           {loading ? (
             <p className="admin-users-state">불러오는 중…</p>
           ) : rows.length === 0 ? (
             <p className="admin-users-state">등록된 대표작품이 없습니다.</p>
           ) : (
-            <table className="admin-users-table">
+            <table className="admin-users-table admin-repworks-table">
               <thead>
                 <tr>
                   <th>회원</th>

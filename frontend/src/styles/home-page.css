@@ -10,7 +10,15 @@
     }
     .page-placeholder { padding: 80px 24px; text-align: center; font-size: 0.95rem; color: var(--gray-muted); }
     .container { max-width: 1400px; margin: 0 auto; padding: 24px 28px; }
-    .container.home-container { max-width: none; margin: 0; width: 100%; padding: 20px 12px 24px 14px; }
+    .container.home-container {
+      max-width: none;
+      margin: 0;
+      width: 100%;
+      padding: 20px clamp(16px, 4vw, 28px) 24px;
+      padding-left: max(clamp(16px, 4vw, 28px), env(safe-area-inset-left, 0px));
+      padding-right: max(clamp(16px, 4vw, 28px), env(safe-area-inset-right, 0px));
+      box-sizing: border-box;
+    }
     .page-header {
       display: flex;
       align-items: center;
@@ -74,6 +82,11 @@
     }
     /* 공모전 카드: 세로 overflow 숨김 제거 → 더보기 패널이 테이블/페이지네이션에 안 잘림 */
     .card.contest-list-card {
+      overflow: visible;
+      position: relative;
+      z-index: 1;
+    }
+    .card.startup-hub-table-card {
       overflow: visible;
       position: relative;
       z-index: 1;
@@ -1306,6 +1319,19 @@
       overflow-y: auto;
     }
     #startupTabAnnouncements tr.startup-announcements-data-row { cursor: pointer; }
+
+    /* 창업 허브 — 좁은 화면에서 테이블 가로 스크롤 */
+    #pageWavity .startup-hub-table-wrap {
+      max-width: 100%;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      scrollbar-width: thin;
+    }
+    #pageWavity .startup-hub-table {
+      min-width: 680px;
+    }
+
     /* 공모전 대시보드 요약 카드 */
     .contest-summary-grid {
       display: grid;
@@ -1439,8 +1465,13 @@
     }
 
     @media (max-width: 768px) {
-      .container { padding: 24px 20px; }
-      .container.home-container { padding: 20px 12px; }
+      .container { padding: 24px max(20px, env(safe-area-inset-left, 0px)) 24px max(20px, env(safe-area-inset-right, 0px)); }
+      .container.home-container {
+        padding-top: 12px;
+        padding-bottom: 20px;
+        padding-left: max(20px, env(safe-area-inset-left, 0px));
+        padding-right: max(20px, env(safe-area-inset-right, 0px));
+      }
     }
 
     /* 공모전 집중 페이지 (/contest/...) */
@@ -1608,4 +1639,247 @@
       margin-top: 8px;
       padding-top: 8px;
       border-top: 1px solid var(--border-gray);
+    }
+
+    /* 메인 홈(/) — 좁은 화면: 공모전 테이블 가로 스크롤 고정 폭 */
+    .contest-list-x-scroll .contest-table {
+      min-width: 960px;
+    }
+
+    @media (max-width: 768px) {
+      #pageAllyoung .page-header,
+      #pageWavity .page-header {
+        margin-bottom: 18px;
+        padding-bottom: 16px;
+      }
+
+      #pageAllyoung .page-header h1,
+      #pageWavity .page-header h1 {
+        font-size: 1rem;
+        line-height: 1.45;
+      }
+
+      #pageWavity .page-header .startup-exp-notice {
+        margin-top: 8px;
+        font-size: 0.76rem;
+        line-height: 1.45;
+      }
+
+      .container.home-container {
+        padding-left: max(18px, env(safe-area-inset-left, 0px));
+        padding-right: max(18px, env(safe-area-inset-right, 0px));
+        padding-top: 12px;
+        padding-bottom: 20px;
+      }
+
+      .list-toolbar {
+        padding: 12px;
+        justify-content: center;
+      }
+
+      .list-toolbar .btn-bulk-check {
+        width: 100%;
+        max-width: 420px;
+      }
+
+      .startup-tabs {
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+      }
+
+      .startup-tab {
+        flex: 1 1 calc(50% - 4px);
+        min-width: 0;
+        padding: 10px 12px;
+        font-size: 0.85rem;
+        text-align: center;
+      }
+
+      .startup-search-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 8px;
+      }
+
+      .startup-search-bar .btn.btn-primary {
+        width: 100%;
+        justify-content: center;
+      }
+
+      #pageWavity .startup-hub-table {
+        min-width: 640px;
+      }
+
+      #startupTabBusiness .startup-hub-th-title,
+      #startupTabAnnouncements .startup-hub-th-title,
+      #startupTabBusiness .startup-hub-table td.startup-hub-title-cell,
+      #startupTabAnnouncements .startup-hub-table td.startup-hub-title-cell {
+        min-width: 160px;
+      }
+
+      #startupTabAnnouncements .startup-hub-th-title,
+      #startupTabAnnouncements .startup-hub-table td.startup-hub-title-cell {
+        min-width: 180px;
+      }
+
+      #startupTabBusiness .startup-hub-menu-cell,
+      #startupTabAnnouncements .startup-hub-menu-cell {
+        flex-wrap: wrap;
+        min-width: 132px;
+      }
+
+      #startupTabBusiness .startup-hub-menu-cell .btn.btn-primary,
+      #startupTabBusiness .startup-hub-menu-cell .btn.btn-action,
+      #startupTabAnnouncements .startup-hub-menu-cell .btn.btn-primary,
+      #startupTabAnnouncements .startup-hub-menu-cell .btn.btn-action {
+        min-height: 36px;
+        padding: 6px 8px;
+      }
+
+      #startupTabBusiness tr.startup-business-detail-row .startup-hub-detail-body-wrap,
+      #startupTabAnnouncements tr.startup-announcements-detail-row .startup-hub-detail-body-wrap {
+        padding: 12px 14px;
+        max-height: min(68vh, 400px);
+      }
+
+      #startupTabBusiness tr.startup-business-detail-row .startup-hub-comments .detail-comments-list,
+      #startupTabAnnouncements tr.startup-announcements-detail-row .startup-hub-comments .detail-comments-list {
+        max-height: min(40vh, 220px);
+      }
+    }
+
+    @media (max-width: 480px) {
+      #pageAllyoung .page-header h1,
+      #pageWavity .page-header h1 {
+        font-size: 0.92rem;
+      }
+
+      #pageAllyoung .page-meta-info,
+      #pageWavity .page-meta-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+      }
+
+      .contest-filter-panel {
+        padding: 14px 12px 12px;
+        border-radius: 12px;
+      }
+
+      .filter-chip-row__label {
+        flex: 0 0 100%;
+        margin-bottom: 4px;
+      }
+
+      .filter-chip {
+        padding: 6px 11px;
+        font-size: 0.76rem;
+      }
+
+      #pageWavity .startup-hub-table {
+        min-width: 600px;
+        font-size: 0.72rem;
+      }
+
+      #startupTabBusiness .startup-hub-table th,
+      #startupTabBusiness .startup-hub-table td,
+      #startupTabAnnouncements .startup-hub-table th,
+      #startupTabAnnouncements .startup-hub-table td {
+        padding: 8px 6px;
+      }
+
+      .startup-tabs {
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .startup-tab {
+        flex: none;
+        width: 100%;
+        padding: 11px 14px;
+      }
+
+      .startup-search-bar {
+        padding: 10px 12px;
+      }
+
+      .startup-search-input {
+        font-size: 0.9rem;
+        padding: 10px 12px;
+      }
+
+      #startupTabBusiness tr.startup-business-detail-row .startup-hub-detail-body-wrap,
+      #startupTabAnnouncements tr.startup-announcements-detail-row .startup-hub-detail-body-wrap {
+        padding: 10px 12px;
+        max-height: min(75vh, 360px);
+      }
+
+      #startupTabBusiness .startup-hub-detail-body-wrap .detail-label,
+      #startupTabAnnouncements .startup-hub-detail-body-wrap .detail-label {
+        font-size: 0.8rem;
+      }
+    }
+
+    @media (max-width: 520px) {
+      .pagination {
+        padding: 12px max(8px, env(safe-area-inset-left)) 12px max(8px, env(safe-area-inset-right));
+        gap: 8px;
+        row-gap: 10px;
+        flex-wrap: nowrap;
+        align-items: center;
+      }
+
+      /* 맨 처음/끝: 이전·다음으로 대체 (좁은 폭) */
+      .pagination > button.pagination-arrow:first-of-type,
+      .pagination > button.pagination-arrow:last-of-type {
+        display: none;
+      }
+
+      .pagination-numbers {
+        flex: 1 1 auto;
+        min-width: 0;
+        max-width: 100%;
+        overflow-x: auto;
+        overscroll-behavior-x: contain;
+        flex-wrap: nowrap;
+        justify-content: center;
+        gap: 6px;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: none;
+        padding: 2px 0;
+      }
+
+      .pagination-numbers::-webkit-scrollbar {
+        display: none;
+      }
+
+      .pagination button {
+        min-width: 32px;
+        min-height: 40px;
+        font-size: 0.84rem;
+      }
+
+      .pagination-arrow .pagination-arrow-ico {
+        width: 1.15rem;
+        height: 1.15rem;
+      }
+    }
+
+    @media (max-width: 380px) {
+      .pagination {
+        gap: 6px;
+        padding-left: max(6px, env(safe-area-inset-left));
+        padding-right: max(6px, env(safe-area-inset-right));
+      }
+
+      .pagination button {
+        min-width: 30px;
+        min-height: 38px;
+        font-size: 0.8rem;
+      }
+
+      .pagination-numbers {
+        gap: 4px;
+      }
     }

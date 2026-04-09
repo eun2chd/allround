@@ -72,7 +72,7 @@ export function ParticipationStatusPage() {
   return (
     <div className="participation-page">
       <div className="content-page content-page--wide">
-        <header className="content-page-header" style={{ borderBottom: '1px solid var(--border-gray)', paddingBottom: 20 }}>
+        <header className="content-page-header participation-page-header">
           <div>
             <h1>
               <span>참여</span>현황
@@ -105,7 +105,7 @@ export function ParticipationStatusPage() {
                     >
                       {!m.profile_url ? initial : null}
                     </div>
-                    <div style={{ minWidth: 0 }}>
+                    <div className="member-name-block">
                       <div className="member-nickname">{m.nickname}</div>
                       <div className="member-count">참가 {count}건</div>
                     </div>
@@ -136,12 +136,12 @@ export function ParticipationStatusPage() {
                               {c.has_detail ? (
                                 <>
                                   {' · '}
-                                  <span style={{ color: 'var(--main-purple)', fontWeight: 600 }}>상세등록</span>
+                                  <span className="contest-detail-tag contest-detail-tag--registered">상세등록</span>
                                 </>
                               ) : (
                                 <>
                                   {' · '}
-                                  <span style={{ color: 'var(--gray-muted)' }}>미등록</span>
+                                  <span className="contest-detail-tag contest-detail-tag--unregistered">미등록</span>
                                 </>
                               )}
                             </div>

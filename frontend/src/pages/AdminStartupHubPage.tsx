@@ -251,11 +251,11 @@ export function AdminStartupHubPage() {
                 새로고침
               </button>
             </div>
-            <div className="admin-users-table-wrap">
+            <div className="admin-users-table-wrap admin-startup-biz-table-wrap">
               {loading ? (
                 <p className="admin-users-state">불러오는 중…</p>
               ) : (
-                <table className="admin-users-table">
+                <table className="admin-users-table admin-startup-biz-table">
                   <thead>
                     <tr>
                       <th>ID</th>
@@ -311,11 +311,11 @@ export function AdminStartupHubPage() {
                 새로고침
               </button>
             </div>
-            <div className="admin-users-table-wrap">
+            <div className="admin-users-table-wrap admin-startup-ann-table-wrap">
               {loading ? (
                 <p className="admin-users-state">불러오는 중…</p>
               ) : (
-                <table className="admin-users-table">
+                <table className="admin-users-table admin-startup-ann-table">
                   <thead>
                     <tr>
                       <th>pbanc_sn</th>

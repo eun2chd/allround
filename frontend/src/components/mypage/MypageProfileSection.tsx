@@ -193,9 +193,7 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
               </button>
             ) : null}
           </div>
-          {is_own_profile ? (
-            <p style={{ fontSize: '0.85rem', color: 'var(--gray-muted)', marginTop: 8 }}>{profile.email || ''}</p>
-          ) : null}
+            {is_own_profile ? <p className="profile-email-line">{profile.email || ''}</p> : null}
         </div>
         {is_own_profile ? (
           <Link to="/mypage/password" className="btn-outline profile-logout">

@@ -1,4 +1,4 @@
-import { forwardRef } from 'react'
+import { forwardRef, useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   HiArrowPath,
@@ -8,6 +8,12 @@ import {
   HiXMark,
 } from 'react-icons/hi2'
 import { useConfirm } from '../../context/ConfirmContext'
+import {
+  browserNotificationsSupported,
+  getBrowserNotificationsEnabled,
+  requestBrowserNotificationPermission,
+  setBrowserNotificationsEnabled,
+} from '../../services/browserNotifications'
 import type { NotificationRow } from '../../services/notificationsService'
 function NotiListIcon({ type }: { type: string | null }) {
   const cls = 'noti-type-ico'
@@ -48,6 +54,21 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
 ) {
   const navigate = useNavigate()
   const confirm = useConfirm()
+  const [browserNotify, setBrowserNotify] = useState(() => {
+    if (typeof window === 'undefined') return false
+    if (!browserNotificationsSupported()) return false
+    return getBrowserNotificationsEnabled() && Notification.permission === 'granted'
+  })
+
+  useEffect(() => {
+    if (!browserNotificationsSupported()) return
+    if (getBrowserNotificationsEnabled() && Notification.permission !== 'granted') {
+      setBrowserNotificationsEnabled(false)
+      const t = window.setTimeout(() => setBrowserNotify(false), 0)
+      return () => window.clearTimeout(t)
+    }
+  }, [])
+
   const readCount = items.filter((i) => i.read).length
   const unreadCount = items.filter((i) => !i.read).length
   const totalCount = items.length
@@ -70,6 +91,35 @@ export const NotificationPanel = forwardRef<HTMLElement, Props>(function Notific
             총 <span className="count">{totalCount}</span>건
           </span>
         </div>
+        {browserNotificationsSupported() ? (
+          <label className="panel-browser-notify">
+            <input
+              type="checkbox"
+              checked={browserNotify}
+              onChange={async (e) => {
+                const on = e.target.checked
+                if (!on) {
+                  setBrowserNotify(false)
+                  setBrowserNotificationsEnabled(false)
+                  return
+                }
+                const p = await requestBrowserNotificationPermission()
+                if (p === 'granted') {
+                  setBrowserNotificationsEnabled(true)
+                  setBrowserNotify(true)
+                  onToast(
+                    '브라우저 알림을 켰습니다. 이 사이트를 보고 있지 않을 때만 OS 알림이 뜹니다.',
+                    'success',
+                  )
+                } else {
+                  setBrowserNotify(false)
+                  onToast('알림 권한이 거부되었습니다. 브라우저 설정에서 허용해 주세요.', 'error')
+                }
+              }}
+            />
+            <span>백그라운드일 때 브라우저 알림</span>
+          </label>
+        ) : null}
         <div className="panel-actions">
           <button
             type="button"

@@ -137,13 +137,13 @@ export function AdminCommentsPage() {
 
         {tab === 'contest' ? (
           <>
-            <div className="admin-users-table-wrap">
+            <div className="admin-users-table-wrap admin-comments-contest-table-wrap">
               {loading ? (
                 <p className="admin-users-state">불러오는 중…</p>
               ) : rowsC.length === 0 ? (
                 <p className="admin-users-state">댓글이 없습니다.</p>
               ) : (
-                <table className="admin-users-table">
+                <table className="admin-users-table admin-comments-contest-table">
                   <thead>
                     <tr>
                       <th>일시</th>
@@ -183,13 +183,13 @@ export function AdminCommentsPage() {
           </>
         ) : (
           <>
-            <div className="admin-users-table-wrap">
+            <div className="admin-users-table-wrap admin-comments-startup-table-wrap">
               {loading ? (
                 <p className="admin-users-state">불러오는 중…</p>
               ) : rowsS.length === 0 ? (
                 <p className="admin-users-state">댓글이 없습니다.</p>
               ) : (
-                <table className="admin-users-table">
+                <table className="admin-users-table admin-comments-startup-table">
                   <thead>
                     <tr>
                       <th>일시</th>

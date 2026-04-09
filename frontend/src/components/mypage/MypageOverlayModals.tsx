@@ -67,9 +67,12 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
 
   if (!openId) return null
 
-  const wrap = (body: React.ReactNode, wide = false) => (
+  const wrap = (body: React.ReactNode, wide = false, modalExtraClass?: string) => (
     <div className="modal-overlay active" role="presentation">
-      <div className={'modal-box' + (wide ? ' modal-profile-theme' : '')} role="dialog">
+      <div
+        className={'modal-box' + (wide ? ' modal-profile-theme' : '') + (modalExtraClass ? ` ${modalExtraClass}` : '')}
+        role="dialog"
+      >
         {body}
       </div>
     </div>
@@ -181,26 +184,32 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
             <HiXMark className="modal-close-ico" aria-hidden />
           </button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body modal-body--exp-amounts">
           <p className="exp-amounts-desc">아래 행위를 수행하면 경험치를 획득할 수 있습니다.</p>
-          <table className="exp-amounts-table">
-            <thead>
-              <tr>
-                <th>행위</th>
-                <th>경험치</th>
-              </tr>
-            </thead>
-            <tbody>
-              {EXP_ACTIVITY_ROWS.map((row) => (
-                <tr key={row.activity_type}>
-                  <td>{row.label}</td>
-                  <td className="exp-value">+{row.exp} EXP</td>
+          <div className="exp-amounts-table-wrap">
+            <table className="exp-amounts-table">
+              <thead>
+                <tr>
+                  <th scope="col">행위</th>
+                  <th scope="col">경험치</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {EXP_ACTIVITY_ROWS.map((row) => (
+                  <tr key={row.activity_type}>
+                    <td data-label="행위">{row.label}</td>
+                    <td className="exp-value" data-label="경험치">
+                      +{row.exp} EXP
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       </>,
+      false,
+      'modal-exp-amounts',
     )
   }
 

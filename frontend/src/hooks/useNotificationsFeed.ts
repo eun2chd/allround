@@ -10,7 +10,10 @@ import {
 
 const POLL_MS = 60_000
 
-export function useNotificationsFeed(enabled: boolean, onUnreadBumped?: () => void) {
+export function useNotificationsFeed(
+  enabled: boolean,
+  onUnreadBumped?: (newestUnread: NotificationRow | null) => void,
+) {
   const [items, setItems] = useState<NotificationRow[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const lastUnreadRef = useRef<number | null>(null)
@@ -22,7 +25,8 @@ export function useNotificationsFeed(enabled: boolean, onUnreadBumped?: () => vo
     if (!r.success) return
     const unread = r.unread_count
     if (lastUnreadRef.current !== null && unread > lastUnreadRef.current) {
-      bumpRef.current?.()
+      const newestUnread = r.data.find((x) => !x.read) ?? null
+      bumpRef.current?.(newestUnread)
     }
     lastUnreadRef.current = unread
     setItems(r.data)

@@ -249,8 +249,8 @@ export function AdminLevelPage() {
         ) : (
           <>
             <h2 className="admin-exp-panel-subtitle">티어 메타 (level_tiers)</h2>
-            <div className="admin-users-table-wrap">
-              <table className="admin-users-table">
+            <div className="admin-users-table-wrap admin-level-tier-table-wrap">
+              <table className="admin-users-table admin-level-tier-table">
                 <thead>
                   <tr>
                     <th>tier_id</th>
@@ -299,8 +299,8 @@ export function AdminLevelPage() {
                 </button>
               </div>
             </div>
-            <div className="admin-users-table-wrap">
-              <table className="admin-users-table">
+            <div className="admin-users-table-wrap admin-level-config-table-wrap">
+              <table className="admin-users-table admin-level-config-table">
                 <thead>
                   <tr>
                     <th>level</th>

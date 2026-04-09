@@ -4,8 +4,11 @@ import { useConfirm } from '../../context/ConfirmContext'
 import { appToast } from '../../lib/appToast'
 import { useNotificationsFeed } from '../../hooks/useNotificationsFeed'
 import type { MeData } from '../../hooks/useAuthMe'
-import { HiBell } from 'react-icons/hi2'
+import { HiBars3, HiBell, HiEllipsisVertical } from 'react-icons/hi2'
+import { useAdminNav } from './adminNavContext'
 import { signOutEverywhere } from '../../services/authService'
+import { showBrowserNotificationForNew } from '../../services/browserNotifications'
+import type { NotificationRow } from '../../services/notificationsService'
 import { NotificationPanel } from '../layout/NotificationPanel'
 
 const NOTI_REFETCH_MS = 30_000
@@ -31,10 +34,26 @@ type Props = {
   me: MeData
 }
 
+function useAdminTopbarCompact() {
+  const [compact, setCompact] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(max-width: 1024px)').matches : false,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 1024px)')
+    const sync = () => setCompact(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+  return compact
+}
+
 export function AdminTopBar({ me }: Props) {
   const navigate = useNavigate()
   const location = useLocation()
   const confirm = useConfirm()
+  const compactTopbar = useAdminTopbarCompact()
+  const { toggleNav } = useAdminNav()
   const [dropdownOpen, setDropdownOpen] = useState(false)
   const [notiOpen, setNotiOpen] = useState(false)
 
@@ -47,9 +66,13 @@ export function AdminTopBar({ me }: Props) {
     appToast(msg, type)
   }, [])
 
-  const onUnreadBumped = useCallback(() => {
-    showNavToast('새 알림이 도착했습니다', 'success')
-  }, [showNavToast])
+  const onUnreadBumped = useCallback(
+    (newestUnread: NotificationRow | null) => {
+      showNavToast('새 알림이 도착했습니다', 'success')
+      showBrowserNotificationForNew(newestUnread)
+    },
+    [showNavToast],
+  )
 
   const { items: notiItems, unreadCount, reload: reloadNoti, readOne, deleteOne, readAll, deleteAll } =
     useNotificationsFeed(true, onUnreadBumped)
@@ -89,15 +112,33 @@ export function AdminTopBar({ me }: Props) {
     })
   }
 
+  const closeDropdown = () => setDropdownOpen(false)
+
+  const onLogout = async () => {
+    setDropdownOpen(false)
+    const ok = await confirm({
+      title: '로그아웃',
+      message: '로그아웃할까요?',
+      confirmText: '로그아웃',
+    })
+    if (!ok) return
+    await signOutEverywhere()
+    navigate('/login', { replace: true })
+  }
+
   return (
     <>
       <header className="admin-app-topbar">
-        <div className="admin-app-topbar-inner">
+        <div className={'admin-app-topbar-inner' + (compactTopbar ? ' admin-app-topbar-inner--compact' : '')}>
           <h1 className="admin-app-topbar-title">{title}</h1>
           <div className="admin-app-topbar-actions">
-            <Link to="/" className="admin-app-topbar-link-home">
-              서비스 홈
-            </Link>
+            {!compactTopbar ? (
+              <>
+                <Link to="/" className="admin-app-topbar-link-home">
+                  서비스 홈
+                </Link>
+              </>
+            ) : null}
             <span className="admin-app-topbar-noti-wrap" ref={notiBellRef}>
               <button
                 type="button"
@@ -114,41 +155,80 @@ export function AdminTopBar({ me }: Props) {
               </button>
               {unreadCount > 0 ? <span className="admin-app-topbar-noti-dot" aria-hidden /> : null}
             </span>
-            <Link to={`/mypage/${me.user_id}`} className="admin-app-topbar-profile">
-              <div
-                className="admin-app-topbar-avatar"
-                style={me.profile_url ? { backgroundImage: `url('${me.profile_url}')` } : undefined}
-              >
-                {!me.profile_url ? <span>{(me.nickname || '?').slice(0, 1)}</span> : null}
-              </div>
-              <span className="admin-app-topbar-nick">{me.nickname || '회원'}</span>
-            </Link>
+            {!compactTopbar ? (
+              <>
+                <Link to={`/mypage/${me.user_id}`} className="admin-app-topbar-profile">
+                  <div
+                    className="admin-app-topbar-avatar"
+                    style={me.profile_url ? { backgroundImage: `url('${me.profile_url}')` } : undefined}
+                  >
+                    {!me.profile_url ? <span>{(me.nickname || '?').slice(0, 1)}</span> : null}
+                  </div>
+                  <span className="admin-app-topbar-nick">{me.nickname || '회원'}</span>
+                </Link>
+              </>
+            ) : null}
             <div ref={dropdownRef} className={'admin-app-topbar-dropdown' + (dropdownOpen ? ' is-open' : '')}>
               <button
                 type="button"
-                className="admin-app-topbar-menu-btn"
+                className={
+                  'admin-app-topbar-menu-btn' + (compactTopbar ? ' admin-app-topbar-menu-btn--compact' : '')
+                }
+                aria-expanded={dropdownOpen}
+                aria-haspopup="true"
                 onClick={(e) => {
                   e.stopPropagation()
                   setDropdownOpen((v) => !v)
                 }}
               >
-                메뉴
+                {compactTopbar ? (
+                  <>
+                    <HiEllipsisVertical className="admin-app-topbar-menu-ico" aria-hidden />
+                    <span className="visually-hidden">메뉴</span>
+                  </>
+                ) : (
+                  '메뉴'
+                )}
               </button>
-              <div className="admin-app-topbar-dropdown-menu">
+              <div className="admin-app-topbar-dropdown-menu" role="menu">
+                {compactTopbar ? (
+                  <>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className="admin-app-topbar-dropdown-item admin-app-topbar-dropdown-item--with-ico"
+                      onClick={() => {
+                        toggleNav()
+                        closeDropdown()
+                      }}
+                    >
+                      <HiBars3 aria-hidden className="admin-app-topbar-dropdown-ico" />
+                      관리자 메뉴
+                    </button>
+                    <Link
+                      to="/"
+                      role="menuitem"
+                      className="admin-app-topbar-dropdown-item"
+                      onClick={closeDropdown}
+                    >
+                      서비스 홈
+                    </Link>
+                    <Link
+                      to={`/mypage/${me.user_id}`}
+                      role="menuitem"
+                      className="admin-app-topbar-dropdown-item"
+                      onClick={closeDropdown}
+                    >
+                      마이페이지
+                    </Link>
+                    <div className="admin-app-topbar-dropdown-sep" aria-hidden />
+                  </>
+                ) : null}
                 <button
                   type="button"
+                  role="menuitem"
                   className="admin-app-topbar-dropdown-item admin-app-topbar-dropdown-item-danger"
-                  onClick={async () => {
-                    setDropdownOpen(false)
-                    const ok = await confirm({
-                      title: '로그아웃',
-                      message: '로그아웃할까요?',
-                      confirmText: '로그아웃',
-                    })
-                    if (!ok) return
-                    await signOutEverywhere()
-                    navigate('/login', { replace: true })
-                  }}
+                  onClick={() => void onLogout()}
                 >
                   로그아웃
                 </button>

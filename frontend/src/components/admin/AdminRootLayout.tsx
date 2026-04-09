@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Navigate, Outlet, useNavigate } from 'react-router-dom'
 import { useAuthMe } from '../../hooks/useAuthMe'
 import { AdminTopBar } from './AdminTopBar'
+import { AdminNavProvider } from './adminNavContext'
 import type { AdminOutletContext } from './adminLayoutContext'
 
 export function AdminRootLayout() {
@@ -25,11 +26,13 @@ export function AdminRootLayout() {
   const ctx: AdminOutletContext = { me }
 
   return (
-    <div className="admin-app-root">
-      <AdminTopBar me={me} />
-      <div className="admin-app-body">
-        <Outlet context={ctx} />
+    <AdminNavProvider>
+      <div className="admin-app-root">
+        <AdminTopBar me={me} />
+        <div className="admin-app-body">
+          <Outlet context={ctx} />
+        </div>
       </div>
-    </div>
+    </AdminNavProvider>
   )
 }
