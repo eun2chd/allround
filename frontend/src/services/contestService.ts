@@ -911,14 +911,28 @@ export async function deleteContestParticipation(source: string, contestId: stri
   } = await sb.auth.getSession()
   if (!session?.user) return { success: false as const, error: MSG_NEED_LOGIN }
   const uid = session.user.id
-  await sb.from('contest_participation').delete().eq('user_id', uid).eq('source', source).eq('contest_id', contestId)
-  await sb
+  const { error: detailErr } = await sb
+    .from('contest_participation_detail')
+    .delete()
+    .eq('user_id', uid)
+    .eq('source', source)
+    .eq('contest_id', contestId)
+  if (detailErr) return { success: false as const, error: detailErr.message }
+  const { error: partErr } = await sb
+    .from('contest_participation')
+    .delete()
+    .eq('user_id', uid)
+    .eq('source', source)
+    .eq('contest_id', contestId)
+  if (partErr) return { success: false as const, error: partErr.message }
+  const { error: commentErr } = await sb
     .from('contest_comments')
     .delete()
     .eq('user_id', uid)
     .eq('source', source)
     .eq('contest_id', contestId)
     .in('body', [PARTICIPATE_BODY, PASS_BODY])
+  if (commentErr) return { success: false as const, error: commentErr.message }
   return { success: true as const }
 }
 

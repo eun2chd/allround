@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { useConfirm } from '../../context/ConfirmContext'
 import { contestFocusPath } from '../../features/contests/contestTypes'
+import { appToast } from '../../lib/appToast'
+import { deleteContestParticipation } from '../../services/contestService'
 import {
   fetchUserParticipationPage,
   type ParticipationRow,
@@ -20,6 +23,7 @@ type Props = {
 }
 
 export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
+  const confirm = useConfirm()
   const [filter, setFilter] = useState<'all' | 'participate' | 'pass'>('all')
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState<ParticipationRow[]>([])
@@ -28,6 +32,7 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
   const [listVersion, setListVersion] = useState(0)
   const [detailCtx, setDetailCtx] = useState<ParticipationDetailModalCtx | null>(null)
   const [viewCtx, setViewCtx] = useState<ParticipationDetailViewCtx | null>(null)
+  const [deletingKey, setDeletingKey] = useState<string | null>(null)
   const perPage = 5
 
   useEffect(() => {
@@ -173,6 +178,7 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
                     <button
                       type="button"
                       className="participation-detail-btn"
+                      disabled={deletingKey === `${src}:${cid}`}
                       onClick={(e) => {
                         e.stopPropagation()
                         setDetailCtx({
@@ -185,6 +191,42 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
                       }}
                     >
                       상세
+                    </button>
+                    <button
+                      type="button"
+                      className="participation-delete-btn"
+                      disabled={deletingKey === `${src}:${cid}`}
+                      onClick={async (e) => {
+                        e.stopPropagation()
+                        const rowKey = `${src}:${cid}`
+                        const ok = await confirm({
+                          title: '참가·패스',
+                          message: '이 공모전의 참가/패스 기록을 삭제할까요? 등록한 참가 상세도 함께 지워집니다.',
+                          confirmText: '삭제',
+                          danger: true,
+                        })
+                        if (!ok) return
+                        setDeletingKey(rowKey)
+                        try {
+                          const j = await deleteContestParticipation(src, cid)
+                          if (!j.success) {
+                            appToast(j.error || '삭제에 실패했습니다.', 'error')
+                            return
+                          }
+                          appToast('참가/패스 기록을 삭제했습니다.')
+                          bumpList()
+                          setDetailCtx((prev) =>
+                            prev?.source === src && prev?.contestId === cid ? null : prev,
+                          )
+                          setViewCtx((prev) =>
+                            prev?.source === src && prev?.contestId === cid ? null : prev,
+                          )
+                        } finally {
+                          setDeletingKey(null)
+                        }
+                      }}
+                    >
+                      {deletingKey === `${src}:${cid}` ? '삭제 중…' : '삭제'}
                     </button>
                   </div>
                 ) : null}

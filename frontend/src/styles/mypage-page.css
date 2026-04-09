@@ -458,6 +458,12 @@
       border-color: var(--main-purple);
       color: var(--main-purple);
     }
+    .participation-detail-btn:disabled,
+    .participation-delete-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
     .participation-doc-download-btn {
       flex-shrink: 0;
       padding: 6px 14px;
@@ -1112,6 +1118,7 @@
         justify-content: flex-end;
       }
       .mypage-surface .participation-detail-btn,
+      .mypage-surface .participation-delete-btn,
       .mypage-surface .participation-link-btn {
         min-height: 40px;
       }
