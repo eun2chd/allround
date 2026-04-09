@@ -147,7 +147,6 @@ def notify_contest_changes(client, source: str, inserted: int, updated: int) -> 
                     "message": f"{source} 공모전의 {inserted}개의 데이터가 새로 추가되었어요",
                 }
             )
-            .select("id")
             .execute()
         )
         row = (r.data or [None])[0]
@@ -164,7 +163,6 @@ def notify_contest_changes(client, source: str, inserted: int, updated: int) -> 
                     "message": f"{source} 공모전의 {updated}개의 데이터가 새로 업데이트 했어요",
                 }
             )
-            .select("id")
             .execute()
         )
         row = (r.data or [None])[0]
@@ -546,7 +544,6 @@ def run_kstartup(
                     "message": msg,
                 }
             )
-            .select("id")
             .execute()
         )
         row = (r.data or [None])[0]
