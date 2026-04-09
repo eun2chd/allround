@@ -90,6 +90,21 @@ def sleep_after_batch(
     time.sleep(delay)
 
 
+def wait_between_cycles(total_minutes: int) -> None:
+    """K-Startup·공모전 사이클이 끝난 뒤 다음 루프까지 대기. 약 1분마다 남은 시간 로그."""
+    if total_minutes <= 0:
+        return
+    total_sec = total_minutes * 60
+    log.info("%s분 대기 시작 (다음 크롤링 사이클까지)", total_minutes)
+    seconds_left = total_sec
+    while seconds_left > 0 and not _stop.is_set():
+        mins_left = (seconds_left + 59) // 60
+        log.info("대기 중 — %s분 전", mins_left)
+        step = min(60, seconds_left)
+        time.sleep(step)
+        seconds_left -= step
+
+
 def chunked(xs: list[str], n: int):
     for i in range(0, len(xs), n):
         yield xs[i : i + n]
@@ -135,16 +150,36 @@ def _notify_members_all_profiles(client, notification_id: str) -> None:
     client.table("notification_user_state").insert(rows).execute()
 
 
-def notify_contest_changes(client, source: str, inserted: int, updated: int) -> None:
-    if inserted > 0:
+def notify_contest_cycle_summary(
+    client,
+    wevity_inserted: int,
+    wevity_updated: int,
+    allforyoung_inserted: int,
+    allforyoung_updated: int,
+) -> None:
+    """위비티·요즘것들 한 사이클 합산 알림 1건 (배치마다 넣지 않음)."""
+    total_ins = wevity_inserted + allforyoung_inserted
+    total_upd = wevity_updated + allforyoung_updated
+    if total_ins + total_upd <= 0:
+        log.info("공모전 알림 생략 — 이번 사이클 반영 건수 0")
+        return
+    has_new = total_ins > 0
+    bits: list[str] = []
+    if wevity_inserted or wevity_updated:
+        bits.append(f"위비티 신규 {wevity_inserted}·갱신 {wevity_updated}")
+    if allforyoung_inserted or allforyoung_updated:
+        bits.append(f"요즘것들 신규 {allforyoung_inserted}·갱신 {allforyoung_updated}")
+    detail = f" ({', '.join(bits)})" if bits else ""
+    msg = f"공모전 수집 완료 — 신규 {total_ins}건, 업데이트 {total_upd}건{detail}"
+    try:
         r = (
             client.table("notifications")
             .insert(
                 {
-                    "type": "insert",
-                    "source": source,
-                    "count": inserted,
-                    "message": f"{source} 공모전의 {inserted}개의 데이터가 새로 추가되었어요",
+                    "type": "insert" if has_new else "update",
+                    "source": "위비티·요즘것들",
+                    "count": total_ins + total_upd,
+                    "message": msg,
                 }
             )
             .execute()
@@ -152,22 +187,9 @@ def notify_contest_changes(client, source: str, inserted: int, updated: int) -> 
         row = (r.data or [None])[0]
         if row and row.get("id"):
             _notify_members_for_contest(client, str(row["id"]))
-    if updated > 0:
-        r = (
-            client.table("notifications")
-            .insert(
-                {
-                    "type": "update",
-                    "source": source,
-                    "count": updated,
-                    "message": f"{source} 공모전의 {updated}개의 데이터가 새로 업데이트 했어요",
-                }
-            )
-            .execute()
-        )
-        row = (r.data or [None])[0]
-        if row and row.get("id"):
-            _notify_members_for_contest(client, str(row["id"]))
+        log.info("알림 생성 완료 — 신규 %s건, 업데이트 %s건", total_ins, total_upd)
+    except Exception as e:
+        log.warning("공모전 사이클 알림 생성 실패: %s", e)
 
 
 def run_wevity(
@@ -175,11 +197,12 @@ def run_wevity(
     page_batch_size: int,
     sleep_batch_odd: int,
     sleep_batch_even: int,
-) -> None:
+) -> tuple[int, int]:
     session = requests.Session()
     session.headers.update(WEVITY_HEADERS)
     page = 1
     batch_idx = 0
+    sum_inserted = sum_updated = 0
     while page <= WEVITY_MAX_PAGES and not _stop.is_set():
         batch_idx += 1
         batch_pages: list[tuple[int, list[dict]]] = []
@@ -190,7 +213,7 @@ def run_wevity(
                 rows = fetch_wevity_list_page(session, page)
             except Exception as e:
                 log.exception("위비티 목록 페이지 %s 오류: %s", page, e)
-                return
+                return sum_inserted, sum_updated
             if not rows:
                 log.warning(
                     "위비티 페이지 %s — 파싱된 목록 0건, 여기서 중단 (사이트 구조·차단·응답 확인 필요)",
@@ -243,7 +266,8 @@ def run_wevity(
         client.table("contests").upsert(to_upsert, on_conflict="source,id").execute()
         inserted = sum(1 for r in ordered_rows if r["id"] not in existing_before)
         updated = len(ordered_rows) - inserted
-        notify_contest_changes(client, SOURCE_WEVITY, inserted, updated)
+        sum_inserted += inserted
+        sum_updated += updated
         p_first, p_last = batch_pages[0][0], batch_pages[-1][0]
         log.info(
             "위비티 페이지 %s~%s: contests 테이블 %s건 반영 (신규 %s, 기존 id 갱신 %s)",
@@ -262,6 +286,7 @@ def run_wevity(
                 p_first,
                 p_last,
             )
+    return sum_inserted, sum_updated
 
 
 def run_allforyoung(
@@ -269,7 +294,7 @@ def run_allforyoung(
     page_batch_size: int,
     sleep_batch_odd: int,
     sleep_batch_even: int,
-) -> None:
+) -> tuple[int, int]:
     session = requests.Session()
     session.headers.update(
         {
@@ -284,6 +309,7 @@ def run_allforyoung(
     )
     page = 1
     batch_idx = 0
+    sum_inserted = sum_updated = 0
     while page <= ALLFORYOUNG_MAX_PAGES and not _stop.is_set():
         batch_idx += 1
         batch_pages: list[tuple[int, list[dict]]] = []
@@ -294,7 +320,7 @@ def run_allforyoung(
                 rows = fetch_allforyoung_contest_page(session, page)
             except Exception as e:
                 log.exception("요즘것들 목록 페이지 %s 오류: %s", page, e)
-                return
+                return sum_inserted, sum_updated
             if not rows:
                 log.warning(
                     "요즘것들 페이지 %s — 파싱된 목록 0건, 여기서 중단 (사이트 구조·차단·응답 확인 필요)",
@@ -347,7 +373,8 @@ def run_allforyoung(
         client.table("contests").upsert(to_upsert, on_conflict="source,id").execute()
         inserted = sum(1 for r in ordered_rows if r["id"] not in existing_before)
         updated = len(ordered_rows) - inserted
-        notify_contest_changes(client, SOURCE_ALLFORYOUNG, inserted, updated)
+        sum_inserted += inserted
+        sum_updated += updated
         p_first, p_last = batch_pages[0][0], batch_pages[-1][0]
         log.info(
             "요즘것들 페이지 %s~%s: contests 테이블 %s건 반영 (신규 %s, 기존 id 갱신 %s)",
@@ -366,6 +393,7 @@ def run_allforyoung(
                 p_first,
                 p_last,
             )
+    return sum_inserted, sum_updated
 
 
 def _fetch_existing_ids(client, table: str, id_col: str, ids: list[str]) -> set[str]:
@@ -700,9 +728,18 @@ def main() -> None:
         metavar="SEC",
         help="배치 2·4·6… 처리 후 대기 초 (기존 짝수 페이지 20초와 동일)",
     )
+    parser.add_argument(
+        "--cycle-wait-minutes",
+        type=int,
+        default=30,
+        metavar="M",
+        help="한 사이클(공모전·K-Startup·선택 D-day) 종료 후 다음 사이클까지 대기 분. 0이면 바로 반복",
+    )
     args = parser.parse_args()
     if args.page_batch_size < 1:
         parser.error("--page-batch-size 는 1 이상이어야 합니다.")
+    if args.cycle_wait_minutes < 0:
+        parser.error("--cycle-wait-minutes 는 0 이상이어야 합니다.")
 
     signal.signal(signal.SIGINT, _signal_handler)
     signal.signal(signal.SIGTERM, _signal_handler)
@@ -722,16 +759,22 @@ def main() -> None:
             se,
         )
 
+    cycle_n = 0
     while not _stop.is_set():
-        log.info("========== 사이클 시작: 위비티 ==========")
-        run_wevity(client, pb, so, se)
+        cycle_n += 1
+        log.info("========== %s번째 크롤링 사이클을 시작합니다 ==========", cycle_n)
+        log.info("위비티 공모전 크롤링 시작")
+        w_ins, w_upd = run_wevity(client, pb, so, se)
         if _stop.is_set():
             break
-        log.info("========== 요즘것들 ==========")
-        run_allforyoung(client, pb, so, se)
+        log.info("요즘것들 공모전 크롤링 시작")
+        a_ins, a_upd = run_allforyoung(client, pb, so, se)
         if _stop.is_set():
             break
-        log.info("========== K-Startup ==========")
+        notify_contest_cycle_summary(client, w_ins, w_upd, a_ins, a_upd)
+        if _stop.is_set():
+            break
+        log.info("K-Startup 창업 크롤링 시작")
         if K_START_UP_SERVICE:
             run_kstartup(client, K_START_UP_SERVICE, pb, so, se)
         else:
@@ -745,7 +788,8 @@ def main() -> None:
                 break
             log.info("========== D-day 갱신 (요즘것들) ==========")
             run_refresh_allforyoung_dday(new_client, pb, so, se)
-        log.info("========== 사이클 완료 — 처음부터 다시 ==========")
+        log.info("크롤링 종료")
+        wait_between_cycles(args.cycle_wait_minutes)
 
 
 if __name__ == "__main__":

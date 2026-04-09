@@ -76,8 +76,13 @@ python crawl_server.py --dday-refresh
 - **K-Startup**은 공공 API라 상대적으로 여유가 있지만, 구현상 **페이지마다 upsert는 그대로**이고 **대기만** 배치 단위로 묶입니다.
 
 ```bash
-# 예: 목록 4페이지마다 저장·알림 1회 후 대기 (홀수 배치 10초, 짝수 배치 20초)
+# 예: 목록 4페이지마다 DB 반영·배치 대기 1회 (홀수 10초·짝수 20초).
+# 공모전 알림은 배치마다가 아니라 사이클(위비티+요즘것들) 끝에 합산 1회.
+# 한 사이클이 끝나면 기본 30분 후 다시 시작 — 바로 반복하려면 --cycle-wait-minutes 0
 python crawl_server.py --page-batch-size 4 --sleep-batch-odd 10 --sleep-batch-even 20
+
+# python crawl_server.py --page-batch-size 4 --sleep-batch-odd 10 --sleep-batch-even 20 --cycle-wait-minutes 0
+# python crawl_server.py --page-batch-size 4 --sleep-batch-odd 10 --sleep-batch-even 20 --cycle-wait-minutes 45
 ```
 
 ---
