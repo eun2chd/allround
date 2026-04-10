@@ -463,10 +463,11 @@
   }
 }
 
-/* 우측 접속자 사이드바(220px)와 본문 겹침 방지 — 1100px 이하에서는 사이드바 미표시 */
+/* 우측 접속자 사이드바 너비 + 8px — 1100px 이하에서는 패널 오버레이라 여백 없음. 접힘은 sidebars.css 변수·html[data-sidebar-users-collapsed] */
 @media (min-width: 1101px) {
   .app-main-with-sidebars {
-    padding-right: 228px;
+    padding-right: calc(var(--app-right-sidebar-width, 220px) + 8px);
+    transition: padding-right 0.25s ease;
   }
 }
 

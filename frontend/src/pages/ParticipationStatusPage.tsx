@@ -1,8 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
+import { ParticipationDashboardPanel } from '../components/participation/ParticipationDashboardPanel'
+import type { PrizeVaultProgress } from '../components/participation/TeamPrizeVault'
 import { useMainLayoutOutletContext } from '../components/layout/mainLayoutContext'
 import type { ParticipationDetailViewCtx } from '../components/mypage/MypageParticipationDetailViewModal'
 import { MypageParticipationDetailViewModal } from '../components/mypage/MypageParticipationDetailViewModal'
+import {
+  fetchSiteTeamSettingsList,
+  fetchTeamPrizeProgress,
+} from '../services/sidebarSupabaseService'
 import {
   fetchTeamParticipationOverview,
   type TeamMemberContest,
@@ -17,13 +23,24 @@ function ddayClass(d: string | undefined) {
   return ''
 }
 
+type ParticipationTab = 'members' | 'dashboard'
+
 export function ParticipationStatusPage() {
   const ctx = useMainLayoutOutletContext()
   const me = ctx?.me
+  const [tab, setTab] = useState<ParticipationTab>('dashboard')
   const [members, setMembers] = useState<TeamMemberOverview[]>([])
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState(false)
   const [viewCtx, setViewCtx] = useState<ParticipationDetailViewCtx | null>(null)
+  const [prizeVault, setPrizeVault] = useState<PrizeVaultProgress>(() => ({
+    year: new Date().getFullYear(),
+    goalPrizeManwon: 0,
+    totalAchievedWon: 0,
+    closed: false,
+  }))
+  const [teamSettingYears, setTeamSettingYears] = useState<number[]>([])
+  const [dashboardYear, setDashboardYear] = useState<number | null>(null)
 
   useEffect(() => {
     let ok = true
@@ -37,6 +54,21 @@ export function ParticipationStatusPage() {
         else setMembers(r.data || [])
       } catch {
         if (ok) setErr(true)
+      }
+
+      try {
+        if (!ok) return
+        const { rows } = await fetchSiteTeamSettingsList()
+        const cy = new Date().getFullYear()
+        const years = (rows || [])
+          .map((x) => (x.year != null ? parseInt(String(x.year), 10) : NaN))
+          .filter((n) => !Number.isNaN(n))
+          .sort((a, b) => b - a)
+        setTeamSettingYears(years)
+        const y = years.length ? (years.includes(cy) ? cy : years[0]!) : cy
+        setDashboardYear(y)
+      } catch {
+        if (ok) setDashboardYear(new Date().getFullYear())
       } finally {
         if (ok) setLoading(false)
       }
@@ -45,6 +77,53 @@ export function ParticipationStatusPage() {
       ok = false
     }
   }, [])
+
+  useEffect(() => {
+    if (dashboardYear == null) return
+    let ok = true
+    ;(async () => {
+      try {
+        const prog = await fetchTeamPrizeProgress(dashboardYear)
+        if (!ok) return
+        setPrizeVault({
+          year: dashboardYear,
+          goalPrizeManwon: prog.goal_prize,
+          totalAchievedWon: prog.total_achieved,
+          closed: prog.closed,
+        })
+      } catch {
+        if (ok) {
+          setPrizeVault({
+            year: dashboardYear,
+            goalPrizeManwon: 0,
+            totalAchievedWon: 0,
+            closed: false,
+          })
+        }
+      }
+    })()
+    return () => {
+      ok = false
+    }
+  }, [dashboardYear])
+
+  const dashboardYearOptions = useMemo(() => {
+    const set = new Set<number>()
+    const cy = new Date().getFullYear()
+    set.add(cy)
+    teamSettingYears.forEach((y) => set.add(y))
+    for (const m of members) {
+      for (const c of m.contests) {
+        for (const raw of [c.participation_registered_at, c.submitted_at, c.result_announcement_date]) {
+          if (!raw) continue
+          const y = parseInt(String(raw).slice(0, 4), 10)
+          if (!Number.isNaN(y)) set.add(y)
+        }
+      }
+    }
+    if (dashboardYear != null) set.add(dashboardYear)
+    return [...set].sort((a, b) => b - a)
+  }, [members, teamSettingYears, dashboardYear])
 
   const openContestDetail = (member: TeamMemberOverview, c: TeamMemberContest) => {
     const src = String(c.source || '').trim()
@@ -77,18 +156,71 @@ export function ParticipationStatusPage() {
             <h1>
               <span>참여</span>현황
             </h1>
-            <p className="page-desc">각 팀원이 참가 중인 공모전을 한눈에 확인할 수 있습니다. 항목을 누르면 등록된 참가 상세를 볼 수 있습니다.</p>
+            <p className="page-desc">
+              팀 단위로 참가 공모전을 모읍니다. <strong>현황판</strong>에서는 발표·상금·상세 미등록을 한눈에 보고,{' '}
+              <strong>팀원별</strong>에서는 사람 기준으로 목록을 봅니다.
+            </p>
           </div>
         </header>
 
+        <div className="participation-page-tabs" role="tablist" aria-label="참여 현황 보기 방식">
+          <button
+            type="button"
+            role="tab"
+            id="participation-tab-dashboard"
+            aria-selected={tab === 'dashboard'}
+            aria-controls="participation-panel-dashboard"
+            className={'participation-page-tab' + (tab === 'dashboard' ? ' is-active' : '')}
+            onClick={() => setTab('dashboard')}
+          >
+            현황판
+          </button>
+          <button
+            type="button"
+            role="tab"
+            id="participation-tab-members"
+            aria-selected={tab === 'members'}
+            aria-controls="participation-panel-members"
+            className={'participation-page-tab' + (tab === 'members' ? ' is-active' : '')}
+            onClick={() => setTab('members')}
+          >
+            팀원별
+          </button>
+        </div>
+
         {loading ? (
           <div className="notice-state-msg">로딩 중...</div>
-        ) : err || members.length === 0 ? (
-          <div className="notice-state-msg">
-            {err ? '데이터를 불러오지 못했습니다.' : '팀원이 없거나 참가 중인 공모전이 없습니다.'}
+        ) : err ? (
+          <div className="notice-state-msg">데이터를 불러오지 못했습니다.</div>
+        ) : tab === 'dashboard' ? (
+          <div
+            id="participation-panel-dashboard"
+            role="tabpanel"
+            aria-labelledby="participation-tab-dashboard"
+          >
+            {dashboardYear != null ? (
+              <ParticipationDashboardPanel
+                members={members}
+                loading={false}
+                prizeVault={prizeVault}
+                dashboardYear={dashboardYear}
+                dashboardYearOptions={dashboardYearOptions}
+                onDashboardYearChange={setDashboardYear}
+                onOpenContest={openContestDetail}
+              />
+            ) : (
+              <div className="notice-state-msg">연도를 불러오는 중…</div>
+            )}
           </div>
+        ) : members.length === 0 ? (
+          <div className="notice-state-msg">팀원이 없거나 참가 중인 공모전이 없습니다.</div>
         ) : (
-          <div className="member-grid">
+          <div
+            id="participation-panel-members"
+            role="tabpanel"
+            aria-labelledby="participation-tab-members"
+            className="member-grid"
+          >
             {members.map((m) => {
               const initial = (m.nickname || '?').trim().charAt(0).toUpperCase()
               const count = m.contests.length

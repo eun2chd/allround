@@ -15,6 +15,47 @@
   margin-bottom: 28px;
 }
 
+.td-header-main {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px 24px;
+}
+
+.td-header-year {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.td-header-year-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--gray-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.td-year-select--header {
+  min-width: 120px;
+}
+
+.td-year-scope-hint {
+  margin: 14px 0 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: var(--gray-muted);
+  max-width: 62ch;
+}
+
+.td-year-scope-hint strong {
+  color: var(--text-dark);
+  font-weight: 800;
+}
+
 .td-title {
   margin: 0 0 8px;
   font-size: 1.75rem;
@@ -576,6 +617,144 @@
   text-decoration: underline;
 }
 
+/* 상금 피라미드 (수령 완료 합 · 꼭대기 1명 → 아래로 갈수록 행이 넓어짐) */
+.td-widget--pyramid {
+  margin-bottom: 20px;
+}
+
+.td-pyramid {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 4px 0 8px;
+}
+
+.td-pyramid-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: stretch;
+  gap: 12px 14px;
+  width: 100%;
+  max-width: 720px;
+}
+
+.td-pyramid-card {
+  flex: 1 1 108px;
+  max-width: 148px;
+  min-width: 96px;
+  background: linear-gradient(180deg, #fffbeb 0%, #fff 55%);
+  border-radius: 14px;
+  border: 1px solid #fde68a;
+  padding: 14px 10px 12px;
+  text-align: center;
+  box-shadow: 0 4px 16px rgba(180, 83, 9, 0.07);
+  box-sizing: border-box;
+}
+
+.td-pyramid-card--gold {
+  border-color: rgba(234, 179, 8, 0.65);
+  box-shadow: 0 8px 24px rgba(234, 179, 8, 0.18);
+  background: linear-gradient(180deg, #fffbeb 0%, #fff 50%);
+}
+
+.td-pyramid-card--silver {
+  border-color: rgba(148, 163, 184, 0.55);
+  box-shadow: 0 6px 18px rgba(148, 163, 184, 0.14);
+}
+
+.td-pyramid-card--bronze {
+  border-color: rgba(217, 119, 6, 0.45);
+  box-shadow: 0 5px 16px rgba(217, 119, 6, 0.12);
+}
+
+.td-pyramid-rank {
+  display: block;
+  font-size: 1.35rem;
+  line-height: 1;
+  margin-bottom: 8px;
+}
+
+.td-pyramid-avatar-link {
+  text-decoration: none;
+  display: inline-block;
+}
+
+.td-pyramid-avatar {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 8px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #fcd34d, #d97706);
+  background-size: cover;
+  background-position: center;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  font-weight: 800;
+  border: 2px solid #fff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+}
+
+.td-pyramid-card--gold .td-pyramid-avatar {
+  width: 64px;
+  height: 64px;
+  font-size: 1.25rem;
+}
+
+.td-pyramid-name {
+  display: block;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: var(--text-dark);
+  text-decoration: none;
+  margin-bottom: 6px;
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.td-pyramid-name:hover {
+  color: var(--main-purple);
+}
+
+.td-pyramid-prize {
+  margin: 0 0 8px;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #b45309;
+  letter-spacing: -0.02em;
+}
+
+.td-pyramid-meta {
+  display: flex;
+  justify-content: center;
+}
+
+.td-pyramid-badge {
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: #fef3c7;
+  color: #92400e;
+}
+
+@media (max-width: 640px) {
+  .td-pyramid-row {
+    max-width: none;
+    gap: 10px;
+  }
+
+  .td-pyramid-card {
+    flex: 1 1 calc(50% - 8px);
+    max-width: none;
+    min-width: 0;
+  }
+}
+
 .team-dashboard-page {
   background: var(--page-tint);
   min-height: calc(100vh - var(--app-topbar-stack, 56px));
@@ -583,6 +762,20 @@
 }
 
 @media (max-width: 768px) {
+  .td-header-main {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .td-header-year {
+    align-items: stretch;
+    width: 100%;
+  }
+
+  .td-year-select--header {
+    width: 100%;
+  }
+
   .td-grid-top {
     gap: 16px;
     margin-bottom: 16px;

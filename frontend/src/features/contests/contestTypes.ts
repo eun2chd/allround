@@ -21,6 +21,8 @@ export type FilterState = {
   deadlineSoonOnly: boolean
   /** 오늘 등록(로컬 0시 이후 created_at) 요약 카드와 동일 기준 */
   registeredTodayOnly: boolean
+  /** true: D-day 기준 마감 임박 순(목록 전체를 불러온 뒤 정렬·페이지네이션) */
+  sortDdayUrgent?: boolean
 }
 
 /** 목록에서 참가(participate)일 때 개인/팀 표시용 */

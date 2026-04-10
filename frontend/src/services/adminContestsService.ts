@@ -136,6 +136,28 @@ export async function deleteAdminContest(
   return { success: true }
 }
 
+/** (source, id) 복합키 행을 순서대로 삭제합니다. 중간 실패 시 즉시 반환합니다. */
+export async function deleteAdminContests(
+  pairs: { source: string; id: string }[],
+): Promise<{ success: true; deleted: number } | { success: false; error: string }> {
+  if (!pairs.length) {
+    return { success: true, deleted: 0 }
+  }
+  const sb = getSupabase()
+  let deleted = 0
+  for (const { source, id } of pairs) {
+    const s = source?.trim()
+    const i = id?.trim()
+    if (!s || !i) continue
+    const { error } = await sb.from('contests').delete().eq('source', s).eq('id', i)
+    if (error) {
+      return { success: false, error: error.message || '삭제에 실패했습니다.' }
+    }
+    deleted++
+  }
+  return { success: true, deleted }
+}
+
 export type AdminContestInsert = {
   source: string
   id: string
@@ -169,6 +191,7 @@ export async function insertAdminContest(
     created_at: now,
     first_seen_at: now,
     updated_at: now,
+    manual_entry: true,
   })
 
   if (error) {

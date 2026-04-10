@@ -89,3 +89,14 @@ export async function deleteHashtagMaster(id: number): Promise<{ ok: true } | { 
   if (error) return { ok: false, error: error.message || '삭제에 실패했습니다.' }
   return { ok: true }
 }
+
+export async function deleteHashtagMasters(
+  ids: number[],
+): Promise<{ ok: true; deleted: number } | { ok: false; error: string }> {
+  const uniq = [...new Set(ids)].filter((id) => Number.isFinite(id) && id > 0)
+  if (!uniq.length) return { ok: false, error: '삭제할 항목을 선택하세요.' }
+  const sb = getSupabase()
+  const { error } = await sb.from('hashtag_master').delete().in('id', uniq)
+  if (error) return { ok: false, error: error.message || '삭제에 실패했습니다.' }
+  return { ok: true, deleted: uniq.length }
+}

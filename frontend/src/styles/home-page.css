@@ -196,6 +196,79 @@
       height: 1rem;
       color: #2563eb;
     }
+    .contest-table th.contest-th-dday {
+      width: 76px;
+      min-width: 76px;
+      max-width: 88px;
+      padding: 6px 4px;
+      vertical-align: middle;
+    }
+    .contest-th-sort-dday {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      width: 100%;
+      margin: 0;
+      padding: 6px 4px;
+      border: none;
+      border-radius: 8px;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      cursor: pointer;
+      transition:
+        background 0.15s,
+        color 0.15s;
+    }
+    .contest-th-sort-dday:hover {
+      background: rgba(255, 255, 255, 0.4);
+    }
+    .contest-th-sort-dday:focus-visible {
+      outline: 2px solid var(--main-purple);
+      outline-offset: 2px;
+    }
+    .contest-th-sort-dday--active {
+      color: #5b21b6;
+    }
+    .contest-th-sort-dday--active .contest-th-sort-dday-main {
+      font-weight: 800;
+    }
+    .contest-th-sort-dday-main {
+      font-size: 0.72rem;
+      font-weight: 700;
+      line-height: 1.2;
+      letter-spacing: -0.02em;
+    }
+    .contest-th-sort-dday-badge {
+      font-size: 0.58rem;
+      font-weight: 700;
+      line-height: 1.15;
+      letter-spacing: -0.04em;
+      color: var(--gray-muted, #6b7280);
+      white-space: nowrap;
+    }
+    .contest-th-sort-dday-badge--on {
+      color: #7c3aed;
+    }
+
+    .contest-table th.contest-th-select,
+    .contest-table .contest-select-cell {
+      width: 40px;
+      min-width: 40px;
+      max-width: 40px;
+      padding: 8px 6px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .contest-row-select-checkbox {
+      width: 1rem;
+      height: 1rem;
+      accent-color: var(--main-purple);
+      cursor: pointer;
+      vertical-align: middle;
+    }
     .th-ico-cell {
       vertical-align: middle;
     }
@@ -220,9 +293,19 @@
     }
     .bookmark-star:hover { color: var(--accent-yellow); }
     .bookmark-star.bookmarked { color: var(--accent-yellow); }
+    .contest-table th.contest-th-title {
+      width: 200px;
+      text-align: left;
+    }
+    .contest-table th.contest-th-participation {
+      width: 108px;
+    }
+    .contest-table th.contest-th-menu {
+      width: 100px;
+    }
     .title-cell {
       max-width: 200px;
-      text-align: center;
+      text-align: left;
       overflow: hidden;
     }
     .title-cell__text {
@@ -251,6 +334,7 @@
     }
     .participation-status-cell {
       vertical-align: middle;
+      box-sizing: border-box;
     }
     .participation-badge {
       display: inline-block;
@@ -1140,10 +1224,54 @@
     }
     .list-toolbar {
       display: flex;
-      justify-content: flex-end;
+      justify-content: space-between;
       align-items: center;
+      flex-wrap: wrap;
       padding: 14px 16px 10px;
       gap: 12px;
+    }
+    .list-toolbar-left {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+    }
+    .list-toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .list-toolbar-selection-count {
+      font-size: 0.78rem;
+      font-weight: 800;
+      color: var(--main-purple);
+      padding-right: 4px;
+    }
+    .btn-selection-action {
+      font-family: var(--font);
+      padding: 7px 12px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      border-radius: 8px;
+      border: 1px solid var(--main-purple);
+      background: #fff;
+      color: var(--main-purple);
+      cursor: pointer;
+      transition:
+        background 0.15s,
+        color 0.15s,
+        border-color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-selection-action:hover:not(:disabled) {
+      background: var(--soft-purple);
+    }
+    .btn-selection-action:disabled {
+      opacity: 0.42;
+      cursor: not-allowed;
     }
     .btn-bulk-check {
       font-family: var(--font);
@@ -1787,7 +1915,51 @@
 
     /* 메인 홈(/) — 좁은 화면: 공모전 테이블 가로 스크롤 고정 폭 */
     .contest-list-x-scroll .contest-table {
-      min-width: 932px;
+      min-width: 972px;
+    }
+
+    /* 공모전 목록 테이블 — PC: 제목 넓히고 참가·패스·우측 열 컴팩트, 가로 여유는 제목이 흡수 */
+    @media (min-width: 901px) {
+      .contest-list-x-scroll .contest-table {
+        min-width: 1080px;
+      }
+      .contest-table th.contest-th-title,
+      .contest-table .title-cell {
+        width: 36%;
+        min-width: 300px;
+        max-width: none;
+      }
+      .contest-table th.contest-th-participation,
+      .contest-table .participation-status-cell {
+        width: 68px;
+        min-width: 68px;
+        max-width: 68px;
+        padding-left: 6px;
+        padding-right: 6px;
+      }
+      .contest-table th.contest-th-participation {
+        font-size: 0.68rem;
+        font-weight: 700;
+        letter-spacing: -0.06em;
+        line-height: 1.25;
+        white-space: normal;
+        padding-top: 8px;
+        padding-bottom: 8px;
+      }
+      .contest-table .participation-badge {
+        min-width: 0;
+        padding: 2px 6px;
+        font-size: 0.65rem;
+        letter-spacing: -0.05em;
+      }
+      .contest-table th.contest-th-menu,
+      .contest-table .action-cell {
+        width: 88px;
+        min-width: 88px;
+        max-width: 88px;
+        padding-left: 6px;
+        padding-right: 6px;
+      }
     }
 
     @media (max-width: 768px) {
@@ -1818,7 +1990,19 @@
 
       .list-toolbar {
         padding: 12px;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 10px;
+      }
+
+      .list-toolbar-left {
         justify-content: center;
+      }
+
+      .list-toolbar-right {
+        margin-left: 0;
+        justify-content: center;
+        width: 100%;
       }
 
       .list-toolbar .btn-bulk-check {

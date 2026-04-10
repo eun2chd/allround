@@ -1,3 +1,4 @@
+import { PRIZE_SETTLEMENT_STATUSES } from '../features/participation/prizeSettlement'
 import { getSupabase } from './supabaseClient'
 
 const CONTEST_BUCKET = 'contest'
@@ -50,6 +51,7 @@ export async function upsertParticipationDetailRow(opts: {
   award_status?: string | null
   has_prize: boolean
   prize_amount?: number | null
+  prize_settlement_status?: string | null
   submitted_at?: string | null
   result_announcement_date?: string | null
   result_announcement_method?: string | null
@@ -102,6 +104,12 @@ export async function upsertParticipationDetailRow(opts: {
     award_status: opts.award_status?.trim() || null,
     has_prize: opts.has_prize,
     prize_amount: opts.prize_amount ?? null,
+    prize_settlement_status: opts.has_prize
+      ? (() => {
+          const s = opts.prize_settlement_status?.trim() || '미수령'
+          return (PRIZE_SETTLEMENT_STATUSES as readonly string[]).includes(s) ? s : '미수령'
+        })()
+      : null,
     submitted_at: opts.submitted_at || null,
     result_announcement_date: opts.result_announcement_date || null,
     result_announcement_method: opts.result_announcement_method?.trim() || null,

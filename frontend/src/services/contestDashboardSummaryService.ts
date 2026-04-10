@@ -6,8 +6,8 @@ export type ContestDashboardSummary = {
   deadlineSoon: number
 }
 
-/** d_day 텍스트에서 D-n 일수 추출. 마감=-1, D-day/오늘=0 */
-function parseDdayDays(d: string | null | undefined): number | null {
+/** d_day 텍스트에서 D-n 일수 추출. 마감=-1, D-day/오늘=0 (목록·대시보드 공통) */
+export function parseDdayDays(d: string | null | undefined): number | null {
   if (d == null) return null
   const s = String(d).trim()
   if (!s) return null
@@ -16,6 +16,16 @@ function parseDdayDays(d: string | null | undefined): number | null {
   const m = /^D-(\d+)$/i.exec(s)
   if (m) return parseInt(m[1], 10)
   return null
+}
+
+/**
+ * 목록 정렬용: 숫자가 작을수록 더 급함 (오늘/D-day=0, D-1=1 … 마감·미인식은 뒤로)
+ */
+export function ddayUrgencyRankForSort(d: string | null | undefined): number {
+  const n = parseDdayDays(d)
+  if (n === null) return 10000
+  if (n === -1) return 9999
+  return n
 }
 
 /** D-3 이내(0~3) 또는 마감/D-day/오늘 — 대시보드 요약·목록 필터 공통 */

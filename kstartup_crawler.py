@@ -80,8 +80,8 @@ def fetch_api(api_name: str, service_key: str, page_no: int, num_of_rows: int) -
     )
     body = res.text
     if not res.ok:
-        logger.error("K-Startup API 실패 %s HTTP %s %s", api_name, res.status, body[:500])
-        raise RuntimeError(f"API {api_name} HTTP {res.status}")
+        logger.error("K-Startup API 실패 %s HTTP %s %s", api_name, res.status_code, body[:500])
+        raise RuntimeError(f"API {api_name} HTTP {res.status_code}")
     return body
 
 

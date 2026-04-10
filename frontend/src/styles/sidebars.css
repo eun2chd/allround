@@ -1,5 +1,15 @@
 /* 메인 여백·앱 셸: styles/app-shell.css */
 
+/* 우측 접속 유저 패널 — 너비를 CSS 변수로 두고, UsersSidebar 가 html[data-sidebar-users-collapsed] 로 본문 여백과 동기화 */
+html {
+  --app-users-sidebar-expanded: 220px;
+  --app-users-sidebar-collapsed: 48px;
+  --app-right-sidebar-width: var(--app-users-sidebar-expanded);
+}
+html[data-sidebar-users-collapsed='1'] {
+  --app-right-sidebar-width: var(--app-users-sidebar-collapsed);
+}
+
 .sidebar-team {
   position: fixed;
   left: 0;
@@ -276,7 +286,7 @@
   position: fixed;
   right: 0;
   top: var(--app-topbar-stack, 56px);
-  width: 220px;
+  width: var(--app-users-sidebar-expanded);
   height: calc(100vh - var(--app-topbar-stack, 56px));
   background: var(--bg-white);
   border-left: 1px solid var(--border-gray);
@@ -289,7 +299,7 @@
     transform 0.25s ease;
 }
 .sidebar-users.collapsed {
-  width: 48px;
+  width: var(--app-users-sidebar-collapsed);
 }
 .sidebar-users.collapsed .sidebar-title,
 .sidebar-users.collapsed .sidebar-user-list {
@@ -534,7 +544,7 @@
   position: fixed;
   bottom: 0;
   left: var(--app-lnb-width, 256px);
-  right: 220px;
+  right: var(--app-right-sidebar-width, 220px);
   z-index: 75;
   pointer-events: none;
   display: flex;
@@ -542,6 +552,7 @@
   padding: 6px 12px 10px;
   box-sizing: border-box;
   background: linear-gradient(180deg, transparent 0%, rgba(250, 248, 255, 0.92) 28%, rgba(245, 243, 255, 0.98) 100%);
+  transition: right 0.25s ease;
 }
 .app-shortcut-bar__inner {
   display: inline-flex;
@@ -582,7 +593,7 @@
 @media (max-width: 1200px) {
   .app-shortcut-bar {
     left: 0;
-    right: 220px;
+    right: var(--app-right-sidebar-width, 220px);
   }
 }
 @media (max-width: 1100px) {

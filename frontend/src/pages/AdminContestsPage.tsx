@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HiXMark } from 'react-icons/hi2'
 import { useConfirm } from '../context/ConfirmContext'
 import { useAdminOutletContext } from '../components/admin/adminLayoutContext'
@@ -8,7 +8,7 @@ import { appToast } from '../lib/appToast'
 import { resolveHtmlMediaUrls } from '../lib/resolveHtmlMediaUrls'
 import { DEFAULT_CONTEST_SOURCE } from '../features/contests/contestTypes'
 import {
-  deleteAdminContest,
+  deleteAdminContests,
   fetchAdminContestsPage,
   fetchContestSourcesForAdmin,
   insertAdminContest,
@@ -32,6 +32,10 @@ function truncate(s: string, max: number) {
   const t = s.trim()
   if (t.length <= max) return t
   return t.slice(0, max) + '…'
+}
+
+function contestRowKey(row: AdminContestRow): string {
+  return JSON.stringify([row.source, row.id])
 }
 
 export function AdminContestsPage() {
@@ -60,6 +64,8 @@ export function AdminContestsPage() {
   const [formCategory, setFormCategory] = useState('')
   const [formContent, setFormContent] = useState('')
   const [previewRow, setPreviewRow] = useState<AdminContestRow | null>(null)
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set())
+  const selectAllRef = useRef<HTMLInputElement>(null)
 
   const previewHtmlSafe = useMemo(() => {
     if (!previewRow?.content?.trim()) return ''
@@ -70,6 +76,7 @@ export function AdminContestsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setSelectedKeys(new Set())
     try {
       const r = await fetchAdminContestsPage({
         page,
@@ -188,20 +195,63 @@ export function AdminContestsPage() {
     void load()
   }
 
-  const removeRow = async (row: AdminContestRow) => {
+  const toggleSelect = (row: AdminContestRow) => {
+    const k = contestRowKey(row)
+    setSelectedKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    const pageKeys = rows.map(contestRowKey)
+    setSelectedKeys((prev) => {
+      const next = new Set(prev)
+      const allOnPage = pageKeys.length > 0 && pageKeys.every((key) => next.has(key))
+      if (allOnPage) {
+        for (const key of pageKeys) next.delete(key)
+      } else {
+        for (const key of pageKeys) next.add(key)
+      }
+      return next
+    })
+  }
+
+  const allSelected = rows.length > 0 && rows.every((r) => selectedKeys.has(contestRowKey(r)))
+  const someSelectedOnPage = rows.some((r) => selectedKeys.has(contestRowKey(r)))
+
+  useEffect(() => {
+    const el = selectAllRef.current
+    if (!el) return
+    el.indeterminate = someSelectedOnPage && !allSelected
+  }, [someSelectedOnPage, allSelected])
+
+  const onDeleteSelected = async () => {
+    const picked = rows.filter((r) => selectedKeys.has(contestRowKey(r)))
+    if (!picked.length) {
+      appToast('삭제할 글을 선택하세요.', 'error')
+      return
+    }
+    const preview = picked
+      .slice(0, 6)
+      .map((r) => `「${r.title || r.id}」(${r.source})`)
+      .join('\n')
+    const more = picked.length > 6 ? `\n… 외 ${picked.length - 6}건` : ''
     const ok = await confirm({
       title: '공모전 글 삭제',
-      message: `「${row.title || row.id}」(${row.source})를 삭제할까요? 댓글·북마크 등 연관 데이터가 함께 삭제될 수 있습니다.`,
+      message: `선택한 ${picked.length}건을 삭제할까요? 댓글·북마크 등 연관 데이터가 함께 삭제될 수 있습니다.\n\n${preview}${more}`,
       confirmText: '삭제',
       danger: true,
     })
     if (!ok) return
-    const r = await deleteAdminContest(row.source, row.id)
+    const r = await deleteAdminContests(picked.map((row) => ({ source: row.source, id: row.id })))
     if (!r.success) {
       appToast(r.error, 'error')
       return
     }
-    appToast('삭제되었습니다.')
+    appToast(r.deleted ? `${r.deleted}건 삭제했습니다.` : '삭제할 항목이 없습니다.')
     void load()
   }
 
@@ -223,14 +273,22 @@ export function AdminContestsPage() {
               공모전 게시글 <span>관리</span>
             </h1>
             <p className="admin-dashboard-lead">
-              contests 테이블 목록입니다. 새로 등록·수정·삭제할 수 있고, 목록에서 「본문 보기」로 저장된 HTML을 사용자 화면과
-              비슷하게 미리 볼 수 있습니다. 수정 시에는 출처(source)와 ID가 키라서 바꿀 수 없습니다. RLS가 적용된 경우 관리자
-              계정만 저장·삭제·등록됩니다.
+              contests 테이블 목록입니다. 새로 등록·수정할 수 있고, 삭제는 체크박스로 고른 뒤 <strong>선택 삭제</strong>를 누르세요.
+              목록에서 「본문 보기」로 저장된 HTML을 사용자 화면과 비슷하게 미리 볼 수 있습니다. 수정 시에는 출처(source)와 ID가
+              키라서 바꿀 수 없습니다. RLS가 적용된 경우 관리자 계정만 저장·삭제·등록됩니다.
             </p>
           </div>
           <div className="admin-notices-header-actions">
             <button type="button" className="btn-secondary" onClick={() => void load()} disabled={loading}>
               새로고침
+            </button>
+            <button
+              type="button"
+              className="btn-secondary btn-delete"
+              onClick={() => void onDeleteSelected()}
+              disabled={loading || selectedKeys.size === 0}
+            >
+              선택 삭제{selectedKeys.size > 0 ? ` (${selectedKeys.size})` : ''}
             </button>
             <button type="button" className="btn-write" onClick={openCreate}>
               새로 등록
@@ -287,6 +345,19 @@ export function AdminContestsPage() {
             <table className="admin-users-table admin-contests-table">
               <thead>
                 <tr>
+                  <th scope="col" className="admin-contests-col-check">
+                    <span className="visually-hidden">선택</span>
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      className="admin-contests-select-all"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      disabled={loading || rows.length === 0}
+                      title="이 페이지 전체 선택"
+                      aria-label="이 페이지 전체 선택"
+                    />
+                  </th>
                   <th scope="col" className="admin-users-col-no">
                     No
                   </th>
@@ -307,6 +378,15 @@ export function AdminContestsPage() {
                   const hasBody = Boolean(row.content?.trim())
                   return (
                     <tr key={`${row.source}:${row.id}`}>
+                      <td className="admin-contests-col-check">
+                        <input
+                          type="checkbox"
+                          className="admin-contests-row-check"
+                          checked={selectedKeys.has(contestRowKey(row))}
+                          onChange={() => toggleSelect(row)}
+                          aria-label={`${row.title || row.id} 선택`}
+                        />
+                      </td>
                       <td className="admin-users-col-no">{rowNo}</td>
                       <td className="admin-contests-cell-nowrap">{row.source}</td>
                       <td className="admin-contests-cell-id" title={row.id}>
@@ -333,9 +413,6 @@ export function AdminContestsPage() {
                           </button>
                           <button type="button" className="btn-secondary" onClick={() => openEdit(row)}>
                             수정
-                          </button>
-                          <button type="button" className="btn-secondary btn-delete" onClick={() => void removeRow(row)}>
-                            삭제
                           </button>
                         </div>
                       </td>

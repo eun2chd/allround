@@ -25,6 +25,9 @@ type Props = {
 export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
   const confirm = useConfirm()
   const [filter, setFilter] = useState<'all' | 'participate' | 'pass'>('all')
+  const [detailOnly, setDetailOnly] = useState(false)
+  const [titleInput, setTitleInput] = useState('')
+  const [titleSearch, setTitleSearch] = useState('')
   const [page, setPage] = useState(1)
   const [rows, setRows] = useState<ParticipationRow[]>([])
   const [total, setTotal] = useState(0)
@@ -36,6 +39,15 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
   const perPage = 5
 
   useEffect(() => {
+    const t = window.setTimeout(() => setTitleSearch(titleInput.trim()), 280)
+    return () => window.clearTimeout(t)
+  }, [titleInput])
+
+  useEffect(() => {
+    setPage(1)
+  }, [titleSearch, detailOnly])
+
+  useEffect(() => {
     let cancelled = false
     ;(async () => {
       setLoading(true)
@@ -45,6 +57,8 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
           page,
           perPage,
           filter: filter === 'all' ? 'all' : filter,
+          detailOnly,
+          titleSearch: titleSearch || undefined,
         })
         if (!cancelled) {
           setRows(j.data || [])
@@ -57,7 +71,7 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
     return () => {
       cancelled = true
     }
-  }, [profileId, filter, page, listVersion])
+  }, [profileId, filter, page, listVersion, detailOnly, titleSearch])
 
   const totalPages = Math.max(1, Math.ceil(total / perPage))
 
@@ -106,6 +120,32 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
               {f === 'all' ? '전체' : f === 'participate' ? '참가만 보기' : '패스만 보기'}
             </button>
           ))}
+        </div>
+      </div>
+      <div className="participation-subfilter-row">
+        <label className="participation-detail-only-label">
+          <input
+            type="checkbox"
+            className="participation-detail-only-check"
+            checked={detailOnly}
+            onChange={(e) => setDetailOnly(e.target.checked)}
+          />
+          <span>상세등록만</span>
+        </label>
+        <div className="participation-title-search-wrap">
+          <label className="participation-title-search-label" htmlFor="participation-title-search-input">
+            제목 검색
+          </label>
+          <input
+            id="participation-title-search-input"
+            type="search"
+            className="participation-title-search-input"
+            placeholder="공모전 제목"
+            value={titleInput}
+            onChange={(e) => setTitleInput(e.target.value)}
+            autoComplete="off"
+            enterKeyHint="search"
+          />
         </div>
       </div>
       <div className="participation-list" id="participationList">

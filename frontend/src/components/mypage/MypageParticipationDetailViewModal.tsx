@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { HiXMark } from 'react-icons/hi2'
 import { contestFocusPath } from '../../features/contests/contestTypes'
+import { normalizePrizeSettlement } from '../../features/participation/prizeSettlement'
 import { fetchParticipationDetailRow } from '../../services/participationDetailService'
 
 export type ParticipationDetailViewCtx = {
@@ -118,15 +119,22 @@ export function MypageParticipationDetailViewModal({ ctx, onClose }: Props) {
               <DetailField label="상금">
                 {data.has_prize ? (
                   <>
-                    수령
+                    입력됨
                     {data.prize_amount != null && Number(data.prize_amount) > 0
                       ? ` · ${Number(data.prize_amount).toLocaleString('ko-KR')}원`
                       : null}
                   </>
                 ) : (
-                  '미수령'
+                  '해당 없음'
                 )}
               </DetailField>
+              {data.has_prize ? (
+                <DetailField label="상금 정산 상태">
+                  {normalizePrizeSettlement(
+                    (data as { prize_settlement_status?: string | null }).prize_settlement_status,
+                  ) || '미수령'}
+                </DetailField>
+              ) : null}
               <DetailField label="제출일">{formatDt(data.submitted_at as string | null)}</DetailField>
               <DetailField label="결과 발표일">{formatDateOnly(data.result_announcement_date as string | null)}</DetailField>
               <DetailField label="결과 발표 (경로)">

@@ -1,14 +1,20 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
-  fetchMemberRanking,
+  buildTeamDashboardRankings,
+  teamReceivedWonFromOverview,
+} from '../features/participation/teamDashboardYearAggregates'
+import {
   fetchSiteTeamSettingsList,
+  fetchTeamActivityForYear,
   fetchTeamActivityLast5,
   fetchTeamPrizeProgress,
   fetchTeamSettingByYear,
   type SidebarActivityRow,
+  type SidebarMemberPrizeRow,
   type SidebarMemberRow,
   type TeamSettingRow,
 } from '../services/sidebarSupabaseService'
+import { fetchTeamParticipationOverview, type TeamMemberOverview } from '../services/teamParticipationService'
 
 function formatPrize(n: number): string {
   if (n < 0) return '0만원'
@@ -33,13 +39,13 @@ export function useTeamDashboardData() {
   const [avatarBg, setAvatarBg] = useState<string | undefined>()
 
   const [goalPrizeMan, setGoalPrizeMan] = useState(0)
-  const [achieved, setAchieved] = useState(0)
-  const [goalPct, setGoalPct] = useState(0)
-  const [goalHint, setGoalHint] = useState('')
   const [goalClosed, setGoalClosed] = useState(false)
+  /** 마감 연도에 저장된 고정 달성액(원). 0이면 라이브(참가 데이터) 합계 사용 */
+  const [achievedFrozen, setAchievedFrozen] = useState(0)
 
-  const [members, setMembers] = useState<SidebarMemberRow[]>([])
-  const [membersErr, setMembersErr] = useState<string | null>(null)
+  const [participationOverview, setParticipationOverview] = useState<TeamMemberOverview[]>([])
+  const [overviewErr, setOverviewErr] = useState<string | null>(null)
+
   const [activities, setActivities] = useState<SidebarActivityRow[]>([])
   const [actErr, setActErr] = useState<string | null>(null)
 
@@ -71,33 +77,19 @@ export function useTeamDashboardData() {
     setTeamDesc(((d.team_desc || '') as string).trim() || '등록된 설명이 없습니다.')
   }, [])
 
-  const applyPrizeProgressUi = useCallback((j: Record<string, unknown>, hasYears: boolean, y: number | null) => {
+  const applyPrizeProgressMeta = useCallback((j: Record<string, unknown>, hasYears: boolean, y: number | null) => {
     if (!hasYears || !y) {
       setGoalPrizeMan(0)
-      setAchieved(0)
-      setGoalPct(0)
-      setGoalHint('목표가 등록되면 여기에 표시됩니다.')
+      setAchievedFrozen(0)
       setGoalClosed(false)
       return
     }
     const goalMan = Math.max(0, parseInt(String(j.goal_prize), 10) || 0)
-    const ach = Math.max(0, parseInt(String(j.total_achieved), 10) || 0)
     const closed = Boolean(j.closed)
-    const goalWon = goalMan * 10000
+    const frozen = Math.max(0, parseInt(String(j.achieved_frozen), 10) || 0)
     setGoalPrizeMan(goalMan)
-    setAchieved(ach)
-    let pct = 0
-    let hint = ''
-    if (goalWon > 0) {
-      pct = Math.min(100, (ach / goalWon) * 100)
-      const remaining = goalWon - ach
-      hint = remaining <= 0 ? '목표 달성!' : `${formatWon(ach)} / 목표 ${formatWon(goalWon)}, ${formatWon(remaining)} 남음`
-    } else {
-      hint = ach > 0 ? `달성 ${formatWon(ach)} (목표 미설정)` : '관리자에서 올해 목표 금액(만원)을 넣으면 진행률이 표시됩니다.'
-    }
-    setGoalPct(pct)
-    setGoalHint(hint + (closed ? ' (마감)' : ''))
     setGoalClosed(closed)
+    setAchievedFrozen(frozen)
   }, [])
 
   const refreshForYear = useCallback(
@@ -105,26 +97,26 @@ export function useTeamDashboardData() {
       try {
         if (!hasYears || !y) {
           applyTeamSettingsUi(null, false, null)
-          applyPrizeProgressUi({}, false, null)
+          applyPrizeProgressMeta({}, false, null)
           return
         }
         const [row, prog] = await Promise.all([fetchTeamSettingByYear(y), fetchTeamPrizeProgress(y)])
         applyTeamSettingsUi(row, true, y)
-        applyPrizeProgressUi(
+        applyPrizeProgressMeta(
           {
             goal_prize: prog.goal_prize,
-            total_achieved: prog.total_achieved,
             closed: prog.closed,
+            achieved_frozen: prog.achieved_frozen,
           },
           true,
           y,
         )
       } catch {
         applyTeamSettingsUi(null, hasYears, y)
-        applyPrizeProgressUi({}, hasYears, y)
+        applyPrizeProgressMeta({}, hasYears, y)
       }
     },
-    [applyPrizeProgressUi, applyTeamSettingsUi],
+    [applyPrizeProgressMeta, applyTeamSettingsUi],
   )
 
   const loadTeamYears = useCallback(async () => {
@@ -161,14 +153,19 @@ export function useTeamDashboardData() {
     let ok = true
     ;(async () => {
       try {
-        const data = await fetchMemberRanking()
+        const r = await fetchTeamParticipationOverview()
         if (!ok) return
-        setMembers(data.length ? data : [])
-        setMembersErr(null)
+        if (r.success) {
+          setParticipationOverview(r.data ?? [])
+          setOverviewErr(null)
+        } else {
+          setParticipationOverview([])
+          setOverviewErr(r.error || '참가 데이터를 불러오지 못했습니다.')
+        }
       } catch {
         if (ok) {
-          setMembers([])
-          setMembersErr('로드 실패')
+          setParticipationOverview([])
+          setOverviewErr('참가 데이터를 불러오지 못했습니다.')
         }
       }
     })()
@@ -177,11 +174,59 @@ export function useTeamDashboardData() {
     }
   }, [])
 
+  const hasYears = teamYears.length > 0
+  const filterByYear = Boolean(hasYears && year != null)
+
+  const { byParticipation, byPrize } = useMemo(
+    () => buildTeamDashboardRankings(participationOverview, year, filterByYear),
+    [participationOverview, year, filterByYear],
+  )
+
+  const members: SidebarMemberRow[] = byParticipation
+  const membersByPrize: SidebarMemberPrizeRow[] = byPrize
+
+  const achievedEarned = useMemo(
+    () => teamReceivedWonFromOverview(participationOverview, year, filterByYear),
+    [participationOverview, year, filterByYear],
+  )
+
+  const achieved = goalClosed && achievedFrozen > 0 ? achievedFrozen : achievedEarned
+
+  const goalWon = goalPrizeMan * 10000
+
+  const goalPct = useMemo(() => {
+    if (!hasYears || year == null) return 0
+    if (goalWon <= 0) return 0
+    return Math.min(100, (achieved / goalWon) * 100)
+  }, [hasYears, year, goalWon, achieved])
+
+  const goalHint = useMemo(() => {
+    if (!hasYears || year == null) {
+      return '연도별 팀 설정이 등록되면 상단에서 연도를 고르고, 목표·랭킹·활동이 같은 해로 맞춰집니다.'
+    }
+    if (goalWon > 0) {
+      const remaining = goalWon - achieved
+      const base =
+        remaining <= 0
+          ? '목표 달성!'
+          : `${formatWon(achieved)} / 목표 ${formatWon(goalWon)}, ${formatWon(remaining)} 남음`
+      return base + (goalClosed ? ' (마감 · 달성액은 관리자 저장값이면 그 숫자를 씁니다)' : '')
+    }
+    const base =
+      achieved > 0
+        ? `${year}년 수령 완료 합 ${formatWon(achieved)} (목표 미설정)`
+        : '관리자에서 해당 연도 목표 금액(만원)을 넣으면 진행률이 표시됩니다.'
+    return base + (goalClosed ? ' (마감)' : '')
+  }, [hasYears, year, goalWon, achieved, goalClosed])
+
   useEffect(() => {
     let ok = true
     ;(async () => {
       try {
-        const data = await fetchTeamActivityLast5()
+        const data =
+          hasYears && year != null
+            ? await fetchTeamActivityForYear(year, 5)
+            : await fetchTeamActivityLast5()
         if (!ok) return
         setActivities(data.length ? data : [])
         setActErr(null)
@@ -195,9 +240,7 @@ export function useTeamDashboardData() {
     return () => {
       ok = false
     }
-  }, [])
-
-  const hasYears = teamYears.length > 0
+  }, [year, hasYears])
 
   return {
     teamYears,
@@ -213,7 +256,8 @@ export function useTeamDashboardData() {
     goalHint,
     goalClosed,
     members,
-    membersErr,
+    membersByPrize,
+    membersErr: overviewErr,
     activities,
     actErr,
     hasYears,

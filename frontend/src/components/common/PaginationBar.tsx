@@ -10,16 +10,13 @@ import {
 /** home-page.css `@media (max-width: 520px)` 과 동일 */
 const NARROW_MAX_PX = 520
 
-/** 넓은 화면: 현재 페이지 양옆 이웃 수 */
-const PAD_WIDE = 2
-
 /**
- * 모바일 숫자 구간 (10 클릭 → 10~21, 21 클릭 → 21~31 …)
+ * 숫자 구간 (PC·모바일 공통): 10개 단위 슬라이딩
  * - 1~9페이지: 1~10
  * - 10~20페이지: 10~21
- * - 21페이지~: 21~31, 31~41, … (현재 페이지가 속한 10페이지 단위 슬라이스, 끝은 +10)
+ * - 21페이지~: 21~31, 31~41, …
  */
-function narrowWindowBounds(page: number, totalPages: number): { start: number; end: number } {
+function pageNumberWindowBounds(page: number, totalPages: number): { start: number; end: number } {
   if (totalPages <= 10) return { start: 1, end: totalPages }
   if (page < 10) return { start: 1, end: Math.min(10, totalPages) }
   if (page <= 20) return { start: 10, end: Math.min(21, totalPages) }
@@ -30,13 +27,13 @@ function narrowWindowBounds(page: number, totalPages: number): { start: number; 
   return { start, end }
 }
 
-function pushNarrowNumberRow(
+function pushSlidingNumberRow(
   nums: ReactNode[],
   page: number,
   totalPages: number,
   onGo: (p: number) => void,
 ) {
-  const { start, end } = narrowWindowBounds(page, totalPages)
+  const { start, end } = pageNumberWindowBounds(page, totalPages)
   if (totalPages <= 10) {
     for (let i = 1; i <= totalPages; i++) nums.push(pageButton(i, page, onGo))
     return
@@ -109,22 +106,7 @@ export function PaginationBar({ total, page, pageSize, onGo }: PaginationBarProp
   if (total < 1 || totalPages <= 1) return null
 
   const nums: ReactNode[] = []
-
-  if (narrow) {
-    pushNarrowNumberRow(nums, page, totalPages, onGo)
-  } else {
-    const pad = PAD_WIDE
-    const winStart = Math.max(2, page - pad)
-    const winEnd = Math.min(totalPages - 1, page + pad)
-    const showFirstEllipsis = winStart > 2
-    const showLastEllipsis = winEnd < totalPages - 1
-
-    nums.push(pageButton(1, page, onGo))
-    if (showFirstEllipsis) nums.push(<span key="e1" className="pagination-ellipsis">…</span>)
-    for (let i = winStart; i <= winEnd; i++) nums.push(pageButton(i, page, onGo))
-    if (showLastEllipsis) nums.push(<span key="e2" className="pagination-ellipsis">…</span>)
-    nums.push(pageButton(totalPages, page, onGo))
-  }
+  pushSlidingNumberRow(nums, page, totalPages, onGo)
 
   return (
     <div className="pagination">

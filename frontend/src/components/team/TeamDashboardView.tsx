@@ -1,7 +1,7 @@
 import { useId } from 'react'
 import { Link } from 'react-router-dom'
 import { useTeamDashboardData } from '../../hooks/useTeamDashboardData'
-import type { SidebarMemberRow } from '../../services/sidebarSupabaseService'
+import type { SidebarMemberPrizeRow, SidebarMemberRow } from '../../services/sidebarSupabaseService'
 
 function formatActivityAgo(iso: string | null | undefined): string {
   if (iso == null || iso === '') return ''
@@ -49,6 +49,65 @@ function PodiumCard({ m, rank }: { m: SidebarMemberRow; rank: number }) {
 function truncate(s: string | undefined, max = 20): string {
   const str = (s || '').trim() || '공모전'
   return str.length > max ? str.slice(0, max) + '...' : str
+}
+
+/** 1 → [a], 2 → [a,b], 3 → [a,b,c] … 꼭대기가 1명인 피라미드 행 */
+function chunkPyramid<T>(items: T[]): T[][] {
+  const rows: T[][] = []
+  let i = 0
+  let rowLen = 1
+  while (i < items.length) {
+    rows.push(items.slice(i, i + rowLen))
+    i += rowLen
+    rowLen += 1
+  }
+  return rows
+}
+
+function pyramidRankAt(rowIndex: number, colIndex: number): number {
+  return (rowIndex * (rowIndex + 1)) / 2 + 1 + colIndex
+}
+
+function PyramidPrizeCard({ m, rank }: { m: SidebarMemberPrizeRow; rank: number }) {
+  const badge = rank <= 3 ? TROPHY[rank - 1] : `${rank}위`
+  const initial = (m.nickname || '?').trim().charAt(0).toUpperCase()
+  const url = m.profile_url?.trim()
+  const tierClass =
+    rank === 1 ? 'td-pyramid-card--gold' : rank === 2 ? 'td-pyramid-card--silver' : rank === 3 ? 'td-pyramid-card--bronze' : ''
+
+  return (
+    <div className={'td-pyramid-card ' + tierClass}>
+      <span className="td-pyramid-rank" aria-hidden>
+        {badge}
+      </span>
+      <Link to={`/mypage/${encodeURIComponent(m.id)}`} className="td-pyramid-avatar-link">
+        <div
+          className="td-pyramid-avatar"
+          style={url ? { backgroundImage: `url('${url.replace(/'/g, "\\'")}')` } : undefined}
+        >
+          {!url ? initial : null}
+        </div>
+      </Link>
+      <Link to={`/mypage/${encodeURIComponent(m.id)}`} className="td-pyramid-name">
+        {m.nickname || '회원'}
+      </Link>
+      <p className="td-pyramid-prize">{formatPrizeWon(m.prize_received_won)}</p>
+      <div className="td-pyramid-meta">
+        <span className="td-pyramid-badge">참가 {m.participate_count || 0}건</span>
+      </div>
+    </div>
+  )
+}
+
+function formatPrizeWon(won: number): string {
+  const v = Math.floor(Math.max(0, won))
+  if (v >= 100000000) {
+    const eok = v / 100000000
+    return `${eok >= 10 ? Math.round(eok) : Math.round(eok * 10) / 10}억 원`
+  }
+  if (v >= 10000) return `${Math.round(v / 10000).toLocaleString('ko-KR')}만 원`
+  if (v <= 0) return '0원'
+  return `${v.toLocaleString('ko-KR')}원`
 }
 
 const DONUT_R = 39
@@ -109,6 +168,7 @@ export function TeamDashboardView() {
     goalHint,
     goalClosed,
     members,
+    membersByPrize,
     membersErr,
     activities,
     actErr,
@@ -153,23 +213,19 @@ export function TeamDashboardView() {
   return (
     <div className="td-page">
       <header className="td-header">
-        <div>
-          <h1 className="td-title">팀 대시보드</h1>
-          <p className="td-subtitle">팀 소개와 최근 활동, 멤버 랭킹을 한눈에 확인하세요. 팀 이름·프로필 등은 관리자 메뉴에서 설정됩니다.</p>
-        </div>
-      </header>
-
-      <div className="td-grid-top">
-        <section className="td-widget td-widget--profile">
-          <div className="td-widget-head">
-            <h2 className="td-widget-title">팀 소개</h2>
+        <div className="td-header-main">
+          <div>
+            <h1 className="td-title">팀 대시보드</h1>
+            <p className="td-subtitle">
+              연도를 바꾸면 목표·수령 상금·참가 랭킹·활동 타임라인이 같은 해 기준으로 맞춰집니다. 팀 이름·프로필은 관리자
+              메뉴에서 설정됩니다.
+            </p>
           </div>
-
           {hasYears ? (
-            <label className="td-year-row">
-              <span className="td-year-label">연도</span>
+            <label className="td-header-year">
+              <span className="td-header-year-label">대시보드 연도</span>
               <select
-                className="td-year-select"
+                className="td-year-select td-year-select--header"
                 value={year ?? ''}
                 onChange={(e) => {
                   const y = parseInt(e.target.value, 10)
@@ -185,6 +241,20 @@ export function TeamDashboardView() {
               </select>
             </label>
           ) : null}
+        </div>
+        {hasYears && year != null ? (
+          <p className="td-year-scope-hint">
+            참가 등록·제출일·결과 발표일 중 하나가 <strong>{year}년</strong>인 공모전만 집계합니다. 활동 목록은 해당 연도에
+            접수된 참가(updated_at 기준)입니다.
+          </p>
+        ) : null}
+      </header>
+
+      <div className="td-grid-top">
+        <section className="td-widget td-widget--profile">
+          <div className="td-widget-head">
+            <h2 className="td-widget-title">팀 소개</h2>
+          </div>
 
           <div className="td-team-hero">
             <div
@@ -200,10 +270,15 @@ export function TeamDashboardView() {
           </div>
 
           <div className="td-goal-split">
-            <GoalDonut pct={goalPct} achievedLabel={`달성 ${formatWon(achieved)}`} />
+            <GoalDonut
+              pct={goalPct}
+              achievedLabel={
+                hasYears && year != null ? `${year}년 ${formatWon(achieved)}` : `달성 ${formatWon(achieved)}`
+              }
+            />
             <div className="td-goal-figures">
               <div>
-                <span className="td-figure-label">올해 목표</span>
+                <span className="td-figure-label">{hasYears && year != null ? `${year}년 목표` : '목표'}</span>
                 <p className="td-figure-value td-figure-value--goal">
                   {formatPrize(goalPrizeMan)}
                   {goalClosed ? (
@@ -214,7 +289,9 @@ export function TeamDashboardView() {
                 </p>
               </div>
               <div>
-                <span className="td-figure-label">현재 달성</span>
+                <span className="td-figure-label">
+                  {hasYears && year != null ? `${year}년 수령 합` : '수령 완료 합'}
+                </span>
                 <p className="td-figure-value td-figure-value--achieved">{formatWon(achieved)}</p>
               </div>
             </div>
@@ -229,8 +306,12 @@ export function TeamDashboardView() {
         </section>
 
         <section className="td-widget td-widget--activity">
-          <h2 className="td-widget-title">실시간 팀 활동</h2>
-          <p className="td-widget-desc">최근 참가 신청이 반영된 공모전입니다.</p>
+          <h2 className="td-widget-title">팀 활동</h2>
+          <p className="td-widget-desc">
+            {hasYears && year != null
+              ? `${year}년에 접수된 참가 기록(updated_at) 최근 순입니다.`
+              : '최근 참가 신청이 반영된 공모전입니다.'}
+          </p>
           {actErr ? (
             <p className="td-empty">{actErr}</p>
           ) : activities.length === 0 ? (
@@ -257,9 +338,49 @@ export function TeamDashboardView() {
         </section>
       </div>
 
+      <section className="td-widget td-widget--pyramid">
+        <h2 className="td-widget-title">상금 피라미드</h2>
+        <p className="td-widget-desc">
+          {hasYears && year != null ? (
+            <>
+              <strong>{year}년</strong>에 해당하는 공모전만 집계합니다. 상세 기준 <strong>수령 완료</strong> 금액 합(원) — 많이
+              받은 사람이 꼭대기입니다.
+            </>
+          ) : (
+            <>
+              상세 기준 <strong>수령 완료</strong> 금액 합(원) — 많이 받은 사람이 꼭대기입니다.
+            </>
+          )}{' '}
+          아래「멤버 랭킹」은 같은 범위의 참가 건수 기준이에요.
+        </p>
+        {membersErr ? (
+          <p className="td-empty">{membersErr}</p>
+        ) : membersByPrize.length === 0 ? (
+          <p className="td-empty">멤버가 없습니다.</p>
+        ) : (
+          <div className="td-pyramid" aria-label="수령 완료 상금 피라미드 랭킹">
+            {chunkPyramid(membersByPrize).map((row, ri) => (
+              <div key={ri} className="td-pyramid-row">
+                {row.map((m, ci) => (
+                  <PyramidPrizeCard key={m.id} m={m} rank={pyramidRankAt(ri, ci)} />
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       <section className="td-widget td-widget--ranking">
         <h2 className="td-widget-title">멤버 랭킹</h2>
-        <p className="td-widget-desc">참가 건수 기준 · 상위 멤버를 응원해 보세요.</p>
+        <p className="td-widget-desc">
+          {hasYears && year != null ? (
+            <>
+              <strong>{year}년</strong>에 해당하는 공모전만 · 참가 건수 기준입니다.
+            </>
+          ) : (
+            <>전 기간 참가 건수 기준입니다.</>
+          )}
+        </p>
         {membersErr ? (
           <p className="td-empty">{membersErr}</p>
         ) : members.length === 0 ? (

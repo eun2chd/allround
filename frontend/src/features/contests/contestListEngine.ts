@@ -1,4 +1,5 @@
 import {
+  ddayUrgencyRankForSort,
   isContestCreatedToday,
   isContestDeadlineWithin3Days,
 } from '../../services/contestDashboardSummaryService'
@@ -192,6 +193,15 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     return (hasCheck(a) ? 1 : 0) - (hasCheck(b) ? 1 : 0)
   }
 
+  const sortListDdayUrgent = (a: ContestRow, b: ContestRow) => {
+    const ra = ddayUrgencyRankForSort(a.d_day)
+    const rb = ddayUrgencyRankForSort(b.d_day)
+    if (ra !== rb) return ra - rb
+    return sortListDefault(a, b)
+  }
+
+  const sortFn = fp.sortDdayUrgent ? sortListDdayUrgent : sortListDefault
+
   if (participationOnly) {
     const st = fp.participationFilter as 'participate' | 'pass'
     const partRes = await fetchContestsByParticipation(st)
@@ -227,7 +237,7 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     if (fp.bookmarkOnly) list = list.filter((row) => meta.bookmarkSet.has(makeKey(row)))
     if (fp.deadlineSoonOnly) list = list.filter((r) => isContestDeadlineWithin3Days(r.d_day))
     if (fp.registeredTodayOnly) list = list.filter((r) => isContestCreatedToday(r.created_at))
-    list.sort(sortListDefault)
+    list.sort(sortFn)
     const total = list.length
     const start = (page - 1) * PAGE_SIZE
     list = list.slice(start, start + PAGE_SIZE)
@@ -271,7 +281,7 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     }
     if (fp.deadlineSoonOnly) list = list.filter((r) => isContestDeadlineWithin3Days(r.d_day))
     if (fp.registeredTodayOnly) list = list.filter((r) => isContestCreatedToday(r.created_at))
-    list.sort(sortListDefault)
+    list.sort(sortFn)
     const total = list.length
     const start = (page - 1) * PAGE_SIZE
     list = list.slice(start, start + PAGE_SIZE)
@@ -283,7 +293,8 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
   const needsChunkedClientFilter =
     (fp.deadlineSoonOnly ||
       fp.registeredTodayOnly ||
-      fp.participationFilter === 'none') &&
+      fp.participationFilter === 'none' ||
+      fp.sortDdayUrgent === true) &&
     !bookmarkOnly &&
     !participationOnly
 
@@ -348,7 +359,7 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     }
 
     let list = working as unknown as ContestRow[]
-    list.sort(sortListDefault)
+    list.sort(sortFn)
     const total = list.length
     const start = (page - 1) * PAGE_SIZE
     list = list.slice(start, start + PAGE_SIZE)
@@ -401,15 +412,7 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
       j.embeddedUserMeta && (fp.checkFilter === 'checked' || fp.checkFilter === 'unchecked')
     if (!checkInSql && fp.checkFilter === 'checked') list = list.filter(hasCheck)
     else if (!checkInSql && fp.checkFilter === 'unchecked') list = list.filter((r) => !hasCheck(r))
-    list.sort((a, b) => {
-      const createdA = new Date(a.created_at || 0).getTime()
-      const createdB = new Date(b.created_at || 0).getTime()
-      if (createdB !== createdA) return createdB - createdA
-      const tA = new Date(a.updated_at || 0).getTime()
-      const tB = new Date(b.updated_at || 0).getTime()
-      if (tB !== tA) return tB - tA
-      return (hasCheck(a) ? 1 : 0) - (hasCheck(b) ? 1 : 0)
-    })
+    list.sort(sortFn)
     return { rows: list, total: Number(j.total ?? list.length), page, meta }
   }
 

@@ -2,6 +2,7 @@
  * 좌·우 사이드바 데이터 — Supabase만 사용 (Flask /api 미사용).
  * RLS 정책에 따라 일부 조회·수정이 막히면 빈 목록/에러가 날 수 있음.
  */
+import { normalizePrizeSettlement } from '../features/participation/prizeSettlement'
 import { getSupabase } from './supabaseClient'
 
 const TEAM_PROFILE_BUCKET = 'teamprofile'
@@ -22,6 +23,11 @@ export type SidebarMemberRow = {
   nickname: string
   participate_count?: number
   profile_url?: string | null
+}
+
+/** 팀 대시보드 상금 랭킹 — `prize_received_won`은 상세 기준 수령 완료 합(원) */
+export type SidebarMemberPrizeRow = SidebarMemberRow & {
+  prize_received_won: number
 }
 export type SidebarActivityRow = {
   nickname: string
@@ -56,6 +62,7 @@ export async function fetchTeamPrizeProgress(year: number): Promise<{
   goal_prize: number
   total_achieved: number
   closed: boolean
+  achieved_frozen: number
 }> {
   const sb = getSupabase()
   const { data: setting } = await sb
@@ -77,7 +84,13 @@ export async function fetchTeamPrizeProgress(year: number): Promise<{
   let totalAchieved = totalRaw
   if (closed && achievedStored > 0) totalAchieved = achievedStored
 
-  return { goal_prize: goal, total_achieved: totalAchieved, closed }
+  return {
+    goal_prize: goal,
+    total_achieved: totalAchieved,
+    closed,
+    /** 마감 시 고정 표시용 저장 달성액(원). 0이면 라이브 합계 의미 */
+    achieved_frozen: achievedStored,
+  }
 }
 
 export async function fetchSiteTeamSettingsList(): Promise<{ rows: TeamSettingRow[] }> {
@@ -102,21 +115,27 @@ export async function fetchTeamSettingByYear(year: number): Promise<TeamSettingR
   return data as TeamSettingRow
 }
 
-export async function fetchMemberRanking(): Promise<SidebarMemberRow[]> {
+/** 참가 건수 랭킹 + 수령 완료 상금 합 랭킹을 한 번에 로드 */
+export async function fetchTeamDashboardMemberRankings(): Promise<{
+  byParticipation: SidebarMemberRow[]
+  byPrize: SidebarMemberPrizeRow[]
+}> {
   const sb = getSupabase()
   const { data: members, error } = await sb
     .from('profiles')
     .select('id, nickname, profile_url')
     .eq('role', 'member')
     .order('nickname')
-  if (error || !members?.length) return []
+  if (error || !members?.length) return { byParticipation: [], byPrize: [] }
 
   const ids = members.map((m) => String(m.id))
-  const { data: parts } = await sb
-    .from('contest_participation')
-    .select('user_id')
-    .eq('status', 'participate')
-    .in('user_id', ids)
+  const [{ data: parts }, { data: details }] = await Promise.all([
+    sb.from('contest_participation').select('user_id').eq('status', 'participate').in('user_id', ids),
+    sb
+      .from('contest_participation_detail')
+      .select('user_id, has_prize, prize_amount, prize_settlement_status')
+      .in('user_id', ids),
+  ])
 
   const counts: Record<string, number> = {}
   for (const p of parts || []) {
@@ -124,29 +143,62 @@ export async function fetchMemberRanking(): Promise<SidebarMemberRow[]> {
     if (uid) counts[uid] = (counts[uid] || 0) + 1
   }
 
-  const withCounts: SidebarMemberRow[] = members.map((m) => ({
-    id: String(m.id),
-    nickname: (m.nickname as string) || '회원',
-    participate_count: counts[String(m.id)] || 0,
-    profile_url: (m as { profile_url?: string | null }).profile_url ?? null,
-  }))
-  withCounts.sort(
+  const prizeByUser: Record<string, number> = {}
+  for (const row of details || []) {
+    const r = row as {
+      user_id?: string
+      has_prize?: boolean | null
+      prize_amount?: number | string | null
+      prize_settlement_status?: string | null
+    }
+    if (!r.has_prize || r.prize_amount == null || r.prize_amount === '') continue
+    const n = Number(r.prize_amount)
+    if (Number.isNaN(n) || n <= 0) continue
+    if (normalizePrizeSettlement(r.prize_settlement_status) !== '수령 완료') continue
+    const uid = String(r.user_id || '')
+    if (!uid) continue
+    prizeByUser[uid] = (prizeByUser[uid] || 0) + n
+  }
+
+  const base = members.map((m) => {
+    const id = String(m.id)
+    return {
+      id,
+      nickname: (m.nickname as string) || '회원',
+      participate_count: counts[id] || 0,
+      profile_url: (m as { profile_url?: string | null }).profile_url ?? null,
+      prize_received_won: Math.floor(prizeByUser[id] || 0),
+    }
+  })
+
+  const byParticipation: SidebarMemberRow[] = [...base]
+    .map(({ prize_received_won: _p, ...rest }) => rest)
+    .sort(
+      (a, b) =>
+        (b.participate_count || 0) - (a.participate_count || 0) ||
+        (a.nickname || '').localeCompare(b.nickname || '', 'ko'),
+    )
+
+  const byPrize: SidebarMemberPrizeRow[] = [...base].sort(
     (a, b) =>
+      b.prize_received_won - a.prize_received_won ||
       (b.participate_count || 0) - (a.participate_count || 0) ||
       (a.nickname || '').localeCompare(b.nickname || '', 'ko'),
   )
-  return withCounts
+
+  return { byParticipation, byPrize }
 }
 
-export async function fetchTeamActivityLast5(): Promise<SidebarActivityRow[]> {
-  const sb = getSupabase()
-  const { data: rows, error } = await sb
-    .from('contest_participation')
-    .select('user_id, source, contest_id, updated_at')
-    .eq('status', 'participate')
-    .order('updated_at', { ascending: false })
-    .limit(5)
-  if (error || !rows?.length) return []
+export async function fetchMemberRanking(): Promise<SidebarMemberRow[]> {
+  const { byParticipation } = await fetchTeamDashboardMemberRankings()
+  return byParticipation
+}
+
+async function enrichParticipationActivityRows(
+  sb: ReturnType<typeof getSupabase>,
+  rows: { user_id?: string; source?: string; contest_id?: string; updated_at?: string | null }[],
+): Promise<SidebarActivityRow[]> {
+  if (!rows.length) return []
 
   const userIds = [...new Set(rows.map((r) => String(r.user_id || '')).filter(Boolean))]
   const { data: profs } = await sb.from('profiles').select('id, nickname').in('id', userIds)
@@ -180,6 +232,38 @@ export async function fetchTeamActivityLast5(): Promise<SidebarActivityRow[]> {
     })
   }
   return result
+}
+
+export async function fetchTeamActivityLast5(): Promise<SidebarActivityRow[]> {
+  const sb = getSupabase()
+  const { data: rows, error } = await sb
+    .from('contest_participation')
+    .select('user_id, source, contest_id, updated_at')
+    .eq('status', 'participate')
+    .order('updated_at', { ascending: false })
+    .limit(5)
+  if (error || !rows?.length) return []
+  return enrichParticipationActivityRows(sb, rows || [])
+}
+
+/** `updated_at` 연도가 `year`인 참가 기록만 최대 `limit`건 */
+export async function fetchTeamActivityForYear(year: number, limit = 5): Promise<SidebarActivityRow[]> {
+  const sb = getSupabase()
+  const { data: rows, error } = await sb
+    .from('contest_participation')
+    .select('user_id, source, contest_id, updated_at')
+    .eq('status', 'participate')
+    .order('updated_at', { ascending: false })
+    .limit(160)
+  if (error || !rows?.length) return []
+  const filtered = (rows || []).filter((r) => {
+    const u = r.updated_at
+    if (u == null || u === '') return false
+    const t = new Date(String(u)).getTime()
+    if (Number.isNaN(t)) return false
+    return new Date(t).getFullYear() === year
+  })
+  return enrichParticipationActivityRows(sb, filtered.slice(0, limit))
 }
 
 export async function fetchSidebarUsers(): Promise<SidebarUserRow[]> {

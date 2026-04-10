@@ -1,4 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react'
 import { createPortal } from 'react-dom'
 import {
   HiArrowPath,
@@ -105,8 +114,26 @@ type Props = {
   loadingOverlay: (active: boolean) => void
 }
 
+/** 공모전 테이블 PC 레이아웃·제목 truncate 길이 (home-page.css @media min-width 와 동일) */
+const CONTEST_TABLE_WIDE_MIN_PX = 901
+
+function useContestTableWideLayout(): boolean {
+  const [wide, setWide] = useState(() =>
+    typeof window !== 'undefined' ? window.matchMedia(`(min-width: ${CONTEST_TABLE_WIDE_MIN_PX}px)`).matches : false,
+  )
+  useEffect(() => {
+    const mq = window.matchMedia(`(min-width: ${CONTEST_TABLE_WIDE_MIN_PX}px)`)
+    const sync = () => setWide(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+  return wide
+}
+
 export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props) {
   const confirm = useConfirm()
+  const contestTableWide = useContestTableWideLayout()
   const { countdownText, dateTimeText } = useContestRefreshCountdown()
   const [filterOptions, setFilterOptions] = useState<{ categories: string[]; sources: string[] }>({
     categories: [],
@@ -121,6 +148,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     bookmarkOnly: false,
     deadlineSoonOnly: false,
     registeredTodayOnly: false,
+    sortDdayUrgent: false,
   })
   const [uiQ, setUiQ] = useState('')
   const [rows, setRows] = useState<ContestRow[]>([])
@@ -145,9 +173,85 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     row: ContestRow
   } | null>(null)
   const [filterPanelExpanded, setFilterPanelExpanded] = useState(false)
+  const [rowSelection, setRowSelection] = useState<Set<string>>(() => new Set())
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null)
 
   const userLevel = me.user_level ?? 1
   const canBulk = userLevel >= 71
+
+  useEffect(() => {
+    const allowed = new Set(rows.map((r) => contestKey(r.source, r.id)))
+    setRowSelection((prev) => {
+      const next = new Set<string>()
+      for (const k of prev) {
+        if (allowed.has(k)) next.add(k)
+      }
+      return next.size === prev.size && [...prev].every((k) => next.has(k)) ? prev : next
+    })
+  }, [rows])
+
+  const selectedRows = useMemo(
+    () => rows.filter((r) => rowSelection.has(contestKey(r.source, r.id))),
+    [rows, rowSelection],
+  )
+
+  const bulkContentCheckTargets = useMemo(
+    () => selectedRows.filter((r) => !meta.contentChecks.has(contestKey(r.source, r.id))),
+    [selectedRows, meta.contentChecks],
+  )
+
+  const bulkParticipateTargets = useMemo(
+    () =>
+      selectedRows.filter((r) => {
+        const k = contestKey(r.source, r.id)
+        return meta.contentChecks.has(k) && meta.participation[k] !== 'participate'
+      }),
+    [selectedRows, meta.contentChecks, meta.participation],
+  )
+
+  const bulkPassTargets = useMemo(
+    () =>
+      selectedRows.filter((r) => {
+        const k = contestKey(r.source, r.id)
+        return meta.contentChecks.has(k) && meta.participation[k] !== 'pass'
+      }),
+    [selectedRows, meta.contentChecks, meta.participation],
+  )
+
+  const allPageSelected =
+    rows.length > 0 && rows.every((r) => rowSelection.has(contestKey(r.source, r.id)))
+  const somePageSelected = rows.some((r) => rowSelection.has(contestKey(r.source, r.id)))
+
+  useLayoutEffect(() => {
+    const el = selectAllCheckboxRef.current
+    if (!el) return
+    el.indeterminate = somePageSelected && !allPageSelected
+  }, [somePageSelected, allPageSelected, rows.length])
+
+  const toggleRowSelect = useCallback((k: string) => {
+    setRowSelection((prev) => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  }, [])
+
+  const toggleSelectAllPage = useCallback(() => {
+    setRowSelection((prev) => {
+      const keys = rows.map((r) => contestKey(r.source, r.id))
+      if (keys.length === 0) return prev
+      const allOn = keys.every((k) => prev.has(k))
+      if (allOn) {
+        const next = new Set(prev)
+        for (const k of keys) next.delete(k)
+        return next
+      }
+      const next = new Set(prev)
+      for (const k of keys) next.add(k)
+      return next
+    })
+  }, [rows])
 
   const reload = useCallback(
     async (pageNum: number, showBlocking = true) => {
@@ -218,6 +322,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     bookmarkOnly: false,
     deadlineSoonOnly: false,
     registeredTodayOnly: false,
+    sortDdayUrgent: false,
   }
 
   const applySearch = () => {
@@ -406,6 +511,150 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
       } else showToast('내용 확인 실패', 'error')
     } catch {
       showToast('내용 확인 실패', 'error')
+    }
+  }
+
+  const bulkContentCheckSelected = async () => {
+    const targets = bulkContentCheckTargets
+    if (!targets.length) {
+      showToast('선택한 항목 중 미확인 공고가 없습니다.')
+      return
+    }
+    const ok = await confirm({
+      title: '선택 내용확인',
+      message: `선택 ${selectedRows.length}건 중 미확인 ${targets.length}건을 내용확인 처리할까요?`,
+      confirmText: '처리',
+    })
+    if (!ok) return
+    loadingOverlay(true)
+    try {
+      if (canBulk) {
+        const j = await postContentCheckBulk(
+          targets.map((r) => ({
+            source: r.source?.trim() || DEFAULT_CONTEST_SOURCE,
+            contest_id: String(r.id ?? ''),
+          })),
+        )
+        if (j.success) {
+          const done = j.done ?? 0
+          showToast(`내용확인 ${done}건 처리했습니다.`)
+          const expLine = formatExpGainedBulkToast('content_check', j.exp_gained ?? 0, done)
+          if (expLine) showToast(expLine)
+        } else {
+          showToast('error' in j ? j.error : '처리 실패', 'error')
+        }
+      } else {
+        let done = 0
+        let totalExp = 0
+        for (const row of targets) {
+          const src = row.source?.trim() || DEFAULT_CONTEST_SOURCE
+          const id = String(row.id ?? '')
+          const j = await postContentCheck(src, id)
+          if (j.success) {
+            done += 1
+            totalExp += j.exp_gained ?? 0
+          }
+        }
+        showToast(`내용확인 ${done}건 처리했습니다.`)
+        const expLine = formatExpGainedBulkToast('content_check', totalExp, done)
+        if (expLine) showToast(expLine)
+      }
+      setRowSelection(new Set())
+      void reload(page, false)
+    } finally {
+      loadingOverlay(false)
+    }
+  }
+
+  const bulkParticipateSelected = async () => {
+    const targets = bulkParticipateTargets
+    if (!targets.length) {
+      showToast('선택 항목 중 내용확인 후 참가로 바꿀 수 있는 공고가 없습니다.')
+      return
+    }
+    const passCount = targets.filter((r) => meta.participation[contestKey(r.source, r.id)] === 'pass').length
+    const ok = await confirm({
+      title: '선택 참가',
+      message:
+        passCount > 0
+          ? `선택 ${selectedRows.length}건 중 ${targets.length}건을 개인 참가로 표시합니다. (패스였던 ${passCount}건은 참가로 바뀝니다.)`
+          : `선택 ${selectedRows.length}건 중 ${targets.length}건을 개인 참가로 표시할까요?`,
+      confirmText: '참가 표시',
+    })
+    if (!ok) return
+    loadingOverlay(true)
+    let done = 0
+    let fail = 0
+    let totalExp = 0
+    try {
+      for (const row of targets) {
+        const src = row.source?.trim() || DEFAULT_CONTEST_SOURCE
+        const id = String(row.id ?? '')
+        const j = await setContestParticipation(src, id, {
+          status: 'participate',
+          participation_type: 'individual',
+          team_id: null,
+        })
+        if (j.success) {
+          done += 1
+          totalExp += j.exp_gained ?? 0
+        } else fail += 1
+      }
+      showToast(
+        done ? `참가 표시 ${done}건${fail ? ` (${fail}건 실패)` : ''}` : '처리에 실패했습니다.',
+        done ? 'success' : 'error',
+      )
+      const expLine = formatExpGainedBulkToast('participate', totalExp, done)
+      if (expLine) showToast(expLine)
+      setRowSelection(new Set())
+      void reload(page, false)
+    } finally {
+      loadingOverlay(false)
+    }
+  }
+
+  const bulkPassSelected = async () => {
+    const targets = bulkPassTargets
+    if (!targets.length) {
+      showToast('선택 항목 중 내용확인 후 패스로 바꿀 수 있는 공고가 없습니다.')
+      return
+    }
+    const participateCount = targets.filter(
+      (r) => meta.participation[contestKey(r.source, r.id)] === 'participate',
+    ).length
+    const ok = await confirm({
+      title: '선택 패스',
+      message:
+        participateCount > 0
+          ? `선택 ${selectedRows.length}건 중 ${targets.length}건을 패스로 표시합니다. (참가였던 ${participateCount}건은 패스로 바뀝니다.)`
+          : `선택 ${selectedRows.length}건 중 ${targets.length}건을 패스로 표시할까요?`,
+      confirmText: '패스 표시',
+    })
+    if (!ok) return
+    loadingOverlay(true)
+    let done = 0
+    let fail = 0
+    let totalExp = 0
+    try {
+      for (const row of targets) {
+        const src = row.source?.trim() || DEFAULT_CONTEST_SOURCE
+        const id = String(row.id ?? '')
+        const j = await setContestParticipation(src, id, { status: 'pass' })
+        if (j.success) {
+          done += 1
+          totalExp += j.exp_gained ?? 0
+        } else fail += 1
+      }
+      showToast(
+        done ? `패스 표시 ${done}건${fail ? ` (${fail}건 실패)` : ''}` : '처리에 실패했습니다.',
+        done ? 'success' : 'error',
+      )
+      const expLine = formatExpGainedBulkToast('pass', totalExp, done)
+      if (expLine) showToast(expLine)
+      setRowSelection(new Set())
+      void reload(page, false)
+    } finally {
+      loadingOverlay(false)
     }
   }
 
@@ -636,6 +885,39 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
 
       <div className="card contest-list-card">
         <div className="list-toolbar">
+          <div className="list-toolbar-left" role="group" aria-label="선택 항목 일괄 처리">
+            {selectedRows.length > 0 ? (
+              <span className="list-toolbar-selection-count">{selectedRows.length}건 선택</span>
+            ) : null}
+            <button
+              type="button"
+              className="btn btn-selection-action"
+              disabled={!bulkContentCheckTargets.length}
+              title="체크한 공고 중 아직 내용확인 안 한 건만 처리합니다."
+              onClick={() => void bulkContentCheckSelected()}
+            >
+              선택 내용확인
+            </button>
+            <button
+              type="button"
+              className="btn btn-selection-action"
+              disabled={!bulkParticipateTargets.length}
+              title="내용확인된 공고만 개인 참가로 일괄 표시합니다."
+              onClick={() => void bulkParticipateSelected()}
+            >
+              선택 참가
+            </button>
+            <button
+              type="button"
+              className="btn btn-selection-action"
+              disabled={!bulkPassTargets.length}
+              title="내용확인된 공고만 패스로 일괄 표시합니다."
+              onClick={() => void bulkPassSelected()}
+            >
+              선택 패스
+            </button>
+          </div>
+          <div className="list-toolbar-right">
           <button
             type="button"
             id="btnBulkContentCheck"
@@ -680,17 +962,55 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
           >
             전체 내용확인
           </button>
+          </div>
         </div>
         <div className="contest-list-x-scroll" ref={contestListScrollRef}>
         <table className="contest-table">
           <thead>
             <tr>
+              <th className="contest-th-select" scope="col">
+                <input
+                  ref={selectAllCheckboxRef}
+                  type="checkbox"
+                  className="contest-row-select-checkbox"
+                  checked={allPageSelected}
+                  onChange={toggleSelectAllPage}
+                  disabled={!rows.length || loading}
+                  aria-label="현재 페이지 행 전체 선택"
+                />
+              </th>
               <th style={{ width: 40 }} title="북마크" className="th-ico-cell">
                 <HiStar className="th-bookmark-ico" aria-hidden />
               </th>
               <th style={{ width: 60 }}>No</th>
-              <th style={{ width: 60 }}>D-day</th>
-              <th style={{ width: 200 }}>제목</th>
+              <th className="contest-th-dday" scope="col">
+                <button
+                  type="button"
+                  className={
+                    'contest-th-sort-dday' + (filters.sortDdayUrgent ? ' contest-th-sort-dday--active' : '')
+                  }
+                  onClick={() =>
+                    setFilters((f) => ({
+                      ...f,
+                      sortDdayUrgent: !f.sortDdayUrgent,
+                    }))
+                  }
+                  title={
+                    filters.sortDdayUrgent
+                      ? '다시 누르면 최신 등록 순으로 돌아갑니다.'
+                      : '클릭하면 마감이 가까운 순으로 정렬합니다. (오늘·D-day → D-1 → … → 마감·형식 없음은 뒤로)'
+                  }
+                  aria-pressed={filters.sortDdayUrgent === true}
+                >
+                  <span className="contest-th-sort-dday-main">D-day</span>
+                  {filters.sortDdayUrgent ? (
+                    <span className="contest-th-sort-dday-badge contest-th-sort-dday-badge--on">급함순</span>
+                  ) : (
+                    <span className="contest-th-sort-dday-badge">눌러 정렬</span>
+                  )}
+                </button>
+              </th>
+              <th className="contest-th-title">제목</th>
               <th style={{ width: 180 }}>주최/주관</th>
               <th className="contest-th-category" style={{ width: 72 }}>
                 카테고리
@@ -698,20 +1018,20 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
               <th style={{ width: 80 }}>출처</th>
               <th style={{ width: 100 }}>생성시간</th>
               <th style={{ width: 100 }}>업데이트시간</th>
-              <th style={{ width: 108 }}>참가·패스</th>
-              <th style={{ width: 100 }}>메뉴</th>
+              <th className="contest-th-participation">참가·패스</th>
+              <th className="contest-th-menu">메뉴</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={11} className="loading">
+                <td colSpan={12} className="loading">
                   로딩 중
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="empty-state">
+                <td colSpan={12} className="empty-state">
                   표시할 공모전이 없습니다.
                 </td>
               </tr>
@@ -729,6 +1049,8 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
                   <FragmentWithDetail
                     key={rk + String(idx)}
                     row={row}
+                    rowSelected={rowSelection.has(rk)}
+                    onToggleRowSelect={() => toggleRowSelect(rk)}
                     rowNo={rowNo}
                     listScrollRef={contestListScrollRef}
                     menuFlipUp={rows.length > 1 && idx >= rows.length - 2 && idx > 0}
@@ -750,6 +1072,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
                     showToast={showToast}
                     formatFetchTime={formatFetchTime}
                     truncate={truncate}
+                    titleTruncateMax={contestTableWide ? 56 : 22}
                     detail={
                       open ? (
                         <ContestDetailRow
@@ -800,6 +1123,8 @@ const MENU_FALLBACK_W = 160
 
 function FragmentWithDetail({
   row,
+  rowSelected,
+  onToggleRowSelect,
   rowNo,
   listScrollRef,
   menuFlipUp,
@@ -817,9 +1142,12 @@ function FragmentWithDetail({
   showToast,
   formatFetchTime,
   truncate,
+  titleTruncateMax,
   detail,
 }: {
   row: ContestRow
+  rowSelected: boolean
+  onToggleRowSelect: () => void
   rowNo: number
   listScrollRef: RefObject<HTMLDivElement | null>
   /** 목록 하단부: 더보기 패널을 위로 펼칠 때(뷰포트 여유 있으면) */
@@ -838,6 +1166,7 @@ function FragmentWithDetail({
   showToast: (msg: string, type?: 'success' | 'error') => void
   formatFetchTime: (iso: string | undefined) => string
   truncate: (s: string | undefined, max?: number) => string
+  titleTruncateMax: number
   detail: ReactNode
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
@@ -915,6 +1244,16 @@ function FragmentWithDetail({
         style={{ cursor: 'pointer' }}
         onClick={onRowClick}
       >
+        <td className="contest-select-cell" onClick={(e) => e.stopPropagation()}>
+          <input
+            type="checkbox"
+            className="contest-row-select-checkbox"
+            checked={rowSelected}
+            onChange={onToggleRowSelect}
+            onClick={(e) => e.stopPropagation()}
+            aria-label={`${truncate(row.title, 40)} 선택`}
+          />
+        </td>
         <td onClick={(e) => e.stopPropagation()}>
           <span
             className={`bookmark-star${bookmarked ? ' bookmarked' : ''}`}
@@ -939,7 +1278,7 @@ function FragmentWithDetail({
         </td>
         <td className="title-cell">
           <span className="title-cell__text" title={row.title || undefined}>
-            {truncate(row.title)}
+            {truncate(row.title, titleTruncateMax)}
           </span>
         </td>
         <td className="host-cell">{row.host || '-'}</td>
@@ -1078,7 +1417,7 @@ function FragmentWithDetail({
       </tr>
       {open && detail ? (
         <tr className="detail-row">
-          <td colSpan={11}>{detail}</td>
+          <td colSpan={12}>{detail}</td>
         </tr>
       ) : null}
     </>

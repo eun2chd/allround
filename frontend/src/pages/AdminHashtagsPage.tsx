@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { HiXMark } from 'react-icons/hi2'
 import { useConfirm } from '../context/ConfirmContext'
 import { useAdminOutletContext } from '../components/admin/adminLayoutContext'
 import { appToast } from '../lib/appToast'
 import {
-  deleteHashtagMaster,
+  deleteHashtagMasters,
   fetchHashtagMasterForAdmin,
   insertHashtagMaster,
   updateHashtagMaster,
@@ -17,6 +17,8 @@ export function AdminHashtagsPage() {
 
   const [rows, setRows] = useState<HashtagMasterRow[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(() => new Set())
+  const selectAllRef = useRef<HTMLInputElement>(null)
 
   const [formOpen, setFormOpen] = useState(false)
   const [editId, setEditId] = useState<number | null>(null)
@@ -27,6 +29,7 @@ export function AdminHashtagsPage() {
 
   const load = useCallback(async () => {
     setLoading(true)
+    setSelectedIds(new Set())
     try {
       const r = await fetchHashtagMasterForAdmin()
       if (!r.ok) {
@@ -112,20 +115,56 @@ export function AdminHashtagsPage() {
     }
   }
 
-  const onDelete = async (r: HashtagMasterRow) => {
+  const toggleSelect = (id: number) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAll = () => {
+    setSelectedIds((prev) => {
+      if (rows.length > 0 && prev.size === rows.length) return new Set()
+      return new Set(rows.map((r) => r.id))
+    })
+  }
+
+  const allSelected = rows.length > 0 && selectedIds.size === rows.length
+  const someSelected = selectedIds.size > 0
+
+  useEffect(() => {
+    const el = selectAllRef.current
+    if (!el) return
+    el.indeterminate = someSelected && !allSelected
+  }, [someSelected, allSelected])
+
+  const onDeleteSelected = async () => {
+    const ids = [...selectedIds]
+    if (!ids.length) {
+      appToast('삭제할 해시태그를 선택하세요.', 'error')
+      return
+    }
+    const picked = rows.filter((r) => selectedIds.has(r.id))
+    const preview = picked
+      .slice(0, 8)
+      .map((r) => `#${r.tag_name}`)
+      .join(', ')
+    const more = picked.length > 8 ? ` 외 ${picked.length - 8}개` : ''
     const ok = await confirm({
       title: '해시태그 삭제',
-      message: `「${r.tag_name}」을(를) 삭제할까요? 이 태그를 고른 회원의 선택에서도 제거됩니다.`,
+      message: `선택한 ${picked.length}개 태그를 삭제할까요? 이 태그를 고른 회원의 선택에서도 제거됩니다.\n\n${preview}${more}`,
       confirmText: '삭제',
       danger: true,
     })
     if (!ok) return
-    const res = await deleteHashtagMaster(r.id)
+    const res = await deleteHashtagMasters(ids)
     if (!res.ok) {
       appToast(res.error, 'error')
       return
     }
-    appToast('삭제했습니다.')
+    appToast(`${res.deleted}개 삭제했습니다.`)
     void load()
   }
 
@@ -142,12 +181,21 @@ export function AdminHashtagsPage() {
               해시태그 <span>관리</span>
             </h1>
             <p className="admin-dashboard-lead">
-              프로필에서 회원이 고를 수 있는 태그 목록입니다. 이름은 서비스 내에서 <strong>#태그명</strong>으로 표시됩니다. (#은 입력하지 않아도 됩니다)
+              프로필에서 회원이 고를 수 있는 태그 목록입니다. 이름은 서비스 내에서 <strong>#태그명</strong>으로 표시됩니다. (#은
+              입력하지 않아도 됩니다) 삭제는 체크박스로 고른 뒤 <strong>선택 삭제</strong>를 누르세요.
             </p>
           </div>
           <div className="admin-notices-header-actions">
             <button type="button" className="btn-secondary" onClick={() => void load()} disabled={loading}>
               새로고침
+            </button>
+            <button
+              type="button"
+              className="btn-secondary btn-delete"
+              onClick={() => void onDeleteSelected()}
+              disabled={loading || !someSelected}
+            >
+              선택 삭제{someSelected ? ` (${selectedIds.size})` : ''}
             </button>
             <button type="button" className="btn-write" onClick={openNew}>
               새 해시태그
@@ -164,6 +212,19 @@ export function AdminHashtagsPage() {
             <table className="admin-users-table admin-hashtags-table">
               <thead>
                 <tr>
+                  <th scope="col" className="admin-hashtags-col-check">
+                    <span className="visually-hidden">선택</span>
+                    <input
+                      ref={selectAllRef}
+                      type="checkbox"
+                      className="admin-hashtags-select-all"
+                      checked={allSelected}
+                      onChange={toggleSelectAll}
+                      disabled={loading || rows.length === 0}
+                      title="전체 선택"
+                      aria-label="전체 선택"
+                    />
+                  </th>
                   <th scope="col" className="admin-users-col-no">
                     No
                   </th>
@@ -178,6 +239,15 @@ export function AdminHashtagsPage() {
               <tbody>
                 {rows.map((r, index) => (
                   <tr key={r.id}>
+                    <td className="admin-hashtags-col-check">
+                      <input
+                        type="checkbox"
+                        className="admin-hashtags-row-check"
+                        checked={selectedIds.has(r.id)}
+                        onChange={() => toggleSelect(r.id)}
+                        aria-label={`${r.tag_name} 선택`}
+                      />
+                    </td>
                     <td className="admin-users-col-no">{index + 1}</td>
                     <td>
                       <span className="admin-hashtag-name">#{r.tag_name}</span>
@@ -188,9 +258,6 @@ export function AdminHashtagsPage() {
                       <div className="admin-notices-row-actions">
                         <button type="button" className="btn-secondary" onClick={() => openEdit(r)}>
                           수정
-                        </button>
-                        <button type="button" className="btn-secondary btn-delete" onClick={() => void onDelete(r)}>
-                          삭제
                         </button>
                       </div>
                     </td>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useConfirm } from '../context/ConfirmContext'
 import { useAdminOutletContext } from '../components/admin/adminLayoutContext'
@@ -34,8 +34,12 @@ export function AdminCommentsPage() {
   const [totalS, setTotalS] = useState(0)
   const [pageS, setPageS] = useState(1)
   const [loading, setLoading] = useState(true)
+  const [selectedContestIds, setSelectedContestIds] = useState<Set<string>>(() => new Set())
+  const [selectedStartupIds, setSelectedStartupIds] = useState<Set<string>>(() => new Set())
+  const selectAllRef = useRef<HTMLInputElement>(null)
 
   const loadContest = useCallback(async () => {
+    setSelectedContestIds(new Set())
     const r = await fetchContestCommentsModerationPage({ page: pageC, pageSize: PAGE_SIZE })
     if (!r.ok) {
       appToast(r.error, 'error')
@@ -48,6 +52,7 @@ export function AdminCommentsPage() {
   }, [pageC])
 
   const loadStartup = useCallback(async () => {
+    setSelectedStartupIds(new Set())
     const r = await fetchStartupCommentsModerationPage({ page: pageS, pageSize: PAGE_SIZE })
     if (!r.ok) {
       appToast(r.error, 'error')
@@ -75,37 +80,124 @@ export function AdminCommentsPage() {
     }
   }, [tab, loadContest, loadStartup])
 
-  const delContest = async (row: ContestCommentModRow) => {
+  const toggleContest = (id: string) => {
+    setSelectedContestIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleStartup = (id: string) => {
+    setSelectedStartupIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const toggleSelectAllContest = () => {
+    const pageIds = rowsC.map((r) => r.id)
+    setSelectedContestIds((prev) => {
+      const next = new Set(prev)
+      const allOnPage = pageIds.length > 0 && pageIds.every((id) => next.has(id))
+      if (allOnPage) {
+        for (const id of pageIds) next.delete(id)
+      } else {
+        for (const id of pageIds) next.add(id)
+      }
+      return next
+    })
+  }
+
+  const toggleSelectAllStartup = () => {
+    const pageIds = rowsS.map((r) => r.id)
+    setSelectedStartupIds((prev) => {
+      const next = new Set(prev)
+      const allOnPage = pageIds.length > 0 && pageIds.every((id) => next.has(id))
+      if (allOnPage) {
+        for (const id of pageIds) next.delete(id)
+      } else {
+        for (const id of pageIds) next.add(id)
+      }
+      return next
+    })
+  }
+
+  const allContestSelected = rowsC.length > 0 && rowsC.every((r) => selectedContestIds.has(r.id))
+  const someContestOnPage = rowsC.some((r) => selectedContestIds.has(r.id))
+  const allStartupSelected = rowsS.length > 0 && rowsS.every((r) => selectedStartupIds.has(r.id))
+  const someStartupOnPage = rowsS.some((r) => selectedStartupIds.has(r.id))
+
+  useEffect(() => {
+    const el = selectAllRef.current
+    if (!el) return
+    if (tab === 'contest') {
+      el.indeterminate = someContestOnPage && !allContestSelected
+    } else {
+      el.indeterminate = someStartupOnPage && !allStartupSelected
+    }
+  }, [tab, someContestOnPage, allContestSelected, someStartupOnPage, allStartupSelected])
+
+  const deleteSelectedContest = async () => {
+    const picked = rowsC.filter((r) => selectedContestIds.has(r.id))
+    if (!picked.length) {
+      appToast('삭제할 댓글을 선택하세요.', 'error')
+      return
+    }
+    const preview = picked
+      .slice(0, 6)
+      .map((r) => truncate(r.body, 40))
+      .join('\n')
+    const more = picked.length > 6 ? `\n… 외 ${picked.length - 6}건` : ''
     const ok = await confirm({
-      title: '댓글 삭제',
-      message: '이 공모전 댓글을 삭제할까요?',
+      title: '공모전 댓글 삭제',
+      message: `선택한 ${picked.length}건을 삭제할까요? 공모전 상세에 즉시 반영됩니다.\n\n${preview}${more}`,
       confirmText: '삭제',
       danger: true,
     })
     if (!ok) return
-    const r = await adminDeleteContestComment(row.id)
-    if (!r.ok) {
-      appToast(r.error, 'error')
-      return
+    for (const row of picked) {
+      const r = await adminDeleteContestComment(row.id)
+      if (!r.ok) {
+        appToast(r.error, 'error')
+        void loadContest()
+        return
+      }
     }
-    appToast('삭제했습니다.')
+    appToast(`${picked.length}건 삭제했습니다.`)
     void loadContest()
   }
 
-  const delStartup = async (row: StartupCommentModRow) => {
+  const deleteSelectedStartup = async () => {
+    const picked = rowsS.filter((r) => selectedStartupIds.has(r.id))
+    if (!picked.length) {
+      appToast('삭제할 댓글을 선택하세요.', 'error')
+      return
+    }
+    const preview = picked
+      .slice(0, 6)
+      .map((r) => truncate(r.body, 40))
+      .join('\n')
+    const more = picked.length > 6 ? `\n… 외 ${picked.length - 6}건` : ''
     const ok = await confirm({
-      title: '댓글 삭제',
-      message: '이 창업 허브 댓글을 삭제할까요?',
+      title: '창업 허브 댓글 삭제',
+      message: `선택한 ${picked.length}건을 삭제할까요? 창업 허브에 즉시 반영됩니다.\n\n${preview}${more}`,
       confirmText: '삭제',
       danger: true,
     })
     if (!ok) return
-    const r = await adminDeleteStartupComment(row.id)
-    if (!r.ok) {
-      appToast(r.error, 'error')
-      return
+    for (const row of picked) {
+      const r = await adminDeleteStartupComment(row.id)
+      if (!r.ok) {
+        appToast(r.error, 'error')
+        void loadStartup()
+        return
+      }
     }
-    appToast('삭제했습니다.')
+    appToast(`${picked.length}건 삭제했습니다.`)
     void loadStartup()
   }
 
@@ -119,11 +211,33 @@ export function AdminCommentsPage() {
             <h1>
               댓글 <span>관리</span>
             </h1>
-            <p className="admin-dashboard-lead">부적절한 댓글·자동 생성 오류 줄을 삭제합니다. 공모전 상세와 창업 허브에 즉시 반영됩니다.</p>
+            <p className="admin-dashboard-lead">
+              부적절한 댓글·자동 생성 오류 줄을 삭제합니다. 행을 선택한 뒤 <strong>선택 삭제</strong>를 누르면 공모전 상세·창업 허브에 즉시 반영됩니다.
+            </p>
           </div>
-          <button type="button" className="btn-secondary" onClick={() => void (tab === 'contest' ? loadContest() : loadStartup())} disabled={loading}>
-            새로고침
-          </button>
+          <div className="admin-notices-header-actions">
+            <button type="button" className="btn-secondary" onClick={() => void (tab === 'contest' ? loadContest() : loadStartup())} disabled={loading}>
+              새로고침
+            </button>
+            <button
+              type="button"
+              className="btn-secondary btn-delete"
+              onClick={() => void (tab === 'contest' ? deleteSelectedContest() : deleteSelectedStartup())}
+              disabled={
+                loading ||
+                (tab === 'contest' ? selectedContestIds.size === 0 : selectedStartupIds.size === 0)
+              }
+            >
+              선택 삭제
+              {tab === 'contest'
+                ? selectedContestIds.size > 0
+                  ? ` (${selectedContestIds.size})`
+                  : ''
+                : selectedStartupIds.size > 0
+                  ? ` (${selectedStartupIds.size})`
+                  : ''}
+            </button>
+          </div>
         </header>
 
         <div className="admin-exp-tabs" role="tablist">
@@ -146,16 +260,37 @@ export function AdminCommentsPage() {
                 <table className="admin-users-table admin-comments-contest-table">
                   <thead>
                     <tr>
+                      <th scope="col" className="admin-contests-col-check">
+                        <span className="visually-hidden">선택</span>
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          className="admin-contests-select-all"
+                          checked={allContestSelected}
+                          onChange={toggleSelectAllContest}
+                          disabled={loading || rowsC.length === 0}
+                          title="이 페이지 전체 선택"
+                          aria-label="이 페이지 전체 선택"
+                        />
+                      </th>
                       <th>일시</th>
                       <th>작성자</th>
                       <th>공모전</th>
                       <th>내용</th>
-                      <th>작업</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rowsC.map((r) => (
                       <tr key={r.id}>
+                        <td className="admin-contests-col-check">
+                          <input
+                            type="checkbox"
+                            className="admin-contests-row-check"
+                            checked={selectedContestIds.has(r.id)}
+                            onChange={() => toggleContest(r.id)}
+                            aria-label={`댓글 선택 (${truncate(r.body, 24)})`}
+                          />
+                        </td>
                         <td className="admin-exp-cell-muted">{new Date(r.created_at).toLocaleString('ko-KR')}</td>
                         <td>
                           <Link to={`/admin/users/${r.user_id}`} className="admin-users-nick-link">
@@ -166,11 +301,6 @@ export function AdminCommentsPage() {
                           {r.source}/{truncate(r.contest_id, 24)}
                         </td>
                         <td>{truncate(r.body, 80)}</td>
-                        <td>
-                          <button type="button" className="btn-secondary btn-delete" onClick={() => void delContest(r)}>
-                            삭제
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -192,16 +322,37 @@ export function AdminCommentsPage() {
                 <table className="admin-users-table admin-comments-startup-table">
                   <thead>
                     <tr>
+                      <th scope="col" className="admin-contests-col-check">
+                        <span className="visually-hidden">선택</span>
+                        <input
+                          ref={selectAllRef}
+                          type="checkbox"
+                          className="admin-contests-select-all"
+                          checked={allStartupSelected}
+                          onChange={toggleSelectAllStartup}
+                          disabled={loading || rowsS.length === 0}
+                          title="이 페이지 전체 선택"
+                          aria-label="이 페이지 전체 선택"
+                        />
+                      </th>
                       <th>일시</th>
                       <th>작성자</th>
                       <th>유형·ID</th>
                       <th>내용</th>
-                      <th>작업</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rowsS.map((r) => (
                       <tr key={r.id}>
+                        <td className="admin-contests-col-check">
+                          <input
+                            type="checkbox"
+                            className="admin-contests-row-check"
+                            checked={selectedStartupIds.has(r.id)}
+                            onChange={() => toggleStartup(r.id)}
+                            aria-label={`댓글 선택 (${truncate(r.body, 24)})`}
+                          />
+                        </td>
                         <td className="admin-exp-cell-muted">{new Date(r.created_at).toLocaleString('ko-KR')}</td>
                         <td>
                           <Link to={`/admin/users/${r.user_id}`} className="admin-users-nick-link">
@@ -212,11 +363,6 @@ export function AdminCommentsPage() {
                           {r.item_type}/{truncate(r.item_id, 20)}
                         </td>
                         <td>{truncate(r.body, 80)}</td>
-                        <td>
-                          <button type="button" className="btn-secondary btn-delete" onClick={() => void delStartup(r)}>
-                            삭제
-                          </button>
-                        </td>
                       </tr>
                     ))}
                   </tbody>

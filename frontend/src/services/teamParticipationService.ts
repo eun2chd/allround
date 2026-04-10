@@ -11,6 +11,19 @@ export type TeamMemberContest = {
   source?: string
   /** contest_participation_detail 존재 여부 */
   has_detail?: boolean
+  /** contest_participation.updated_at */
+  participation_registered_at?: string | null
+  participation_status?: string | null
+  award_status?: string | null
+  has_prize?: boolean | null
+  prize_amount?: number | null
+  submitted_at?: string | null
+  result_announcement_date?: string | null
+  result_announcement_method?: string | null
+  document_path?: string | null
+  document_filename?: string | null
+  /** 상금 정산 (상금 수령 건만) */
+  prize_settlement_status?: string | null
 }
 
 export type TeamMemberOverview = {
@@ -88,14 +101,61 @@ export async function fetchTeamParticipationOverview(): Promise<{
 
     const { data: detailRows } = await sb
       .from('contest_participation_detail')
-      .select('user_id, source, contest_id')
+      .select(
+        'user_id, source, contest_id, participation_status, award_status, has_prize, prize_amount, prize_settlement_status, submitted_at, result_announcement_date, result_announcement_method, document_path, document_filename',
+      )
       .in('user_id', userIds)
-    const detailSet = new Set(
-      (detailRows || []).map((d) => {
-        const dr = d as { user_id?: string; source?: string; contest_id?: string }
-        return `${String(dr.user_id || '')}:${String(dr.source || '')}:${String(dr.contest_id || '')}`
-      }),
-    )
+    const detailByKey = new Map<
+      string,
+      {
+        participation_status?: string | null
+        award_status?: string | null
+        has_prize?: boolean | null
+        prize_amount?: number | null
+        submitted_at?: string | null
+        result_announcement_date?: string | null
+        result_announcement_method?: string | null
+        document_path?: string | null
+        document_filename?: string | null
+        prize_settlement_status?: string | null
+      }
+    >()
+    for (const d of detailRows || []) {
+      const dr = d as {
+        user_id?: string
+        source?: string
+        contest_id?: string
+        participation_status?: string | null
+        award_status?: string | null
+        has_prize?: boolean | null
+        prize_amount?: number | string | null
+        submitted_at?: string | null
+        result_announcement_date?: string | null
+        result_announcement_method?: string | null
+        document_path?: string | null
+        document_filename?: string | null
+        prize_settlement_status?: string | null
+      }
+      const uid = String(dr.user_id || '')
+      const src = String(dr.source || '')
+      const cid = String(dr.contest_id || '')
+      if (!uid || !src || !cid) continue
+      detailByKey.set(`${uid}:${src}:${cid}`, {
+        participation_status: dr.participation_status ?? null,
+        award_status: dr.award_status ?? null,
+        has_prize: dr.has_prize ?? null,
+        prize_amount:
+          dr.prize_amount != null && dr.prize_amount !== ''
+            ? Number(dr.prize_amount)
+            : null,
+        submitted_at: dr.submitted_at ?? null,
+        result_announcement_date: dr.result_announcement_date ?? null,
+        result_announcement_method: dr.result_announcement_method ?? null,
+        document_path: dr.document_path ?? null,
+        document_filename: dr.document_filename ?? null,
+        prize_settlement_status: dr.prize_settlement_status ?? null,
+      })
+    }
 
     const pairList = parts.map((p: { source?: string; contest_id?: string }) => ({
       source: String(p.source || ''),
@@ -117,10 +177,24 @@ export async function fetchTeamParticipationOverview(): Promise<{
       if (!c) continue
       const list = partByUser.get(uid) || []
       const srcNorm = c.source || src || DEFAULT_CONTEST_SOURCE
+      const dk = `${uid}:${srcNorm}:${cid}`
+      const det = detailByKey.get(dk)
+      const partU = p as { updated_at?: string | null }
       list.push({
         ...c,
         source: srcNorm,
-        has_detail: detailSet.has(`${uid}:${srcNorm}:${cid}`),
+        has_detail: !!det,
+        participation_registered_at: partU.updated_at ?? null,
+        participation_status: det?.participation_status ?? undefined,
+        award_status: det?.award_status ?? undefined,
+        has_prize: det?.has_prize ?? undefined,
+        prize_amount: det?.prize_amount ?? undefined,
+        submitted_at: det?.submitted_at ?? undefined,
+        result_announcement_date: det?.result_announcement_date ?? undefined,
+        result_announcement_method: det?.result_announcement_method ?? undefined,
+        document_path: det?.document_path ?? undefined,
+        document_filename: det?.document_filename ?? undefined,
+        prize_settlement_status: det?.prize_settlement_status ?? undefined,
       })
       partByUser.set(uid, list)
     }

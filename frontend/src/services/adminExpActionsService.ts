@@ -66,12 +66,16 @@ export async function upsertExpRewardConfig(
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const t = activityType.trim()
   if (!t) return { ok: false, error: 'activity_type이 비었습니다.' }
-  if (!Number.isFinite(expAmount) || expAmount < 0 || expAmount > 1000000) {
-    return { ok: false, error: 'EXP는 0 ~ 1,000,000 범위여야 합니다.' }
+  if (!Number.isFinite(expAmount) || expAmount < 0) {
+    return { ok: false, error: 'EXP는 0 이상의 숫자여야 합니다.' }
+  }
+  const amt = Math.floor(expAmount)
+  if (Math.abs(amt) > Number.MAX_SAFE_INTEGER) {
+    return { ok: false, error: 'EXP 숫자가 너무 큽니다. (JS 안전 정수 한도)' }
   }
   const sb = getSupabase()
   const { error } = await sb.from('exp_reward_config').upsert(
-    { activity_type: t, exp_amount: Math.floor(expAmount), updated_at: new Date().toISOString() },
+    { activity_type: t, exp_amount: amt, updated_at: new Date().toISOString() },
     { onConflict: 'activity_type' },
   )
   if (error) return { ok: false, error: error.message || '저장에 실패했습니다.' }
@@ -167,7 +171,9 @@ export async function adminApplyExpDelta(params: {
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const delta = Math.trunc(params.deltaExp)
   if (!Number.isFinite(delta) || delta === 0) return { ok: false, error: '0이 아닌 정수 EXP를 입력하세요.' }
-  if (delta > 1000000 || delta < -1000000) return { ok: false, error: '한 번에 ±1,000,000 EXP를 넘을 수 없습니다.' }
+  if (Math.abs(delta) > Number.MAX_SAFE_INTEGER) {
+    return { ok: false, error: 'EXP 변화 숫자가 너무 큽니다. (표현 한도)' }
+  }
 
   const resolved = await resolveProfileIdForAdminInput(params.userId)
   if (!resolved.ok) return resolved

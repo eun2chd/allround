@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { HiXMark } from 'react-icons/hi2'
 import { appToast } from '../../lib/appToast'
+import { PRIZE_SETTLEMENT_STATUSES } from '../../features/participation/prizeSettlement'
 import {
   deleteParticipationDetailRow,
   fetchParticipationDetailRow,
@@ -30,6 +31,7 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
   const [award, setAward] = useState('')
   const [hasPrize, setHasPrize] = useState(false)
   const [prizeAmount, setPrizeAmount] = useState('')
+  const [prizeSettlement, setPrizeSettlement] = useState<string>('미수령')
   const [submittedAt, setSubmittedAt] = useState('')
   const [resultDate, setResultDate] = useState('')
   const [resultMethod, setResultMethod] = useState('')
@@ -49,6 +51,7 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
       setAward('')
       setHasPrize(false)
       setPrizeAmount('')
+      setPrizeSettlement('미수령')
       setSubmittedAt('')
       setResultDate('')
       setResultMethod('')
@@ -63,6 +66,10 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
         setAward(String(d.award_status || ''))
         setHasPrize(!!d.has_prize)
         setPrizeAmount(d.prize_amount != null ? String(d.prize_amount) : '')
+        const ps = String((d as { prize_settlement_status?: string | null }).prize_settlement_status || '').trim()
+        setPrizeSettlement(
+          (PRIZE_SETTLEMENT_STATUSES as readonly string[]).includes(ps) ? ps : '미수령',
+        )
         if (d.submitted_at) {
           const dt = new Date(d.submitted_at as string)
           if (!Number.isNaN(dt.getTime())) setSubmittedAt(dt.toISOString().slice(0, 16))
@@ -114,6 +121,7 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
         award_status: showAward ? award : null,
         has_prize: hasPrize,
         prize_amount: prizeAmount.trim() ? Number(prizeAmount) : null,
+        prize_settlement_status: hasPrize ? prizeSettlement : null,
         submitted_at: submittedAt || null,
         result_announcement_date: resultDate || null,
         result_announcement_method: resultMethod.trim() || null,
@@ -212,6 +220,21 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
                   onChange={(e) => setPrizeAmount(e.target.value)}
                 />
               </div>
+              {hasPrize ? (
+                <div className="form-group">
+                  <label>상금 정산 상태</label>
+                  <select value={prizeSettlement} onChange={(e) => setPrizeSettlement(e.target.value)}>
+                    {PRIZE_SETTLEMENT_STATUSES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="participation-detail-settlement-hint">
+                    팀 금고·참여현황에서 정산 현황을 모아 보여 줍니다.
+                  </p>
+                </div>
+              ) : null}
               <div className="form-group">
                 <label>제출일</label>
                 <input

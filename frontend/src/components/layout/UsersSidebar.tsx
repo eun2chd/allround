@@ -63,6 +63,30 @@ export function UsersSidebar({ currentUserId, mobileOpen = false, onMobileClose 
     }
   }, [collapsed])
 
+  /** 데스크톱(≥1101px): 패널 접힘과 본문 padding-right·단축키 바 right 동기화 */
+  useEffect(() => {
+    const DESKTOP_MQ = '(min-width: 1101px)'
+    const sync = () => {
+      const desktop = window.matchMedia(DESKTOP_MQ).matches
+      if (!desktop) {
+        document.documentElement.removeAttribute('data-sidebar-users-collapsed')
+        return
+      }
+      if (collapsed) {
+        document.documentElement.setAttribute('data-sidebar-users-collapsed', '1')
+      } else {
+        document.documentElement.removeAttribute('data-sidebar-users-collapsed')
+      }
+    }
+    sync()
+    const mq = window.matchMedia(DESKTOP_MQ)
+    mq.addEventListener('change', sync)
+    return () => {
+      mq.removeEventListener('change', sync)
+      document.documentElement.removeAttribute('data-sidebar-users-collapsed')
+    }
+  }, [collapsed])
+
   async function loadUsers(forceFetch: boolean) {
     if (!forceFetch) {
       try {

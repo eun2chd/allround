@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { useConfirm } from '../context/ConfirmContext'
 import { PaginationBar } from '../components/common/PaginationBar'
@@ -51,6 +51,44 @@ function eventRowKey(r: AdminExpEventRow): ExpEventPrimaryKey {
   }
 }
 
+function eventKeyString(r: AdminExpEventRow): string {
+  const k = eventRowKey(r)
+  return `${k.user_id}|${k.activity_type}|${k.source}|${k.contest_id}`
+}
+
+/** PostgreSQL integer(int4)는 약 ±21억까지. 큰 EXP는 DB bigint 마이그레이션 후 저장 가능. */
+const EXP_UNIT_CHIPS: { label: string; value: number }[] = [
+  { label: '1만', value: 10_000 },
+  { label: '10만', value: 100_000 },
+  { label: '100만', value: 1_000_000 },
+  { label: '1억', value: 100_000_000 },
+]
+
+function addToExpNumericString(prev: string, delta: number): string {
+  const raw = prev.replace(/,/g, '').trim()
+  if (raw === '' || raw === '+' || raw === '-') {
+    const sign = raw === '-' ? -1 : 1
+    return String(sign * delta)
+  }
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return String(delta)
+  const sum = Math.trunc(n) + Math.trunc(delta)
+  if (!Number.isSafeInteger(sum)) return prev
+  return String(sum)
+}
+
+function ExpUnitChipBar({ onAdd, dense }: { onAdd: (delta: number) => void; dense?: boolean }) {
+  return (
+    <div className={'admin-exp-unit-chips' + (dense ? ' admin-exp-unit-chips--dense' : '')} role="group" aria-label="금액 단위 더하기">
+      {EXP_UNIT_CHIPS.map(({ label, value }) => (
+        <button key={label} type="button" className="admin-exp-unit-chip" onClick={() => onAdd(value)}>
+          +{label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 export function AdminExpPage() {
   const ctx = useAdminOutletContext()
   const me = ctx?.me
@@ -73,7 +111,9 @@ export function AdminExpPage() {
   } | null>(null)
   const [rows, setRows] = useState<AdminExpEventRow[]>([])
   const [totalCount, setTotalCount] = useState(0)
-  const [deletingKey, setDeletingKey] = useState<string | null>(null)
+  const [selectedExpKeys, setSelectedExpKeys] = useState<Set<string>>(() => new Set())
+  const [bulkDeleteBusy, setBulkDeleteBusy] = useState(false)
+  const selectAllExpRef = useRef<HTMLInputElement>(null)
 
   const filterActivityOptions = useMemo(
     () => [
@@ -85,6 +125,7 @@ export function AdminExpPage() {
 
   const loadMonitor = useCallback(async () => {
     setLoading(true)
+    setSelectedExpKeys(new Set())
     const sinceIso = adminExpPeriodToSinceIso(period)
     const act = activityFilter.trim() || null
     try {
@@ -169,27 +210,71 @@ export function AdminExpPage() {
   const [syncNickname, setSyncNickname] = useState('')
   const [syncBusy, setSyncBusy] = useState(false)
 
-  const onDeleteEvent = async (r: AdminExpEventRow) => {
-    const key = eventRowKey(r)
-    const k = `${key.user_id}|${key.activity_type}|${key.source}|${key.contest_id}`
+  const allExpOnPageSelected = rows.length > 0 && rows.every((r) => selectedExpKeys.has(eventKeyString(r)))
+  const someExpOnPageSelected = rows.some((r) => selectedExpKeys.has(eventKeyString(r)))
+
+  useEffect(() => {
+    const el = selectAllExpRef.current
+    if (!el) return
+    el.indeterminate = someExpOnPageSelected && !allExpOnPageSelected
+  }, [someExpOnPageSelected, allExpOnPageSelected])
+
+  const toggleExpRowSelect = (r: AdminExpEventRow) => {
+    const k = eventKeyString(r)
+    setSelectedExpKeys((prev) => {
+      const next = new Set(prev)
+      if (next.has(k)) next.delete(k)
+      else next.add(k)
+      return next
+    })
+  }
+
+  const toggleSelectAllExpOnPage = () => {
+    const pageKeys = rows.map(eventKeyString)
+    setSelectedExpKeys((prev) => {
+      const next = new Set(prev)
+      const allOnPage = pageKeys.length > 0 && pageKeys.every((pk) => next.has(pk))
+      if (allOnPage) {
+        for (const pk of pageKeys) next.delete(pk)
+      } else {
+        for (const pk of pageKeys) next.add(pk)
+      }
+      return next
+    })
+  }
+
+  const onDeleteSelectedExpEvents = async () => {
+    const picked = rows.filter((r) => selectedExpKeys.has(eventKeyString(r)))
+    if (!picked.length) {
+      appToast('삭제할 기록을 선택하세요.', 'error')
+      return
+    }
+    const preview = picked
+      .slice(0, 6)
+      .map((r) => `${r.activity_label} ${r.exp_amount >= 0 ? '+' : ''}${r.exp_amount.toLocaleString('ko-KR')}`)
+      .join(', ')
+    const more = picked.length > 6 ? ` 외 ${picked.length - 6}건` : ''
     const ok = await confirm({
       title: '경험치 기록 삭제',
-      message: `이 지급 기록을 삭제하고 프로필에서 ${r.exp_amount.toLocaleString('ko-KR')} EXP를 되돌릴까요? (되돌릴 EXP가 현재 누적보다 크면 0까지로 맞춥니다.)`,
+      message: `선택한 ${picked.length}건을 삭제하고 프로필 EXP를 되돌릴까요? (되돌릴 EXP가 현재 누적보다 크면 0까지로 맞춥니다.)\n\n${preview}${more}`,
       confirmText: '삭제',
       danger: true,
     })
     if (!ok) return
-    setDeletingKey(k)
+    setBulkDeleteBusy(true)
     try {
-      const res = await deleteExpEventAndAdjustProfile(key)
-      if (!res.ok) {
-        appToast(res.error, 'error')
-        return
+      for (const r of picked) {
+        const res = await deleteExpEventAndAdjustProfile(eventRowKey(r))
+        if (!res.ok) {
+          appToast(res.error, 'error')
+          return
+        }
       }
-      appToast('기록을 삭제하고 프로필 EXP를 조정했습니다.')
+      appToast(`${picked.length}건 삭제했습니다.`)
+      setSelectedExpKeys(new Set())
       void loadMonitor()
     } finally {
-      setDeletingKey(null)
+      setBulkDeleteBusy(false)
     }
   }
 
@@ -299,9 +384,10 @@ export function AdminExpPage() {
               경험치 <span>관리</span>
             </h1>
             <p className="admin-dashboard-lead">
-              지급 기록 모니터링, 행위별 보상(밸런스) 수정, 관리자 수동 지급·차감·동기화를 한 화면에서 처리합니다. DB에{' '}
+              지급 기록 모니터링에서는 행을 체크한 뒤 <strong>선택 삭제</strong>로 지울 수 있습니다. 행위별 보상(밸런스) 수정, 관리자 수동 지급·차감·동기화를 한 화면에서 처리합니다. DB에{' '}
               <code className="admin-exp-inline-code">exp_reward_config</code> 마이그레이션과{' '}
-              <code className="admin-exp-inline-code">admin_grant</code> 타입이 적용되어 있어야 일부 기능이 동작합니다.
+              <code className="admin-exp-inline-code">admin_grant</code> 타입이 적용되어 있어야 일부 기능이 동작합니다.               아주 큰 EXP(약 21억 초과)는 DB 컬럼이 <code className="admin-exp-inline-code">bigint</code>여야 합니다. 배포 시{' '}
+              <code className="admin-exp-inline-code">20260429_exp_amount_columns_bigint</code> 마이그레이션을 적용하세요.
             </p>
           </div>
           <button
@@ -424,6 +510,16 @@ export function AdminExpPage() {
               <span className="admin-users-count">
                 목록 {totalCount.toLocaleString('ko-KR')}건 · {pageSize}건씩
               </span>
+              {!loading && rows.length > 0 ? (
+                <button
+                  type="button"
+                  className="btn-secondary btn-delete"
+                  disabled={bulkDeleteBusy || selectedExpKeys.size === 0}
+                  onClick={() => void onDeleteSelectedExpEvents()}
+                >
+                  {bulkDeleteBusy ? '처리 중…' : `선택 삭제${selectedExpKeys.size > 0 ? ` (${selectedExpKeys.size})` : ''}`}
+                </button>
+              ) : null}
             </div>
 
             <div className="admin-users-table-wrap admin-exp-table-wrap">
@@ -435,6 +531,19 @@ export function AdminExpPage() {
                 <table className="admin-users-table admin-exp-table">
                   <thead>
                     <tr>
+                      <th scope="col" className="admin-level-col-check">
+                        <span className="visually-hidden">선택</span>
+                        <input
+                          ref={selectAllExpRef}
+                          type="checkbox"
+                          className="admin-level-config-check"
+                          checked={allExpOnPageSelected}
+                          onChange={toggleSelectAllExpOnPage}
+                          disabled={loading || rows.length === 0 || bulkDeleteBusy}
+                          title="이 페이지 전체 선택"
+                          aria-label="이 페이지 전체 선택"
+                        />
+                      </th>
                       <th scope="col" className="admin-users-col-no">
                         No
                       </th>
@@ -446,15 +555,24 @@ export function AdminExpPage() {
                       </th>
                       <th scope="col">소스</th>
                       <th scope="col">공모전 ID</th>
-                      <th scope="col">작업</th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.map((r, i) => {
-                      const dk = `${r.user_id}|${r.activity_type}|${r.source}|${r.contest_id}`
+                      const dk = eventKeyString(r)
                       const rowNo = (page - 1) * pageSize + i + 1
                       return (
                         <tr key={`${r.user_id}-${r.activity_type}-${r.source}-${r.contest_id}-${r.created_at}-${i}`}>
+                          <td className="admin-level-col-check">
+                            <input
+                              type="checkbox"
+                              className="admin-level-config-check"
+                              checked={selectedExpKeys.has(dk)}
+                              onChange={() => toggleExpRowSelect(r)}
+                              disabled={bulkDeleteBusy}
+                              aria-label={`${r.activity_label} 기록 선택`}
+                            />
+                          </td>
                           <td className="admin-users-col-no">{rowNo}</td>
                           <td className="admin-exp-cell-muted">{formatWhen(r.created_at)}</td>
                           <td>
@@ -469,16 +587,6 @@ export function AdminExpPage() {
                           </td>
                           <td className="admin-exp-cell-code">{r.source || '—'}</td>
                           <td className="admin-exp-cell-code">{r.contest_id || '—'}</td>
-                          <td>
-                            <button
-                              type="button"
-                              className="btn-secondary admin-exp-row-delete"
-                              disabled={deletingKey === dk}
-                              onClick={() => void onDeleteEvent(r)}
-                            >
-                              {deletingKey === dk ? '처리 중…' : '삭제'}
-                            </button>
-                          </td>
                         </tr>
                       )
                     })}
@@ -528,17 +636,29 @@ export function AdminExpPage() {
                           </td>
                           <td>{row.defaultExp.toLocaleString('ko-KR')}</td>
                           <td>
-                            <input
-                              type="number"
-                              min={0}
-                              max={1000000}
-                              className="admin-exp-balance-input"
-                              value={balanceInputs[row.activity_type] ?? ''}
-                              onChange={(e) =>
-                                setBalanceInputs((prev) => ({ ...prev, [row.activity_type]: e.target.value }))
-                              }
-                              aria-label={`${row.label} EXP`}
-                            />
+                            <div className="admin-exp-input-stack">
+                              <input
+                                type="number"
+                                min={0}
+                                className="admin-exp-balance-input"
+                                value={balanceInputs[row.activity_type] ?? ''}
+                                onChange={(e) =>
+                                  setBalanceInputs((prev) => ({ ...prev, [row.activity_type]: e.target.value }))
+                                }
+                                aria-label={`${row.label} EXP`}
+                              />
+                              <ExpUnitChipBar
+                                dense
+                                onAdd={(v) =>
+                                  setBalanceInputs((prev) => {
+                                    const cur = prev[row.activity_type] ?? ''
+                                    const next = addToExpNumericString(cur, v)
+                                    if (next === cur && cur.trim() !== '') appToast('합이 너무 커서 더할 수 없습니다.', 'error')
+                                    return { ...prev, [row.activity_type]: next }
+                                  })
+                                }
+                              />
+                            </div>
                           </td>
                           <td>{row.dbExp != null ? <span className="admin-exp-override-pill">DB 오버라이드</span> : '코드 기본'}</td>
                           <td>
@@ -602,6 +722,16 @@ export function AdminExpPage() {
                   placeholder="예: 100 또는 -50"
                   required
                 />
+                <ExpUnitChipBar
+                  onAdd={(v) =>
+                    setManualDelta((prev) => {
+                      const next = addToExpNumericString(prev, v)
+                      if (next === prev) appToast('합이 너무 커서 더할 수 없습니다.', 'error')
+                      return next
+                    })
+                  }
+                />
+                <span className="admin-exp-unit-chips-hint">버튼은 현재 입력값에 해당 만·억 단위를 더합니다.</span>
               </label>
               <label className="admin-exp-manual-field">
                 <span>메모 (선택, 공모전 ID 접두에 반영)</span>

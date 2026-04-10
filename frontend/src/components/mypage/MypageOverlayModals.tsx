@@ -177,7 +177,7 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
               <tr>
                 <td>SINGULARITY</td>
                 <td>Lv.201~</td>
-                <td>특이점 코스믹 프로필 + 홀로그램 프레임</td>
+                <td>코스믹 프로필 + 홀로그램 프레임</td>
               </tr>
             </tbody>
           </table>
@@ -465,7 +465,7 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
         key: 'singularity',
         req: 201,
         levelLabel: 'Lv.201+ SINGULARITY',
-        name: '싱귤래러티 · 특이점',
+        name: '싱귤래러티 · 프로필',
         desc: '"시스템의 한계를 돌파" · 코스믹 어비스, 홀로그램, 이벤트 호라이즌 프레임이 적용됩니다.',
         variant: 'theme-singularity',
       },
