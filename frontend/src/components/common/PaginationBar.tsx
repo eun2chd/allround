@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import {
   HiChevronDoubleLeft,
   HiChevronDoubleRight,
@@ -7,31 +7,68 @@ import {
   HiChevronRight,
 } from 'react-icons/hi2'
 
-/** 좁은 화면에서 페이지 숫자 슬라이스 폭을 줄임 (CSS와 브레이크포인트 맞춤). */
-function useNeighborPad(): number {
-  const [pad, setPad] = useState(() => neighborPadFromWidth())
+/** home-page.css `@media (max-width: 520px)` 과 동일 */
+const NARROW_MAX_PX = 520
 
-  useEffect(() => {
-    const mqNarrow = window.matchMedia('(max-width: 360px)')
-    const mqMid = window.matchMedia('(max-width: 520px)')
-    const sync = () => setPad(neighborPadFromWidth())
-    sync()
-    mqNarrow.addEventListener('change', sync)
-    mqMid.addEventListener('change', sync)
-    return () => {
-      mqNarrow.removeEventListener('change', sync)
-      mqMid.removeEventListener('change', sync)
-    }
-  }, [])
+/** 넓은 화면: 현재 페이지 양옆 이웃 수 */
+const PAD_WIDE = 2
 
-  return pad
+/**
+ * 모바일 숫자 구간 (10 클릭 → 10~21, 21 클릭 → 21~31 …)
+ * - 1~9페이지: 1~10
+ * - 10~20페이지: 10~21
+ * - 21페이지~: 21~31, 31~41, … (현재 페이지가 속한 10페이지 단위 슬라이스, 끝은 +10)
+ */
+function narrowWindowBounds(page: number, totalPages: number): { start: number; end: number } {
+  if (totalPages <= 10) return { start: 1, end: totalPages }
+  if (page < 10) return { start: 1, end: Math.min(10, totalPages) }
+  if (page <= 20) return { start: 10, end: Math.min(21, totalPages) }
+  const rel = page - 21
+  const idx = Math.floor(rel / 10)
+  const start = 21 + idx * 10
+  const end = Math.min(start + 10, totalPages)
+  return { start, end }
 }
 
-function neighborPadFromWidth(): number {
-  if (typeof window === 'undefined') return 2
-  if (window.matchMedia('(max-width: 360px)').matches) return 0
-  if (window.matchMedia('(max-width: 520px)').matches) return 1
-  return 2
+function pushNarrowNumberRow(
+  nums: ReactNode[],
+  page: number,
+  totalPages: number,
+  onGo: (p: number) => void,
+) {
+  const { start, end } = narrowWindowBounds(page, totalPages)
+  if (totalPages <= 10) {
+    for (let i = 1; i <= totalPages; i++) nums.push(pageButton(i, page, onGo))
+    return
+  }
+  if (start > 1) {
+    nums.push(pageButton(1, page, onGo))
+    if (start > 2) nums.push(<span key="e-narrow-pre" className="pagination-ellipsis">…</span>)
+  }
+  for (let i = start; i <= end; i++) nums.push(pageButton(i, page, onGo))
+  if (end < totalPages) {
+    if (end < totalPages - 1) nums.push(<span key="e-narrow-post" className="pagination-ellipsis">…</span>)
+    nums.push(pageButton(totalPages, page, onGo))
+  }
+}
+
+function narrowFromWidth(): boolean {
+  if (typeof window === 'undefined') return false
+  return window.matchMedia(`(max-width: ${NARROW_MAX_PX}px)`).matches
+}
+
+function useNarrowPagination(): boolean {
+  const [narrow, setNarrow] = useState(narrowFromWidth)
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${NARROW_MAX_PX}px)`)
+    const sync = () => setNarrow(mq.matches)
+    sync()
+    mq.addEventListener('change', sync)
+    return () => mq.removeEventListener('change', sync)
+  }, [])
+
+  return narrow
 }
 
 export type PaginationBarProps = {
@@ -43,54 +80,50 @@ export type PaginationBarProps = {
 
 const arrowIcoProps = { className: 'pagination-arrow-ico', 'aria-hidden': true as const }
 
+function pageButton(i: number, page: number, onGo: (p: number) => void): ReactNode {
+  return i === page ? (
+    <button key={i} type="button" className="active" disabled>
+      {i}
+    </button>
+  ) : (
+    <button key={i} type="button" onClick={() => onGo(i)}>
+      {i}
+    </button>
+  )
+}
+
 export function PaginationBar({ total, page, pageSize, onGo }: PaginationBarProps) {
-  const pad = useNeighborPad()
+  const narrow = useNarrowPagination()
+  const numbersRef = useRef<HTMLSpanElement>(null)
   const totalPages = Math.ceil(total / pageSize)
+
+  useLayoutEffect(() => {
+    if (!narrow || total < 1 || totalPages <= 1) return
+    const root = numbersRef.current
+    if (!root) return
+    const active = root.querySelector<HTMLButtonElement>('button.active')
+    if (!active) return
+    active.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'auto' })
+  }, [narrow, page, total, pageSize, totalPages])
+
   if (total < 1 || totalPages <= 1) return null
-  const winStart = Math.max(2, page - pad)
-  const winEnd = Math.min(totalPages - 1, page + pad)
-  const showFirstEllipsis = winStart > 2
-  const showLastEllipsis = winEnd < totalPages - 1
 
   const nums: ReactNode[] = []
-  nums.push(
-    page === 1 ? (
-      <button key={1} type="button" className="active" disabled>
-        1
-      </button>
-    ) : (
-      <button key={1} type="button" onClick={() => onGo(1)}>
-        1
-      </button>
-    ),
-  )
-  if (showFirstEllipsis) nums.push(<span key="e1" className="pagination-ellipsis">…</span>)
-  for (let i = winStart; i <= winEnd; i++) {
-    nums.push(
-      i === page ? (
-        <button key={i} type="button" className="active" disabled>
-          {i}
-        </button>
-      ) : (
-        <button key={i} type="button" onClick={() => onGo(i)}>
-          {i}
-        </button>
-      ),
-    )
-  }
-  if (showLastEllipsis) nums.push(<span key="e2" className="pagination-ellipsis">…</span>)
-  if (totalPages > 1) {
-    nums.push(
-      page === totalPages ? (
-        <button key={totalPages} type="button" className="active" disabled>
-          {totalPages}
-        </button>
-      ) : (
-        <button key={totalPages} type="button" onClick={() => onGo(totalPages)}>
-          {totalPages}
-        </button>
-      ),
-    )
+
+  if (narrow) {
+    pushNarrowNumberRow(nums, page, totalPages, onGo)
+  } else {
+    const pad = PAD_WIDE
+    const winStart = Math.max(2, page - pad)
+    const winEnd = Math.min(totalPages - 1, page + pad)
+    const showFirstEllipsis = winStart > 2
+    const showLastEllipsis = winEnd < totalPages - 1
+
+    nums.push(pageButton(1, page, onGo))
+    if (showFirstEllipsis) nums.push(<span key="e1" className="pagination-ellipsis">…</span>)
+    for (let i = winStart; i <= winEnd; i++) nums.push(pageButton(i, page, onGo))
+    if (showLastEllipsis) nums.push(<span key="e2" className="pagination-ellipsis">…</span>)
+    nums.push(pageButton(totalPages, page, onGo))
   }
 
   return (
@@ -107,7 +140,9 @@ export function PaginationBar({ total, page, pageSize, onGo }: PaginationBarProp
       >
         <HiChevronLeft {...arrowIcoProps} />
       </button>
-      <span className="pagination-numbers">{nums}</span>
+      <span className="pagination-numbers" ref={numbersRef}>
+        {nums}
+      </span>
       <button
         type="button"
         className="pagination-arrow"

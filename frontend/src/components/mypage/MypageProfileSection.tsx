@@ -5,7 +5,31 @@ import { useConfirm } from '../../context/ConfirmContext'
 import { appToast } from '../../lib/appToast'
 import { updateStatusMessage, uploadProfileAvatar } from '../../services/profileMutations'
 import type { MypageSnapshotData } from '../../types/mypage'
-import { PROFILE_THEME_EVENT, PROFILE_THEME_STORAGE_KEY } from './MypageOverlayModals'
+import { PROFILE_THEME_EVENT, readProfileThemeForUser } from './MypageOverlayModals'
+
+/** 상점 테마가 카드 배경(CSS)뿐 아니라 아바타 링·EXP 바·헤드라인 레이아웃에도 맞아야 함 */
+function resolveExpFillForShopTheme(tierLevel: number, theme: string, expPercent: number): string {
+  if (theme === 'basic' || theme === 'rare') return ''
+  if (theme === 'epic') return 'gold'
+  if (theme === 'platinum' || theme === 'legend') return tierLevel >= 2 ? 'legend' : ''
+  if (theme === 'singularity' && tierLevel < 5) {
+    if (tierLevel >= 3) return 'legend'
+    if (tierLevel >= 2) return 'gold'
+    return ''
+  }
+  if (tierLevel >= 5) return `singularity-mercury${expPercent >= 88 ? ' singularity-mercury--spark' : ''}`
+  if (tierLevel >= 3) return 'legend'
+  if (tierLevel >= 2) return 'gold'
+  return ''
+}
+
+function resolveAvatarBorderForShopTheme(tierLevel: number, theme: string): string {
+  if (tierLevel < 2) return ''
+  if (theme === 'basic' || theme === 'rare') return ''
+  if (theme === 'epic' || theme === 'platinum' || theme === 'legend') return ' legend-border'
+  if (tierLevel >= 5) return ' singularity-border'
+  return ' legend-border'
+}
 
 type Props = {
   data: MypageSnapshotData
@@ -32,30 +56,43 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
   } = data
 
   const [statusMsg, setStatusMsg] = useState((profile.status_message as string) || '')
+  const [shopThemeKey, setShopThemeKey] = useState(() =>
+    readProfileThemeForUser(String(profile.id || ''), true),
+  )
 
   useEffect(() => {
     setStatusMsg((profile.status_message as string) || '')
   }, [profile.id, profile.status_message])
 
   useEffect(() => {
+    if (!is_own_profile) {
+      setShopThemeKey('default')
+      return
+    }
+    const uid = String(profile.id || '')
+    const syncKey = () => setShopThemeKey(readProfileThemeForUser(uid, true))
+    syncKey()
+    const onThemeEvent = () => syncKey()
+    window.addEventListener(PROFILE_THEME_EVENT, onThemeEvent)
+    return () => window.removeEventListener(PROFILE_THEME_EVENT, onThemeEvent)
+  }, [is_own_profile, profile.id])
+
+  useEffect(() => {
     const syncTheme = () => {
       const el = document.getElementById('profileSection')
       if (!el) return
-      let theme = 'default'
-      try {
-        theme = localStorage.getItem(PROFILE_THEME_STORAGE_KEY) || 'default'
-      } catch {
-        /* ignore */
-      }
-      ;['basic', 'rare', 'epic', 'platinum', 'legend', 'default'].forEach((t) => {
+      ;['basic', 'rare', 'epic', 'platinum', 'legend', 'singularity', 'default'].forEach((t) => {
         el.classList.remove(`profile-theme-${t}`)
       })
+      const theme = is_own_profile
+        ? readProfileThemeForUser(String(profile.id || ''), true)
+        : 'default'
       if (theme && theme !== 'default') el.classList.add(`profile-theme-${theme}`)
     }
     syncTheme()
     window.addEventListener(PROFILE_THEME_EVENT, syncTheme)
     return () => window.removeEventListener(PROFILE_THEME_EVENT, syncTheme)
-  }, [profile.id])
+  }, [profile.id, is_own_profile])
 
   const saveStatus = async () => {
     try {
@@ -100,10 +137,67 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
         ? `다음 레벨 도달! (${exp_percent}% 완료)`
         : `다음 레벨까지 ${exp_next - exp_current} EXP 필요 (${exp_percent}% 완료)`
 
+  const expFillExtra = is_own_profile
+    ? resolveExpFillForShopTheme(tier_level, shopThemeKey, exp_percent)
+    : tier_level >= 5
+      ? `singularity-mercury${exp_percent >= 88 ? ' singularity-mercury--spark' : ''}`
+      : tier_level >= 3
+        ? 'legend'
+        : tier_level >= 2
+          ? 'gold'
+          : ''
+
+  const avatarTierClass = is_own_profile
+    ? resolveAvatarBorderForShopTheme(tier_level, shopThemeKey)
+    : tier_level >= 5
+      ? ' singularity-border'
+      : tier_level >= 2
+        ? ' legend-border'
+        : ''
+
+  const useSingularityHeadlineFlow =
+    tier_level >= 5 &&
+    (!is_own_profile || shopThemeKey === 'default' || shopThemeKey === 'singularity')
+
+  const showLegendChrome =
+    tier_level === 4 || (is_own_profile && shopThemeKey === 'legend' && tier_level >= 4)
+
   return (
     <section className={`profile-section tier-${tier_level}`} id="profileSection" data-own-profile={is_own_profile ? '1' : '0'}>
+      <div className="platinum-ambient-layer" aria-hidden="true">
+        <span className="platinum-geo platinum-geo-cube" />
+        <span className="platinum-geo platinum-geo-pyramid" />
+        <span className="platinum-geo platinum-geo-ring" />
+        <span className="platinum-geo platinum-geo-orb" />
+        <span className="platinum-geo platinum-geo-bar" />
+      </div>
       {tier_level >= 3 ? <div className="platinum-shine-overlay" /> : null}
-      {tier_level >= 4 ? <div className="legend-light-overlay" aria-hidden="true" /> : null}
+      <div className="legend-ambient" aria-hidden="true">
+        <div className="legend-depth-sphere" />
+        <div className="legend-sparks">
+          {[...Array(20)].map((_, i) => (
+            <span key={i} className="legend-spark" />
+          ))}
+        </div>
+      </div>
+      <div className="singularity-ambient" aria-hidden="true">
+        <div className="singularity-nebula" />
+        <div className="singularity-noise" />
+        <div className="singularity-smog" />
+        <div className="singularity-twinkles">
+          {[...Array(10)].map((_, i) => (
+            <span key={i} className="singularity-twinkle" />
+          ))}
+        </div>
+      </div>
+      {showLegendChrome ? <div className="legend-light-overlay" aria-hidden="true" /> : null}
+      {showLegendChrome ? (
+        <div className="legend-l-frame" aria-hidden="true">
+          <span className="legend-l-arm-v" />
+          <span className="legend-l-arm-h" />
+          <span className="legend-l-corner-dot" />
+        </div>
+      ) : null}
       {tier_level >= 2 ? (
         <svg className="profile-border-svg" viewBox="0 0 500 300" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
           <defs>
@@ -124,6 +218,13 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
               <stop offset="50%" stopColor="#ec4899" />
               <stop offset="100%" stopColor="#be185d" />
             </linearGradient>
+            <linearGradient id="singularitySectionGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#22d3ee" />
+              <stop offset="28%" stopColor="#e0ffff" />
+              <stop offset="52%" stopColor="#a78bfa" />
+              <stop offset="78%" stopColor="#c4b5fd" />
+              <stop offset="100%" stopColor="#5eead4" />
+            </linearGradient>
           </defs>
           <rect x="1.5" y="1.5" width="497" height="297" rx="12" ry="12" />
         </svg>
@@ -138,7 +239,7 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
       <div className="profile-top">
         <div className="avatar-wrap">
           <div
-            className={`avatar${tier_level >= 2 ? ' legend-border' : ''}${!profile.profile_url ? ' avatar-no-image' : ''}`}
+            className={`avatar${avatarTierClass}${!profile.profile_url ? ' avatar-no-image' : ''}`}
             id="profileAvatar"
             style={profile.profile_url ? { backgroundImage: `url('${profile.profile_url}')` } : undefined}
           >
@@ -168,7 +269,7 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
             {profile.nickname || '회원'}
             <span className="role-badge">{role_label}</span>
           </h2>
-          <div className="headline-badges">
+          <div className={`headline-badges${useSingularityHeadlineFlow ? ' singularity-headline-flow' : ''}`}>
             {(auto_headlines || []).map((headline, i) => (
               <span key={i} className={`headline-badge headline-badge-${i + 1}`}>
                 <span className="headline-badge-dot" />
@@ -179,7 +280,8 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
           <div className="hashtag-row" id="userHashtagsContainer">
             {user_hashtags?.map((h) => (
               <span key={h.id} className="hashtag-badge">
-                #{h.tag_name}
+                <span className="hashtag-hash">#</span>
+                {h.tag_name}
               </span>
             ))}
             {is_own_profile && level >= 71 ? (
@@ -215,7 +317,9 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
           </div>
           <div className="level-exp-info-col">
             <div className="level-tier-line">
-              <span className="level-text">Lv.{level}</span>
+              <span className="level-text">
+                Lv.<span className="level-text-num">{level}</span>
+              </span>
               <span className={`tier-badge-pill tier-badge-pill-${(tier_name || 'bronze').toLowerCase()}`}>
                 {tier_name}
               </span>
@@ -241,7 +345,7 @@ export function MypageProfileSection({ data, onStatusUpdated, onOpenModal }: Pro
             <p className="level-total-exp">총 {total_exp} EXP</p>
             <div className="exp-bar-wrap">
               <div
-                className={`exp-bar-fill${tier_level >= 3 ? ' legend' : tier_level >= 2 ? ' gold' : ''}`}
+                className={`exp-bar-fill${expFillExtra ? ` ${expFillExtra}` : ''}`}
                 style={{ width: `${Math.min(100, exp_percent)}%` }}
               />
             </div>

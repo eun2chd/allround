@@ -150,7 +150,7 @@ function ConfigEditRow({
       </td>
       <td>
         <select className="admin-level-tier-select" value={tierId} onChange={(e) => setTierId(e.target.value)}>
-          {[1, 2, 3, 4, 5].map((n) => (
+          {[1, 2, 3, 4, 5, 6].map((n) => (
             <option key={n} value={n}>
               {n}
             </option>
@@ -287,7 +287,7 @@ export function AdminLevelPage() {
                 <label>
                   tier_id
                   <select value={newTier} onChange={(e) => setNewTier(e.target.value)}>
-                    {[1, 2, 3, 4, 5].map((n) => (
+                    {[1, 2, 3, 4, 5, 6].map((n) => (
                       <option key={n} value={n}>
                         {n}
                       </option>

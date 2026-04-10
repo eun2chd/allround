@@ -1,4 +1,8 @@
 import {
+  isContestCreatedToday,
+  isContestDeadlineWithin3Days,
+} from '../../services/contestDashboardSummaryService'
+import {
   fetchBookmarkedContests,
   fetchContestUserMeta,
   fetchContestsByParticipation,
@@ -12,6 +16,14 @@ import {
   DEFAULT_CONTEST_SOURCE,
   PAGE_SIZE,
 } from './contestTypes'
+
+const EMPTY_CONTEST_META: ContestMeta = {
+  bookmarkSet: new Set(),
+  contentChecks: new Set(),
+  participation: {},
+  participationApply: {},
+  commented: new Set(),
+}
 
 function rowMatchesSourceFilter(row: ContestRow, filterSrc: string): boolean {
   const fs = filterSrc.trim()
@@ -170,6 +182,16 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
   const makeKey = (row: ContestRow) => contestKey(row.source, row.id)
   const hasCheck = (row: ContestRow) => meta.contentChecks.has(makeKey(row))
 
+  const sortListDefault = (a: ContestRow, b: ContestRow) => {
+    const createdA = new Date(a.created_at || 0).getTime()
+    const createdB = new Date(b.created_at || 0).getTime()
+    if (createdB !== createdA) return createdB - createdA
+    const tA = new Date(a.updated_at || 0).getTime()
+    const tB = new Date(b.updated_at || 0).getTime()
+    if (tB !== tA) return tB - tA
+    return (hasCheck(a) ? 1 : 0) - (hasCheck(b) ? 1 : 0)
+  }
+
   if (participationOnly) {
     const st = fp.participationFilter as 'participate' | 'pass'
     const partRes = await fetchContestsByParticipation(st)
@@ -203,15 +225,9 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     if (catEq) list = list.filter((r) => String(r.category ?? '').trim() === catEq)
     if (srcEq) list = list.filter((r) => rowMatchesSourceFilter(r, srcEq))
     if (fp.bookmarkOnly) list = list.filter((row) => meta.bookmarkSet.has(makeKey(row)))
-    list.sort((a, b) => {
-      const createdA = new Date(a.created_at || 0).getTime()
-      const createdB = new Date(b.created_at || 0).getTime()
-      if (createdB !== createdA) return createdB - createdA
-      const tA = new Date(a.updated_at || 0).getTime()
-      const tB = new Date(b.updated_at || 0).getTime()
-      if (tB !== tA) return tB - tA
-      return (hasCheck(a) ? 1 : 0) - (hasCheck(b) ? 1 : 0)
-    })
+    if (fp.deadlineSoonOnly) list = list.filter((r) => isContestDeadlineWithin3Days(r.d_day))
+    if (fp.registeredTodayOnly) list = list.filter((r) => isContestCreatedToday(r.created_at))
+    list.sort(sortListDefault)
     const total = list.length
     const start = (page - 1) * PAGE_SIZE
     list = list.slice(start, start + PAGE_SIZE)
@@ -247,20 +263,110 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     if (fp.participationFilter === 'participate' || fp.participationFilter === 'pass') {
       const st = fp.participationFilter
       list = list.filter((row) => (meta.participation[makeKey(row)] || '') === st)
+    } else if (fp.participationFilter === 'none') {
+      list = list.filter((row) => {
+        const st = meta.participation[makeKey(row)]
+        return st !== 'participate' && st !== 'pass'
+      })
     }
-    list.sort((a, b) => {
-      const createdA = new Date(a.created_at || 0).getTime()
-      const createdB = new Date(b.created_at || 0).getTime()
-      if (createdB !== createdA) return createdB - createdA
-      const tA = new Date(a.updated_at || 0).getTime()
-      const tB = new Date(b.updated_at || 0).getTime()
-      if (tB !== tA) return tB - tA
-      return (hasCheck(a) ? 1 : 0) - (hasCheck(b) ? 1 : 0)
-    })
+    if (fp.deadlineSoonOnly) list = list.filter((r) => isContestDeadlineWithin3Days(r.d_day))
+    if (fp.registeredTodayOnly) list = list.filter((r) => isContestCreatedToday(r.created_at))
+    list.sort(sortListDefault)
     const total = list.length
     const start = (page - 1) * PAGE_SIZE
     list = list.slice(start, start + PAGE_SIZE)
     meta = alignMetaKeysToListRows(meta, list)
+    meta = await mergeParticipationFromTable(meta, list)
+    return { rows: list, total, page, meta }
+  }
+
+  const needsChunkedClientFilter =
+    (fp.deadlineSoonOnly ||
+      fp.registeredTodayOnly ||
+      fp.participationFilter === 'none') &&
+    !bookmarkOnly &&
+    !participationOnly
+
+  if (needsChunkedClientFilter) {
+    const CHUNK = 200
+    const MAX_PAGES = 100
+    const all: Record<string, unknown>[] = []
+    let embeddedUserMeta = false
+    for (let p = 1; p <= MAX_PAGES; p++) {
+      const jChunk = await fetchContestsPage({
+        page: p,
+        limit: CHUNK,
+        q: fp.q,
+        category: fp.category || undefined,
+        source: fp.source || undefined,
+        meta: { checkFilter: fp.checkFilter },
+      })
+      embeddedUserMeta ||= jChunk.embeddedUserMeta
+      const batch = (jChunk.success && jChunk.data ? jChunk.data : []) as Record<string, unknown>[]
+      if (!batch.length) break
+      all.push(...batch)
+      if (batch.length < CHUNK) break
+    }
+
+    let working = all
+    if (fp.deadlineSoonOnly) {
+      working = working.filter((raw) =>
+        isContestDeadlineWithin3Days((raw.d_day as string | undefined) ?? undefined),
+      )
+    }
+
+    if (fp.registeredTodayOnly) {
+      working = working.filter((raw) =>
+        isContestCreatedToday((raw.created_at as string | undefined) ?? undefined),
+      )
+    }
+
+    if (fp.participationFilter === 'none') {
+      if (embeddedUserMeta) {
+        working = working.filter(
+          (raw) =>
+            raw.my_participation_status !== 'participate' && raw.my_participation_status !== 'pass',
+        )
+      } else {
+        const rowsTmp = working as unknown as ContestRow[]
+        const metaKeys = [...new Set(rowsTmp.map((r) => contestKey(r.source, r.id)).filter(Boolean))]
+        let metaForFilter: ContestMeta = { ...EMPTY_CONTEST_META }
+        if (metaKeys.length) {
+          const metaRes = await fetchContestUserMeta(metaKeys.join(','))
+          if (metaRes.success && metaRes.data)
+            metaForFilter = parseMetaPayload(metaRes.data as unknown as Record<string, unknown>)
+        }
+        metaForFilter = alignMetaKeysToListRows(metaForFilter, rowsTmp)
+        metaForFilter = await mergeParticipationFromTable(metaForFilter, rowsTmp)
+        const mk = (r: ContestRow) => contestKey(r.source, r.id)
+        const noPart = (r: ContestRow) => {
+          const st = metaForFilter.participation[mk(r)]
+          return st !== 'participate' && st !== 'pass'
+        }
+        working = rowsTmp.filter(noPart) as unknown as Record<string, unknown>[]
+      }
+    }
+
+    let list = working as unknown as ContestRow[]
+    list.sort(sortListDefault)
+    const total = list.length
+    const start = (page - 1) * PAGE_SIZE
+    list = list.slice(start, start + PAGE_SIZE)
+
+    if (!list.length) {
+      return { rows: [], total: 0, page, meta: { ...EMPTY_CONTEST_META } }
+    }
+
+    if (embeddedUserMeta) {
+      meta = metaFromViewRows(list as unknown as Record<string, unknown>[])
+    } else {
+      const ids = list.map((r) => contestKey(r.source, r.id)).filter(Boolean)
+      if (ids.length) {
+        const metaRes = await fetchContestUserMeta(ids.join(','))
+        if (metaRes.success && metaRes.data) meta = parseMetaPayload(metaRes.data as unknown as Record<string, unknown>)
+      }
+      meta = alignMetaKeysToListRows(meta, list)
+    }
     meta = await mergeParticipationFromTable(meta, list)
     return { rows: list, total, page, meta }
   }

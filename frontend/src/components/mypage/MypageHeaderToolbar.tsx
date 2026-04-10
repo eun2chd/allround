@@ -12,13 +12,13 @@ export function MypageHeaderToolbar({ onOpen }: Props) {
       <button type="button" className="btn-profile-apply" title="프로필 테마 선택" onClick={() => onOpen('theme')}>
         프로필 적용
       </button>
-      <button type="button" className="btn-info" title="티어 시스템 안내" onClick={() => onOpen('tier')}>
+      <button type="button" className="btn-info btn-info--tier" title="티어 시스템 안내" onClick={() => onOpen('tier')}>
         <HiTrophy {...infoIco} />
       </button>
-      <button type="button" className="btn-info" title="해시태그 선택" onClick={() => onOpen('hashtags')}>
+      <button type="button" className="btn-info btn-info--hashtag" title="해시태그 선택" onClick={() => onOpen('hashtags')}>
         <HiHashtag {...infoIco} />
       </button>
-      <button type="button" className="btn-info" title="헤드라인 안내" onClick={() => onOpen('headline')}>
+      <button type="button" className="btn-info btn-info--headline" title="헤드라인 안내" onClick={() => onOpen('headline')}>
         <HiSparkles {...infoIco} />
       </button>
     </div>

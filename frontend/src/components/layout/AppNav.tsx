@@ -28,9 +28,11 @@ type Props = {
   me: MeData | null
   hubTab: 'allyoung' | 'startup'
   onHubTab?: (t: 'allyoung' | 'startup') => void
+  /** 좁은 화면: 헤더 메뉴에서 접속 유저 패널 시트 열기 */
+  onOpenUsersPanel?: () => void
 }
 
-export function AppNav({ me, hubTab, onHubTab }: Props) {
+export function AppNav({ me, hubTab, onHubTab, onOpenUsersPanel }: Props) {
   const navigate = useNavigate()
   const location = useLocation()
   const confirm = useConfirm()
@@ -184,6 +186,27 @@ export function AppNav({ me, hubTab, onHubTab }: Props) {
                   <NavLink to="/team" className="nav-dropdown-item" onClick={() => setDropdownOpen(false)}>
                     팀 대시보드
                   </NavLink>
+                  {onOpenUsersPanel ? (
+                    <button
+                      type="button"
+                      className="nav-dropdown-item app-topbar-dropdown-users"
+                      style={{
+                        width: '100%',
+                        textAlign: 'left',
+                        border: 'none',
+                        cursor: 'pointer',
+                        font: 'inherit',
+                        background: 'none',
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setDropdownOpen(false)
+                        onOpenUsersPanel()
+                      }}
+                    >
+                      접속 유저
+                    </button>
+                  ) : null}
                   <div className="nav-dropdown-divider" />
                   <button
                     type="button"
@@ -251,12 +274,7 @@ export function AppNav({ me, hubTab, onHubTab }: Props) {
             </div>
             <div className="app-mobile-drawer__scroll">
               <nav className="app-lnb-nav app-mobile-drawer__nav" aria-label="서비스 navigation">
-                <MainNavSidebarBody
-                  me={me}
-                  hubTab={hubTab}
-                  onHubTab={onHubTab}
-                  afterNavigate={closeMobileMenu}
-                />
+                <MainNavSidebarBody me={me} hubTab={hubTab} onHubTab={onHubTab} afterNavigate={closeMobileMenu} />
               </nav>
               {me.role === 'admin' ? (
                 <div className="app-mobile-drawer__footer">

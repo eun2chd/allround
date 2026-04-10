@@ -183,7 +183,7 @@
 .app-topbar {
   position: sticky;
   top: 0;
-  z-index: 90;
+  z-index: 100;
   background: #fff;
   border-bottom: 1px solid var(--border-gray);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
@@ -254,6 +254,13 @@
 
 .app-topbar-more {
   min-width: 56px;
+}
+
+/* 우측 접속 유저 패널이 노출되는 너비에서는 헤더 드롭다운 항목 숨김 */
+@media (min-width: 1101px) {
+  .app-topbar-dropdown-users {
+    display: none;
+  }
 }
 
 .app-topbar-hamburger {

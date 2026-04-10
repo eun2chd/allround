@@ -95,6 +95,9 @@
       max-width: 100%;
       overflow-x: auto;
     }
+    table.contest-table {
+      table-layout: fixed;
+    }
     table {
       width: 100%;
       border-collapse: collapse;
@@ -126,7 +129,8 @@
       color: #64748b;
       font-weight: 500;
     }
-    tr.row-viewed .host-cell {
+    tr.row-viewed .host-cell,
+    tr.row-viewed .contest-category-cell {
       color: #64748b;
     }
     tr.row-viewed:hover td {
@@ -232,6 +236,15 @@
     }
     .host-cell {
       max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .contest-table .contest-th-category,
+    .contest-table .contest-category-cell {
+      width: 72px;
+      max-width: 72px;
+      box-sizing: border-box;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -384,6 +397,19 @@
       bottom: 100%;
       margin-top: 0;
       margin-bottom: 4px;
+      box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
+    }
+    /* 테이블 밖(body 포털) — 위치는 인라인 top/left, 잘림 방지 */
+    .contest-menu-panel.contest-menu-panel--portal {
+      position: fixed;
+      right: auto;
+      margin: 0;
+      z-index: 10200;
+    }
+    .contest-menu-panel.contest-menu-panel--portal.contest-menu-panel--flip-up {
+      top: unset;
+      bottom: auto;
+      margin-bottom: 0;
       box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.12);
     }
     .contest-menu-panel .contest-menu-item {
@@ -897,6 +923,70 @@
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
     }
+    .contest-filter-panel:not(.contest-filter-panel--expanded) {
+      padding-bottom: 14px;
+    }
+    .contest-filter-panel__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    .contest-filter-panel__head-text {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .contest-filter-panel__title {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: var(--text-dark);
+      letter-spacing: -0.02em;
+    }
+    .contest-filter-panel__subtitle {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: #64748b;
+      line-height: 1.35;
+    }
+    .contest-filter-panel__toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--main-purple);
+      background: rgba(255, 255, 255, 0.75);
+      border: 1px solid rgba(59, 130, 246, 0.38);
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      flex-shrink: 0;
+      transition:
+        background 0.15s,
+        border-color 0.15s;
+    }
+    .contest-filter-panel__toggle:hover {
+      background: var(--soft-purple);
+      border-color: var(--main-purple);
+    }
+    .contest-filter-panel__toggle-ico {
+      width: 1.05rem;
+      height: 1.05rem;
+      flex-shrink: 0;
+      transition: transform 0.2s ease;
+    }
+    .contest-filter-panel__toggle-ico.is-open {
+      transform: rotate(180deg);
+    }
+    .contest-filter-panel__body {
+      padding-top: 16px;
+    }
+    .contest-filter-panel__body[hidden] {
+      display: none !important;
+    }
     .contest-filter-panel .filter-chip-row {
       margin-bottom: 0;
     }
@@ -1400,6 +1490,53 @@
     .contest-summary-card--deadline .contest-summary-card__value strong {
       color: #dc2626;
     }
+    .contest-summary-card--clickable {
+      width: 100%;
+      margin: 0;
+      text-align: left;
+      cursor: pointer;
+      font: inherit;
+      color: inherit;
+      transition:
+        border-color 0.2s,
+        box-shadow 0.2s,
+        transform 0.15s;
+    }
+    .contest-summary-card--clickable:hover {
+      box-shadow: 0 4px 16px rgba(220, 38, 38, 0.12);
+    }
+    .contest-summary-card--clickable:focus {
+      outline: none;
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.28);
+    }
+    .contest-summary-card--clickable:focus:not(:focus-visible) {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .contest-summary-card--clickable:focus-visible {
+      box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.28);
+    }
+    .contest-summary-card--new.contest-summary-card--clickable:hover {
+      box-shadow: 0 4px 16px rgba(37, 99, 235, 0.14);
+    }
+    .contest-summary-card--new.contest-summary-card--clickable:focus {
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+    }
+    .contest-summary-card--new.contest-summary-card--clickable:focus:not(:focus-visible) {
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    }
+    .contest-summary-card--new.contest-summary-card--clickable:focus-visible {
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+    }
+    .contest-summary-card--new.contest-summary-card--filter-active {
+      border-width: 2px;
+      border-color: #2563eb;
+      box-shadow: 0 4px 20px rgba(37, 99, 235, 0.2);
+    }
+    .contest-summary-card--deadline.contest-summary-card--filter-active {
+      border-width: 2px;
+      border-color: #b91c1c;
+      box-shadow: 0 4px 20px rgba(185, 28, 28, 0.18);
+    }
     .contest-summary-card--refresh {
       border-color: rgba(59, 130, 246, 0.2);
       background: linear-gradient(180deg, #eff6ff 0%, #fff 64%);
@@ -1449,6 +1586,13 @@
       border-radius: 50%;
       background: currentColor;
       opacity: 0.85;
+    }
+    .filter-chip__ico--dot.filter-chip__ico--neutral {
+      background: #94a3b8;
+      opacity: 1;
+    }
+    .filter-chip.is-active .filter-chip__ico--dot.filter-chip__ico--neutral {
+      background: #fff;
     }
     .filter-chip:hover:not(.is-active) {
       background: #e2e8f0;
@@ -1643,7 +1787,7 @@
 
     /* 메인 홈(/) — 좁은 화면: 공모전 테이블 가로 스크롤 고정 폭 */
     .contest-list-x-scroll .contest-table {
-      min-width: 960px;
+      min-width: 932px;
     }
 
     @media (max-width: 768px) {
@@ -1767,9 +1911,18 @@
         border-radius: 12px;
       }
 
-      .filter-chip-row__label {
+      .filter-chip-row .filter-chip-row__label {
         flex: 0 0 100%;
         margin-bottom: 4px;
+      }
+
+      .contest-filter-panel__head {
+        align-items: flex-start;
+      }
+
+      .contest-filter-panel__toggle {
+        padding: 7px 12px;
+        font-size: 0.76rem;
       }
 
       .filter-chip {
@@ -1843,7 +1996,7 @@
         overflow-x: auto;
         overscroll-behavior-x: contain;
         flex-wrap: nowrap;
-        justify-content: center;
+        justify-content: flex-start;
         gap: 6px;
         -webkit-overflow-scrolling: touch;
         scrollbar-width: none;

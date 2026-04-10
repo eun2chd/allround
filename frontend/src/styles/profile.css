@@ -13,6 +13,8 @@
 .tier-sprite-3 { background-position: -768px 0; width: 384px; height: 480px; }
 .tier-sprite-4 { background-position: -1152px 0; width: 384px; height: 480px; }
 .tier-sprite-5 { background-position: -1536px 0; width: 384px; height: 480px; }
+/* 6번째 컬럼 미도입: LEGEND 프레임 + 홀로그램 틴트로 특이점 구분 */
+.tier-sprite-6 { background-position: -1536px 0; width: 384px; height: 480px; }
 /* 작은 사이즈용 (아이콘) */
 .tier-sprite-sm { background-size: 960px 240px; }
 .tier-sprite-sm.tier-sprite-1 { background-position: 0 0; width: 192px; height: 240px; }
@@ -20,6 +22,7 @@
 .tier-sprite-sm.tier-sprite-3 { background-position: -384px 0; width: 192px; height: 240px; }
 .tier-sprite-sm.tier-sprite-4 { background-position: -576px 0; width: 192px; height: 240px; }
 .tier-sprite-sm.tier-sprite-5 { background-position: -768px 0; width: 192px; height: 240px; }
+.tier-sprite-sm.tier-sprite-6 { background-position: -768px 0; width: 192px; height: 240px; }
 /* 인라인 아이콘용 - 32x40px */
 .tier-sprite-xs { background-size: 160px 40px; }
 .tier-sprite-xs.tier-sprite-1 { background-position: 0 0; width: 32px; height: 40px; }
@@ -27,6 +30,7 @@
 .tier-sprite-xs.tier-sprite-3 { background-position: -64px 0; width: 32px; height: 40px; }
 .tier-sprite-xs.tier-sprite-4 { background-position: -96px 0; width: 32px; height: 40px; }
 .tier-sprite-xs.tier-sprite-5 { background-position: -128px 0; width: 32px; height: 40px; }
+.tier-sprite-xs.tier-sprite-6 { background-position: -128px 0; width: 32px; height: 40px; }
 /* 프로필 레벨 영역용 - 아바타(96px)와 동일 크기, 살짝 기울임 */
 .tier-sprite-profile { background-size: 384px 96px; transform: rotate(-6deg); }
 .tier-sprite-profile.tier-sprite-1 { background-position: 0 0; width: 77px; height: 96px; }
@@ -34,6 +38,13 @@
 .tier-sprite-profile.tier-sprite-3 { background-position: -134px 0; width: 77px; height: 96px; }
 .tier-sprite-profile.tier-sprite-4 { background-position: -210px 0; width: 77px; height: 96px; }
 .tier-sprite-profile.tier-sprite-5 { background-position: -210px 0; width: 77px; height: 96px; }
+.tier-sprite-profile.tier-sprite-6 {
+  background-position: -210px 0;
+  width: 77px;
+  height: 96px;
+  filter: saturate(0.75) hue-rotate(175deg) contrast(1.12) brightness(1.08)
+    drop-shadow(0 0 14px rgba(167, 243, 208, 0.45));
+}
 
 /* 프로필 영역 */
 .profile-section {
@@ -166,6 +177,30 @@
   background-size: contain;
   z-index: 3;
 }
+/* LEGEND 티어 메달 PNG — 선택한 프로필 테마 톤에 맞춤 */
+.profile-section.profile-theme-basic .symbol-badge-medal {
+  filter: brightness(1.03) contrast(1.06) saturate(0.9);
+  opacity: 0.92;
+}
+.profile-section.profile-theme-rare .symbol-badge-medal {
+  filter: brightness(1.12) saturate(0.32) contrast(1.08) drop-shadow(0 1px 3px rgba(100, 116, 139, 0.45));
+}
+.profile-section.profile-theme-epic .symbol-badge-medal {
+  filter: brightness(1.08) saturate(1.35) sepia(0.2) drop-shadow(0 0 8px rgba(251, 191, 36, 0.55));
+}
+.profile-section.profile-theme-platinum .symbol-badge-medal {
+  filter: brightness(1.15) saturate(0.55) hue-rotate(188deg) contrast(1.05)
+    drop-shadow(0 0 6px rgba(147, 197, 253, 0.5));
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .symbol-badge-medal,
+.profile-section.profile-theme-legend .symbol-badge-medal {
+  filter: brightness(1.06) saturate(1.2) hue-rotate(268deg) contrast(1.05)
+    drop-shadow(0 0 6px rgba(236, 72, 153, 0.45));
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .symbol-badge-medal {
+  filter: brightness(1.12) saturate(0.55) hue-rotate(168deg) contrast(1.08)
+    drop-shadow(0 0 10px rgba(167, 243, 208, 0.55)) drop-shadow(0 0 18px rgba(196, 181, 253, 0.35));
+}
 .profile-section .avatar {
   width: 96px;
   height: 96px;
@@ -270,6 +305,51 @@
   0%, 100% { box-shadow: inset 0 0 0 1px #f9a8d4, 0 0 0 2px rgba(236, 72, 153, 0.7), 0 0 28px rgba(236, 72, 153, 0.8), 0 0 48px rgba(190, 24, 93, 0.5); }
   50% { box-shadow: inset 0 0 0 1px #f9a8d4, 0 0 0 2px rgba(236, 72, 153, 0.9), 0 0 36px rgba(244, 114, 182, 0.95), 0 0 56px rgba(190, 24, 93, 0.6); }
 }
+/* SINGULARITY: 사건의 지평선 링 + 미세 왜곡 */
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .avatar.singularity-border {
+  border: 2px solid rgba(255, 255, 255, 0.92) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(224, 255, 255, 0.35),
+    0 0 0 2px rgba(125, 211, 252, 0.35),
+    0 0 28px rgba(255, 255, 255, 0.55),
+    0 0 56px rgba(34, 211, 238, 0.35),
+    0 0 88px rgba(167, 139, 250, 0.25) !important;
+  animation: singularity-horizon-pulse 5s ease-in-out infinite;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .avatar-wrap {
+  filter: contrast(1.02);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .avatar-wrap:hover,
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .avatar-wrap:hover .avatar.singularity-border,
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .avatar.singularity-border:hover {
+  filter: contrast(1.04) saturate(1.05);
+  border-color: #fff !important;
+  box-shadow:
+    inset 0 0 0 1px #fff,
+    0 0 0 2px rgba(224, 255, 255, 0.65),
+    0 0 40px rgba(255, 255, 255, 0.75),
+    0 0 72px rgba(34, 211, 238, 0.45),
+    0 0 100px rgba(196, 181, 253, 0.35) !important;
+}
+@keyframes singularity-horizon-pulse {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(224, 255, 255, 0.35),
+      0 0 0 2px rgba(125, 211, 252, 0.3),
+      0 0 24px rgba(255, 255, 255, 0.45),
+      0 0 48px rgba(34, 211, 238, 0.28),
+      0 0 76px rgba(167, 139, 250, 0.2);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(255, 255, 255, 0.5),
+      0 0 0 2px rgba(125, 211, 252, 0.5),
+      0 0 36px rgba(255, 255, 255, 0.65),
+      0 0 64px rgba(34, 211, 238, 0.4),
+      0 0 96px rgba(196, 181, 253, 0.32);
+  }
+}
 
 /* Tier 스타일 */
 .profile-section.tier-0 {
@@ -334,8 +414,22 @@
   position: relative;
   overflow: visible;
 }
+/* tier-5 SINGULARITY: 코스믹 어비스 (상점 테마 미적용 시 네이티브) */
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) {
+  background: radial-gradient(ellipse 120% 80% at 50% -20%, rgba(56, 189, 248, 0.08) 0%, transparent 50%),
+    linear-gradient(165deg, #020617 0%, #030712 45%, #000000 100%);
+  border: 1px solid rgba(125, 211, 252, 0.18);
+  position: relative;
+  overflow: visible;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 20px 50px rgba(0, 0, 0, 0.45);
+}
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .profile-border-svg,
-.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .profile-border-svg {
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .profile-border-svg,
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .profile-border-svg {
   position: absolute;
   inset: -4px;
   width: calc(100% + 8px);
@@ -359,6 +453,82 @@
   stroke-linecap: round;
   stroke-dasharray: 280 1320;
   animation: profile-border-travel 5s linear infinite;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .profile-border-svg rect {
+  fill: none;
+  stroke: url(#singularitySectionGradient);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 280 1320;
+  animation: profile-border-travel 5s linear infinite;
+  filter: drop-shadow(0 0 6px rgba(255, 255, 255, 0.45)) drop-shadow(0 0 16px rgba(34, 211, 238, 0.35));
+}
+/* tier-5 + 레전드 테마: 위 블록에서 legend 제외 → 테두리 SVG·파티클 래퍼가 빠지던 문제 보강 */
+.profile-section.tier-5.profile-theme-legend .profile-border-svg {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  border-radius: calc(var(--radius-lg) + 4px);
+  pointer-events: none;
+  z-index: 2;
+}
+.profile-section.tier-5.profile-theme-legend .profile-border-svg rect {
+  fill: none;
+  stroke: url(#pinkSectionGradient);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 280 1320;
+  animation: profile-border-travel 5s linear infinite;
+}
+.profile-section.tier-5.profile-theme-legend .tier-particles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.profile-section.tier-5.profile-theme-legend .btn-tier-exp {
+  color: #f9a8d4;
+  background: rgba(236, 72, 153, 0.2);
+  border-color: rgba(236, 72, 153, 0.4);
+}
+.profile-section.tier-5.profile-theme-legend .btn-tier-exp:hover {
+  background: rgba(236, 72, 153, 0.3);
+  border-color: #ec4899;
+}
+.profile-section.tier-5.profile-theme-legend .profile-status-row {
+  background: rgba(255, 255, 255, 0.06);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+.profile-section.tier-5.profile-theme-legend .profile-status-row .status-input {
+  background: transparent;
+  border: none;
+  color: #f1f5f9;
+  box-shadow: none;
+}
+.profile-section.tier-5.profile-theme-legend .profile-status-row .status-input::placeholder {
+  color: rgba(203, 213, 225, 0.8);
+}
+.profile-section.tier-5.profile-theme-legend .profile-status-row .status-input:focus {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  outline: none;
+}
+.profile-section.tier-5.profile-theme-legend .btn-avatar-upload {
+  background: linear-gradient(135deg, #be185d, #ec4899);
+  border: 2px solid rgba(244, 114, 182, 0.5);
+  box-shadow: 0 0 12px rgba(190, 24, 93, 0.5);
+}
+.profile-section.tier-5.profile-theme-legend .btn-avatar-upload:hover {
+  box-shadow: 0 0 18px rgba(236, 72, 153, 0.6);
+}
+.profile-section.tier-5.profile-theme-legend .level-exp-block {
+  border-color: rgba(236, 72, 153, 0.2);
 }
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .info h2,
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .info h2,
@@ -442,7 +612,8 @@
   color: rgba(203, 213, 225, 0.62);
 }
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .tier-particles,
-.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .tier-particles {
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .tier-particles,
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .tier-particles {
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -827,6 +998,27 @@
   box-shadow: 0 0 16px rgba(59, 130, 246, 0.45), 0 0 24px rgba(56, 189, 248, 0.35);
   text-shadow: 0 0 6px rgba(253,230,138,0.4);
 }
+.tier-badge-pill-singularity {
+  background: linear-gradient(120deg, #22d3ee 0%, #a78bfa 35%, #e0ffff 55%, #c4b5fd 78%, #5eead4 100%);
+  background-size: 220% 100%;
+  animation: singularity-holo-shift 5s ease-in-out infinite;
+  color: #020617;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  box-shadow:
+    0 0 14px rgba(255, 255, 255, 0.35),
+    0 0 28px rgba(34, 211, 238, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+@keyframes singularity-holo-shift {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
 .exp-bar-wrap {
   height: 12px;
   background: rgba(0,0,0,0.1);
@@ -835,7 +1027,8 @@
   width: 100%;
 }
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .exp-bar-wrap,
-.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .exp-bar-wrap {
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .exp-bar-wrap,
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .exp-bar-wrap {
   background: rgba(0,0,0,0.4);
   border: 1px solid rgba(255,255,255,0.25);
 }
@@ -887,7 +1080,24 @@
 }
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .hashtag-badge,
 .profile-section.profile-theme-platinum .hashtag-badge {
-  color: #94a3b8;
+  color: #e8eef7 !important;
+  -webkit-text-fill-color: #e8eef7 !important;
+  background: rgba(15, 23, 42, 0.5) !important;
+  border: 1px solid rgba(129, 140, 248, 0.28) !important;
+  border-radius: 10px !important;
+  padding: 5px 11px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .hashtag-badge + .hashtag-badge::before,
+.profile-section.profile-theme-platinum .hashtag-badge + .hashtag-badge::before {
+  content: none !important;
+  margin: 0 !important;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .hashtag-hash,
+.profile-section.profile-theme-platinum .hashtag-hash {
+  color: #a5b4fc !important;
+  -webkit-text-fill-color: #a5b4fc !important;
+  font-weight: 800;
 }
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .hashtag-badge {
   color: #f9a8d4;
@@ -1265,17 +1475,26 @@
   background: #e5e7eb;
 }
 .theme-rare {
-  background: linear-gradient(135deg, #eff6ff 0%, var(--soft-purple) 100%);
-  border-bottom: 1px solid rgba(59,130,246,0.2);
+  background: linear-gradient(155deg, #f1f5f9 0%, #e2e8f0 45%, #cbd5e1 100%);
+  border: 1px solid #94a3b8;
+  border-bottom: 1px solid #94a3b8;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.7);
 }
 .theme-rare .theme-preview-avatar {
-  width: 36px; height: 36px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--main-purple), var(--brand-light));
-  box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 2px solid #94a3b8;
+  background: linear-gradient(160deg, #f8fafc, #cbd5e1);
+  box-shadow:
+    0 0 0 1px #e2e8f0,
+    0 2px 8px rgba(148, 163, 184, 0.45);
 }
 .theme-rare .theme-preview-bar {
-  width: 80%; height: 6px; border-radius: 3px;
-  background: linear-gradient(90deg, var(--main-purple), var(--brand-light));
+  width: 80%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #64748b, #94a3b8, #cbd5e1);
 }
 /* EPIC 테마 프리뷰: 골드 (금색) */
 .theme-epic {
@@ -1378,6 +1597,10 @@
 .headline-tier-dot--gold { background: #ca8a04; }
 .headline-tier-dot--platinum { background: #2563eb; }
 .headline-tier-dot--legend { background: #7c3aed; }
+.headline-tier-dot--singularity {
+  background: linear-gradient(135deg, #e0ffff, #a78bfa, #22d3ee);
+  box-shadow: 0 0 8px rgba(224, 255, 255, 0.6);
+}
 .theme-default-tier .theme-preview-avatar.legendary {
   width: 36px;
   height: 36px;
@@ -1391,6 +1614,65 @@
   height: 6px;
   border-radius: 3px;
   background: linear-gradient(90deg, #be185d, #ec4899, #f472b6);
+}
+/* SINGULARITY 테마 상점 프리뷰 */
+.theme-singularity {
+  background:
+    radial-gradient(ellipse 80% 70% at 50% 100%, rgba(34, 211, 238, 0.18) 0%, transparent 55%),
+    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(167, 139, 250, 0.12) 0%, transparent 45%),
+    linear-gradient(165deg, #020617 0%, #0b1220 40%, #020617 100%);
+  border: 1px solid rgba(148, 163, 184, 0.28);
+  box-shadow: inset 0 0 28px rgba(34, 211, 238, 0.06);
+  position: relative;
+}
+.theme-singularity-preview-stars {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 12% 22%, rgba(255, 255, 255, 0.35) 0, transparent 1px),
+    radial-gradient(circle at 78% 18%, rgba(224, 255, 255, 0.4) 0, transparent 1px),
+    radial-gradient(circle at 88% 62%, rgba(167, 139, 250, 0.35) 0, transparent 1px),
+    radial-gradient(circle at 22% 72%, rgba(255, 255, 255, 0.2) 0, transparent 1px);
+  opacity: 0.85;
+  animation: theme-singularity-twinkle 4.5s ease-in-out infinite;
+}
+@keyframes theme-singularity-twinkle {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+.theme-singularity .theme-preview-avatar.singularity-mini {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #1e293b 0%, #0f172a 100%);
+  border: 2px solid rgba(255, 255, 255, 0.88);
+  box-shadow:
+    0 0 0 1px rgba(224, 255, 255, 0.25),
+    0 0 16px rgba(255, 255, 255, 0.35),
+    0 0 24px rgba(167, 139, 250, 0.35);
+}
+.theme-singularity .theme-preview-bar.singularity-mini {
+  width: 80%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #64748b, #e0ffff, #c4b5fd, #22d3ee, #94a3b8);
+  background-size: 280% 100%;
+  animation: theme-singularity-bar-flow 5.5s cubic-bezier(0.42, 0, 0.58, 1) infinite alternate;
+  box-shadow: 0 0 10px rgba(224, 255, 255, 0.35);
+}
+@keyframes theme-singularity-bar-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
 }
 /* 적용 버튼 강조 (사용 중) */
 .theme-apply-btn.active {
@@ -1444,54 +1726,452 @@
 .profile-section.profile-theme-basic .info p,
 .profile-section.profile-theme-basic .level-text { color: #64748b !important; }
 .profile-section.profile-theme-basic .exp-bar-fill { background: #94a3b8 !important; }
+.profile-section.profile-theme-basic .tier-badge-pill-legend {
+  background: linear-gradient(135deg, #f1f5f9, #e2e8f0) !important;
+  color: #334155 !important;
+  border: 1px solid #94a3b8 !important;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08) !important;
+  text-shadow: none !important;
+}
 
-/* --- [2] RARE THEME (블루 / 네이비) --- */
+/* --- [2] RARE THEME (실버) --- */
 .profile-section.profile-theme-rare {
-  background: linear-gradient(135deg, #eff6ff 0%, var(--soft-purple) 100%) !important;
-  border: 1px solid #93c5fd !important;
+  background: linear-gradient(
+    155deg,
+    rgba(241, 245, 249, 0.78) 0%,
+    rgba(226, 232, 240, 0.74) 42%,
+    rgba(203, 213, 225, 0.7) 88%,
+    rgba(248, 250, 252, 0.82) 100%
+  ) !important;
+  border: 2px solid rgba(148, 163, 184, 0.75) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    0 4px 28px rgba(15, 23, 42, 0.1) !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 .profile-section.profile-theme-rare .profile-border-svg,
-.profile-section.profile-theme-rare .tier-particles { display: none !important; }
+.profile-section.profile-theme-rare .tier-particles {
+  display: none !important;
+}
 .profile-section.profile-theme-rare .avatar {
-  border: none !important;
-  box-shadow: 0 0 16px rgba(59, 130, 246, 0.4) !important;
+  border: 3px solid #94a3b8 !important;
+  box-shadow:
+    0 0 0 1px #e2e8f0,
+    0 2px 14px rgba(148, 163, 184, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+}
+.profile-section.profile-theme-rare .avatar span {
+  color: #212121 !important;
 }
 .profile-section.profile-theme-rare .avatar.avatar-no-image {
-  border: 2px solid #1f2937 !important;
-  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3) !important;
+  border: 2px solid #64748b !important;
+  box-shadow:
+    0 0 0 1px #e2e8f0,
+    0 2px 10px rgba(100, 116, 139, 0.35) !important;
 }
-.profile-section.profile-theme-rare .info h2 { color: var(--accent-green-dark) !important; }
-.profile-section.profile-theme-rare .info p { color: var(--main-purple) !important; }
-.profile-section.profile-theme-rare .level-text { color: var(--main-purple) !important; }
+/* 티어 기본 골드/핑크 아바타 테두리보다 실버 테마 우선 */
+.profile-section.profile-theme-rare .avatar.legend-border,
+.profile-section.profile-theme-rare .avatar-wrap:hover .avatar.legend-border,
+.profile-section.profile-theme-rare .avatar.legend-border:hover {
+  border: 3px solid #94a3b8 !important;
+  box-shadow:
+    0 0 0 1px #e2e8f0,
+    0 2px 14px rgba(148, 163, 184, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55) !important;
+  animation: none !important;
+}
+.profile-section.profile-theme-rare .avatar.avatar-no-image.legend-border,
+.profile-section.profile-theme-rare .avatar-wrap:hover .avatar.avatar-no-image.legend-border,
+.profile-section.profile-theme-rare .avatar.avatar-no-image.legend-border:hover {
+  border: 2px solid #64748b !important;
+  box-shadow:
+    0 0 0 1px #e2e8f0,
+    0 2px 10px rgba(100, 116, 139, 0.35) !important;
+  animation: none !important;
+}
+.profile-section.profile-theme-rare .level-exp-block,
+.profile-section.profile-theme-rare .profile-status-row {
+  border-color: rgba(148, 163, 184, 0.55) !important;
+}
+.profile-section.profile-theme-rare .exp-bar-wrap {
+  background: rgba(255, 255, 255, 0.42) !important;
+  border: 1px solid rgba(59, 130, 246, 0.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+}
 .profile-section.profile-theme-rare .exp-bar-fill {
-  background: linear-gradient(90deg, var(--main-purple), var(--brand-light)) !important;
+  background: linear-gradient(90deg, #1e3a8a, #1d4ed8, #2563eb, #3b82f6, #60a5fa) !important;
+  box-shadow:
+    0 0 12px rgba(37, 99, 235, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+/* 본문·라벨 텍스트 통일 #212121 (이메일·레벨줄·해시태그는 별도) */
+.profile-section.profile-theme-rare .info h2,
+.profile-section.profile-theme-rare .info p,
+.profile-section.profile-theme-rare .level-total-exp,
+.profile-section.profile-theme-rare .exp-next-hint,
+.profile-section.profile-theme-rare .profile-tagline,
+.profile-section.profile-theme-rare .status-readonly-label,
+.profile-section.profile-theme-rare .status-readonly-text,
+.profile-section.profile-theme-rare .status-readonly-text.is-empty,
+.profile-section.profile-theme-rare .btn-tier-exp,
+.profile-section.profile-theme-rare .btn-outline,
+.profile-section.profile-theme-rare .profile-logout,
+.profile-section.profile-theme-rare a.btn-outline,
+.profile-section.profile-theme-rare .hashtag-add-btn,
+.profile-section.profile-theme-rare .hashtag-add-btn .hashtag-add-icon {
+  color: #212121 !important;
+  -webkit-text-fill-color: #212121 !important;
+}
+.profile-section.profile-theme-rare .profile-email-line {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 600;
+}
+.profile-section.profile-theme-rare .level-text {
+  color: #0f172a !important;
+  -webkit-text-fill-color: #0f172a !important;
+  font-weight: 700;
+}
+.profile-section.profile-theme-rare .level-text-num {
+  color: var(--main-purple) !important;
+  -webkit-text-fill-color: var(--main-purple) !important;
+  font-weight: 800;
+}
+.profile-section.profile-theme-rare .hashtag-badge {
+  color: #334155 !important;
+  -webkit-text-fill-color: #334155 !important;
+}
+.profile-section.profile-theme-rare .hashtag-hash {
+  color: #38bdf8 !important;
+  -webkit-text-fill-color: #38bdf8 !important;
+  font-weight: 800;
+}
+.profile-section.profile-theme-rare .headline-badge,
+.profile-section.profile-theme-rare .headline-badge-1,
+.profile-section.profile-theme-rare .headline-badge-2,
+.profile-section.profile-theme-rare .headline-badge-3,
+.profile-section.profile-theme-rare .headline-badge-4,
+.profile-section.profile-theme-rare .headline-badge-5 {
+  background: linear-gradient(165deg, #e0e0e0 0%, #ebebeb 42%, #f5f5f5 100%) !important;
+  color: #212121 !important;
+  -webkit-text-fill-color: #212121 !important;
+  border: 1px solid rgba(148, 163, 184, 0.9) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 0 rgba(148, 163, 184, 0.15),
+    0 1px 4px rgba(15, 23, 42, 0.06) !important;
+}
+.profile-section.profile-theme-rare .headline-badge-dot {
+  background: #64748b !important;
+  box-shadow: none !important;
+}
+.profile-section.profile-theme-rare .role-badge {
+  color: #212121 !important;
+  -webkit-text-fill-color: #212121 !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  border: 1px solid #94a3b8 !important;
+}
+.profile-section.profile-theme-rare .role-badge::after {
+  display: none !important;
+}
+.profile-section.profile-theme-rare .tier-badge-pill-bronze,
+.profile-section.profile-theme-rare .tier-badge-pill-silver,
+.profile-section.profile-theme-rare .tier-badge-pill-gold,
+.profile-section.profile-theme-rare .tier-badge-pill-platinum,
+.profile-section.profile-theme-rare .tier-badge-pill-legend {
+  color: #212121 !important;
+  -webkit-text-fill-color: #212121 !important;
+  background: rgba(255, 255, 255, 0.5) !important;
+  border: 1px solid #94a3b8 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+}
+.profile-section.profile-theme-rare .profile-status-row .status-input {
+  color: #212121 !important;
+  border-color: #94a3b8 !important;
+  background: rgba(255, 255, 255, 0.65) !important;
+}
+.profile-section.profile-theme-rare .profile-status-row .status-input::placeholder {
+  color: rgba(33, 33, 33, 0.42) !important;
+}
+.profile-section.profile-theme-rare .profile-status-row .btn-save-status {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+  border: none !important;
+  background: var(--main-purple) !important;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+}
+.profile-section.profile-theme-rare .profile-status-row .btn-save-status:hover {
+  background: var(--main-purple-hover, #2563eb) !important;
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+.profile-section.profile-theme-rare .profile-status-row .btn-clear-status {
+  color: #212121 !important;
+  border-color: #94a3b8 !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+}
+.profile-section.profile-theme-rare .btn-avatar-upload {
+  color: #212121 !important;
+  background: rgba(255, 255, 255, 0.85) !important;
+  border-color: #94a3b8 !important;
+}
+.profile-section.profile-theme-rare .btn-avatar-upload:hover {
+  background: #f1f5f9 !important;
+  color: #212121 !important;
+}
+.profile-section.profile-theme-rare .btn-tier-exp:hover {
+  color: #212121 !important;
+  background: rgba(255, 255, 255, 0.55) !important;
+  border-color: #94a3b8 !important;
+}
+.profile-section.profile-theme-rare .hashtag-add-btn:hover {
+  color: #212121 !important;
+}
+.profile-section.profile-theme-rare .hashtag-badge + .hashtag-badge::before {
+  color: rgba(33, 33, 33, 0.35) !important;
 }
 
 /* --- [3] EPIC THEME (골드/금색) --- */
-.profile-section.profile-theme-epic {
-  background: linear-gradient(135deg, #1a1612 0%, #2d2619 50%, #3d3225 100%) !important;
-  border: 1px solid rgba(234, 179, 8, 0.4) !important;
-  box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
-  position: relative;
+@keyframes epic-gold-card-pulse {
+  0%,
+  100% {
+    box-shadow:
+      0 0 26px rgba(0, 0, 0, 0.65),
+      0 0 16px rgba(234, 179, 8, 0.22);
+  }
+  50% {
+    box-shadow:
+      0 0 32px rgba(0, 0, 0, 0.72),
+      0 0 36px rgba(251, 191, 36, 0.32);
+  }
 }
-.profile-section.profile-theme-epic .profile-border-svg,
+.profile-section.profile-theme-epic {
+  background: linear-gradient(148deg, #0a0908 0%, #12100e 42%, #181512 100%) !important;
+  border: none !important;
+  position: relative;
+  overflow: visible;
+  isolation: isolate;
+  animation: epic-gold-card-pulse 3.2s ease-in-out infinite;
+}
 .profile-section.profile-theme-epic .tier-particles {
   display: none !important;
 }
-.profile-section.profile-theme-epic .info h2 {
-  color: #f8fafc !important;
-  text-shadow: 0 0 8px rgba(255,255,255,0.3);
+/* 레전드(핑크 테두리)와 동일 방식: 기존 profile-border-svg + stroke-dash 이동, 색만 골드 */
+.profile-section.profile-theme-epic .profile-border-svg {
+  display: block !important;
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  border-radius: calc(var(--radius-lg) + 4px);
+  pointer-events: none;
+  z-index: 2;
 }
-.profile-section.profile-theme-epic .info p { color: #cbd5e1 !important; }
-.profile-section.profile-theme-epic .profile-tagline { color: #fcd34d !important; }
-.profile-section.profile-theme-epic .level-text { color: #e2e8f0 !important; }
-.profile-section.profile-theme-epic .profile-status-row { border-color: rgba(255,255,255,0.2) !important; }
-.profile-section.profile-theme-epic .level-exp-block { border-color: rgba(255,255,255,0.2) !important; }
-/* epic(골드) 테마: 골드 테두리 + 호버 반짝임 */
+.profile-section.profile-theme-epic .profile-border-svg rect {
+  fill: none;
+  stroke: url(#goldSectionGradient);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 280 1320;
+  animation: profile-border-travel 5s linear infinite;
+}
+/* 골드 테마: 닉·수치 화이트 / 포인트만 골드로 대비 */
+.profile-section.profile-theme-epic .info {
+  gap: 0;
+}
+.profile-section.profile-theme-epic .info h2 {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.85) !important;
+  margin-bottom: 4px;
+}
+.profile-section.profile-theme-epic .info h2 .role-badge {
+  color: #fef3c7 !important;
+  -webkit-text-fill-color: #fef3c7 !important;
+  background: rgba(251, 191, 36, 0.12) !important;
+  border: 1px solid rgba(251, 191, 36, 0.42) !important;
+  text-shadow: none !important;
+}
+.profile-section.profile-theme-epic .info p,
+.profile-section.profile-theme-epic .profile-email-line {
+  color: #a8a29e !important;
+  -webkit-text-fill-color: #a8a29e !important;
+}
+.profile-section.profile-theme-epic .profile-tagline {
+  color: #fcd34d !important;
+  -webkit-text-fill-color: #fcd34d !important;
+}
+.profile-section.profile-theme-epic .headline-badges {
+  margin-top: 14px !important;
+}
+.profile-section.profile-theme-epic .level-text {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+}
+.profile-section.profile-theme-epic .level-text-num {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+.profile-section.profile-theme-epic .level-total-exp,
+.profile-section.profile-theme-epic .exp-next-hint {
+  color: #a1a1aa !important;
+  -webkit-text-fill-color: #a1a1aa !important;
+}
+.profile-section.profile-theme-epic .headline-badge,
+.profile-section.profile-theme-epic .headline-badge-1,
+.profile-section.profile-theme-epic .headline-badge-2,
+.profile-section.profile-theme-epic .headline-badge-3,
+.profile-section.profile-theme-epic .headline-badge-4,
+.profile-section.profile-theme-epic .headline-badge-5 {
+  background: rgba(0, 0, 0, 0.45) !important;
+  color: #fcd34d !important;
+  -webkit-text-fill-color: #fcd34d !important;
+  border: 1px solid rgba(251, 191, 36, 0.38) !important;
+}
+.profile-section.profile-theme-epic .headline-badge-dot {
+  background: #fbbf24 !important;
+  box-shadow: 0 0 8px rgba(251, 191, 36, 0.85) !important;
+}
+/* 해시태그: 박스 분리 — 앞 3개만 골드, 나머지 뮤트 */
+.profile-section.profile-theme-epic .hashtag-row .hashtag-badge {
+  padding: 5px 10px !important;
+  border-radius: 8px !important;
+  background: rgba(0, 0, 0, 0.58) !important;
+  border: 1px solid rgba(234, 179, 8, 0.32) !important;
+  box-shadow: none !important;
+}
+.profile-section.profile-theme-epic .hashtag-row .hashtag-badge:nth-child(-n + 3) {
+  color: #fde68a !important;
+  -webkit-text-fill-color: #fde68a !important;
+  border-color: rgba(252, 211, 77, 0.5) !important;
+  background: rgba(0, 0, 0, 0.62) !important;
+}
+.profile-section.profile-theme-epic .hashtag-row .hashtag-badge:nth-child(n + 4) {
+  color: #9ca3af !important;
+  -webkit-text-fill-color: #9ca3af !important;
+  border-color: rgba(82, 82, 91, 0.55) !important;
+  background: rgba(0, 0, 0, 0.5) !important;
+}
+.profile-section.profile-theme-epic .hashtag-badge + .hashtag-badge::before {
+  color: rgba(113, 113, 122, 0.55) !important;
+}
+.profile-section.profile-theme-epic .hashtag-add-btn,
+.profile-section.profile-theme-epic .hashtag-add-btn .hashtag-add-icon {
+  color: #d4d4d8 !important;
+  -webkit-text-fill-color: #d4d4d8 !important;
+}
+.profile-section.profile-theme-epic .hashtag-add-icon {
+  border: none !important;
+  background: transparent !important;
+}
+.profile-section.profile-theme-epic .hashtag-add-btn:hover .hashtag-add-icon {
+  border: none !important;
+  background: rgba(251, 191, 36, 0.12) !important;
+}
+.profile-section.profile-theme-epic .hashtag-add-btn:hover {
+  color: #fcd34d !important;
+}
+.profile-section.profile-theme-epic .status-readonly-label {
+  color: #d4a017 !important;
+  -webkit-text-fill-color: #d4a017 !important;
+}
+.profile-section.profile-theme-epic .status-readonly-text,
+.profile-section.profile-theme-epic .status-readonly-text.is-empty {
+  color: #d4d4d8 !important;
+  -webkit-text-fill-color: #d4d4d8 !important;
+}
+.profile-section.profile-theme-epic .level-exp-block {
+  margin-top: 22px !important;
+  padding: 18px 18px 16px !important;
+  background: rgba(0, 0, 0, 0.38) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(251, 191, 36, 0.14) !important;
+}
+.profile-section.profile-theme-epic .level-exp-emblem .tier-sprite-profile {
+  filter: drop-shadow(0 0 10px rgba(251, 191, 36, 0.5)) drop-shadow(0 0 22px rgba(234, 179, 8, 0.22));
+}
+.profile-section.profile-theme-epic .profile-status-row {
+  margin-top: 22px !important;
+  padding: 14px 16px !important;
+  background: rgba(0, 0, 0, 0.52) !important;
+  border-radius: 12px !important;
+  border: 1px solid rgba(251, 191, 36, 0.12) !important;
+  border-top: 1px solid rgba(251, 191, 36, 0.12) !important;
+}
+.profile-section.profile-theme-epic .profile-status-row.profile-status-row--readonly {
+  padding: 14px 16px !important;
+}
+.profile-section.profile-theme-epic .profile-status-row .status-input {
+  color: #fafafa !important;
+  background: rgba(0, 0, 0, 0.58) !important;
+  border-color: rgba(251, 191, 36, 0.32) !important;
+}
+.profile-section.profile-theme-epic .profile-status-row .status-input::placeholder {
+  color: rgba(161, 161, 170, 0.85) !important;
+}
+.profile-section.profile-theme-epic .profile-status-row .status-input:focus {
+  border-color: #fbbf24 !important;
+  box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.28) !important;
+}
+.profile-section.profile-theme-epic .profile-status-row .btn-save-status {
+  color: #1a1612 !important;
+  background: linear-gradient(135deg, #fbbf24, #fcd34d) !important;
+  border: 1px solid rgba(252, 211, 77, 0.6) !important;
+}
+.profile-section.profile-theme-epic .profile-status-row .btn-clear-status {
+  color: #fde68a !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(251, 191, 36, 0.35) !important;
+}
+.profile-section.profile-theme-epic .btn-outline,
+.profile-section.profile-theme-epic .profile-logout,
+.profile-section.profile-theme-epic a.btn-outline {
+  color: #fde68a !important;
+  border-color: rgba(251, 191, 36, 0.5) !important;
+  background: rgba(0, 0, 0, 0.15) !important;
+}
+.profile-section.profile-theme-epic .btn-outline:hover,
+.profile-section.profile-theme-epic a.btn-outline:hover {
+  color: #fef3c7 !important;
+  border-color: #fcd34d !important;
+  background: rgba(251, 191, 36, 0.12) !important;
+}
+.profile-section.profile-theme-epic .btn-tier-exp {
+  color: #fde68a !important;
+  border: 1px solid rgba(251, 191, 36, 0.4) !important;
+  background: rgba(0, 0, 0, 0.2) !important;
+}
+.profile-section.profile-theme-epic .btn-tier-exp:hover {
+  color: #fef3c7 !important;
+  border-color: #fbbf24 !important;
+  background: rgba(251, 191, 36, 0.15) !important;
+}
+.profile-section.profile-theme-epic .btn-avatar-upload {
+  color: #1a1612 !important;
+  background: linear-gradient(135deg, #fbbf24, #fcd34d) !important;
+  border: 2px solid rgba(252, 211, 77, 0.65) !important;
+}
+.profile-section.profile-theme-epic .btn-avatar-upload:hover {
+  background: linear-gradient(135deg, #fcd34d, #fde68a) !important;
+  color: #1a1612 !important;
+}
+.profile-section.profile-theme-epic .exp-bar-wrap {
+  background: rgba(0, 0, 0, 0.5) !important;
+  border: 1px solid rgba(251, 191, 36, 0.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+/* epic(골드) 테마: 아바타 테두리 + 호버 반짝임 */
 .profile-section.profile-theme-epic .avatar {
   border: 3px solid #e8b923 !important;
   box-shadow: 0 0 16px rgba(229, 185, 35, 0.6), inset 0 0 0 1px rgba(255,255,255,0.2) !important;
   transition: box-shadow 0.4s ease, border-color 0.4s ease !important;
+}
+.profile-section.profile-theme-epic .avatar span {
+  color: #ffffff !important;
 }
 .profile-section.profile-theme-epic .avatar.avatar-no-image {
   border: 2px solid #1f2937 !important;
@@ -1510,10 +2190,53 @@
 .profile-section.profile-theme-epic .role-badge {
   background: rgba(251, 191, 36, 0.15) !important;
   color: #fef3c7 !important;
-  border-color: rgba(252, 211, 77, 0.4) !important;
+  -webkit-text-fill-color: #fef3c7 !important;
+  border-color: rgba(252, 211, 77, 0.45) !important;
+}
+.profile-section.profile-theme-epic .role-badge::after {
+  display: none !important;
 }
 .profile-section.profile-theme-epic .exp-bar-fill {
-  background: linear-gradient(90deg, #e6b800, #fbbf24, #fcd34d) !important;
+  background: linear-gradient(
+    105deg,
+    #713f12 0%,
+    #b45309 22%,
+    #ca8a04 40%,
+    #eab308 52%,
+    #fde047 58%,
+    #fbbf24 78%,
+    #92400e 100%
+  ) !important;
+  box-shadow: 0 0 14px rgba(251, 191, 36, 0.35) !important;
+}
+.profile-section.profile-theme-epic .tier-badge-pill-bronze,
+.profile-section.profile-theme-epic .tier-badge-pill-silver,
+.profile-section.profile-theme-epic .tier-badge-pill-gold,
+.profile-section.profile-theme-epic .tier-badge-pill-platinum {
+  background: rgba(0, 0, 0, 0.42) !important;
+  color: #f4f4f5 !important;
+  -webkit-text-fill-color: #f4f4f5 !important;
+  border: 1px solid rgba(251, 191, 36, 0.28) !important;
+  box-shadow: 0 0 12px rgba(234, 179, 8, 0.12) !important;
+  text-shadow: none !important;
+}
+.profile-section.profile-theme-epic .tier-badge-pill-legend {
+  background: linear-gradient(
+    135deg,
+    #3d2208 0%,
+    #92400e 28%,
+    #d97706 48%,
+    #fbbf24 62%,
+    #fde68a 72%,
+    #ca8a04 100%
+  ) !important;
+  color: #1c1410 !important;
+  -webkit-text-fill-color: #1c1410 !important;
+  border: 1px solid rgba(253, 230, 138, 0.55) !important;
+  box-shadow:
+    0 0 18px rgba(251, 191, 36, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35) !important;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.25) !important;
 }
 
 /* --- [4a] PLATINUM THEME (tier-3 & profile-theme-platinum 전용) --- */
@@ -1530,7 +2253,8 @@
   display: none !important;
 }
 /* 플래티넘: 왼쪽→오른쪽 빛 반사 스윕 (tier-4 + default일 때는 숨김) */
-.profile-section.tier-4:not(.profile-theme-platinum) .platinum-shine-overlay {
+.profile-section.tier-4:not(.profile-theme-platinum) .platinum-shine-overlay,
+.profile-section.tier-5 .platinum-shine-overlay {
   display: none !important;
 }
 
@@ -1567,10 +2291,150 @@
   0% { transform: translateX(-100%); }
   100% { transform: translateX(400%); }
 }
-.platinum-shine-overlay {
+/* 플래티넘 전용: 배경 위 3D 느낌 오브제 (CSS만, pointer-events 없음) */
+.platinum-ambient-layer {
+  display: none;
   position: absolute;
   inset: 0;
   z-index: 0;
+  pointer-events: none;
+  overflow: hidden;
+  border-radius: inherit;
+  perspective: 900px;
+  perspective-origin: 50% 40%;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .platinum-ambient-layer,
+.profile-section.profile-theme-platinum .platinum-ambient-layer {
+  display: block;
+}
+.platinum-geo {
+  position: absolute;
+  opacity: 0.55;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .platinum-geo-cube,
+.profile-section.profile-theme-platinum .platinum-geo-cube {
+  width: 56px;
+  height: 56px;
+  top: 10%;
+  right: 6%;
+  border-radius: 10px;
+  background: linear-gradient(145deg, rgba(129, 140, 248, 0.45), rgba(30, 58, 138, 0.2));
+  border: 1px solid rgba(165, 180, 252, 0.35);
+  box-shadow:
+    inset 0 2px 4px rgba(255, 255, 255, 0.18),
+    inset 0 -3px 8px rgba(15, 23, 42, 0.35),
+    0 16px 40px rgba(15, 23, 42, 0.45);
+  transform: rotateX(62deg) rotateZ(-32deg);
+  animation: platinum-geo-float-a 9s ease-in-out infinite;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .platinum-geo-pyramid,
+.profile-section.profile-theme-platinum .platinum-geo-pyramid {
+  width: 0;
+  height: 0;
+  bottom: 18%;
+  left: 4%;
+  border-left: 26px solid transparent;
+  border-right: 26px solid transparent;
+  border-bottom: 44px solid rgba(56, 189, 248, 0.22);
+  filter: drop-shadow(0 0 12px rgba(34, 211, 238, 0.35));
+  transform: rotateX(12deg) rotateY(-28deg);
+  animation: platinum-geo-float-b 11s ease-in-out infinite;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .platinum-geo-ring,
+.profile-section.profile-theme-platinum .platinum-geo-ring {
+  width: 72px;
+  height: 72px;
+  top: 42%;
+  right: 12%;
+  border-radius: 50%;
+  border: 3px solid rgba(167, 139, 250, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(139, 92, 246, 0.15),
+    inset 0 0 20px rgba(99, 102, 241, 0.2);
+  transform: rotateX(54deg) rotateY(18deg);
+  animation: platinum-geo-float-c 13s ease-in-out infinite;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .platinum-geo-orb,
+.profile-section.profile-theme-platinum .platinum-geo-orb {
+  width: 88px;
+  height: 88px;
+  bottom: 8%;
+  right: 22%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, rgba(224, 231, 255, 0.5), rgba(99, 102, 241, 0.12) 45%, rgba(15, 23, 42, 0.15) 100%);
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  box-shadow:
+    inset -8px -12px 24px rgba(15, 23, 42, 0.4),
+    0 0 32px rgba(99, 102, 241, 0.25);
+  animation: platinum-geo-float-d 10s ease-in-out infinite;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .platinum-geo-bar,
+.profile-section.profile-theme-platinum .platinum-geo-bar {
+  width: 120px;
+  height: 14px;
+  top: 22%;
+  left: 8%;
+  border-radius: 7px;
+  background: linear-gradient(180deg, rgba(226, 232, 240, 0.35), rgba(71, 85, 105, 0.25));
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  box-shadow:
+    0 8px 24px rgba(15, 23, 42, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transform: rotateX(48deg) rotateZ(8deg);
+  animation: platinum-geo-float-e 12s ease-in-out infinite;
+}
+@keyframes platinum-geo-float-a {
+  0%,
+  100% {
+    transform: rotateX(62deg) rotateZ(-32deg) translateY(0);
+  }
+  50% {
+    transform: rotateX(58deg) rotateZ(-28deg) translateY(-10px);
+  }
+}
+@keyframes platinum-geo-float-b {
+  0%,
+  100% {
+    transform: rotateX(12deg) rotateY(-28deg) translate(0, 0);
+  }
+  50% {
+    transform: rotateX(18deg) rotateY(-22deg) translate(6px, -8px);
+  }
+}
+@keyframes platinum-geo-float-c {
+  0%,
+  100% {
+    transform: rotateX(54deg) rotateY(18deg) scale(1);
+  }
+  50% {
+    transform: rotateX(48deg) rotateY(24deg) scale(1.05);
+  }
+}
+@keyframes platinum-geo-float-d {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-14px);
+  }
+}
+@keyframes platinum-geo-float-e {
+  0%,
+  100% {
+    transform: rotateX(48deg) rotateZ(8deg) translateX(0);
+  }
+  50% {
+    transform: rotateX(52deg) rotateZ(4deg) translateX(8px);
+  }
+}
+
+.platinum-shine-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   pointer-events: none;
   background: linear-gradient(
     105deg,
@@ -1630,23 +2494,101 @@
 }
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .info p,
 .profile-section.profile-theme-platinum .info p { color: #94a3b8 !important; }
+/* 플래티넘: 헤드라인 칩 — 실버·슬레이트 베이스 + 퍼플(1)·시안(3) 포인트만 */
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .headline-badge-2,
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .headline-badge-4,
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .headline-badge-5,
+.profile-section.profile-theme-platinum .headline-badge-2,
+.profile-section.profile-theme-platinum .headline-badge-4,
+.profile-section.profile-theme-platinum .headline-badge-5 {
+  background: linear-gradient(135deg, #1e293b 0%, #334155 50%, #3d4d64 100%) !important;
+  color: #f1f5f9 !important;
+  -webkit-text-fill-color: #f1f5f9 !important;
+  border: 1px solid rgba(148, 163, 184, 0.42) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1) !important;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .headline-badge-1,
+.profile-section.profile-theme-platinum .headline-badge-1 {
+  background: linear-gradient(135deg, #312e81 0%, #4f46e5 48%, #6366f1 100%) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border: 1px solid rgba(165, 180, 252, 0.55) !important;
+  box-shadow:
+    0 0 22px rgba(99, 102, 241, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .headline-badge-3,
+.profile-section.profile-theme-platinum .headline-badge-3 {
+  background: linear-gradient(135deg, #0c4a6e 0%, #0369a1 45%, #0ea5e9 100%) !important;
+  color: #f0f9ff !important;
+  -webkit-text-fill-color: #f0f9ff !important;
+  border: 1px solid rgba(56, 189, 248, 0.48) !important;
+  box-shadow:
+    0 0 20px rgba(14, 165, 233, 0.32),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2) !important;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .headline-badge-dot,
+.profile-section.profile-theme-platinum .headline-badge-dot {
+  background: linear-gradient(180deg, #e2e8f0, #94a3b8) !important;
+  box-shadow: 0 0 8px rgba(148, 163, 184, 0.45) !important;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .headline-badge-1 .headline-badge-dot,
+.profile-section.profile-theme-platinum .headline-badge-1 .headline-badge-dot {
+  background: linear-gradient(180deg, #e0e7ff, #a5b4fc) !important;
+  box-shadow: 0 0 8px rgba(129, 140, 248, 0.65) !important;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .headline-badge-3 .headline-badge-dot,
+.profile-section.profile-theme-platinum .headline-badge-3 .headline-badge-dot {
+  background: linear-gradient(180deg, #bae6fd, #38bdf8) !important;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.55) !important;
+}
+/* 플래티넘: 비밀번호 변경 등 상단 아웃라인 버튼 — 흰 배경 제거 */
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .profile-top .btn-outline,
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .profile-top a.btn-outline,
+.profile-section.profile-theme-platinum .profile-top .btn-outline,
+.profile-section.profile-theme-platinum .profile-top a.btn-outline {
+  background: transparent !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(129, 140, 248, 0.55) !important;
+  box-shadow: none !important;
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .profile-top .btn-outline:hover,
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .profile-top a.btn-outline:hover,
+.profile-section.profile-theme-platinum .profile-top .btn-outline:hover,
+.profile-section.profile-theme-platinum .profile-top a.btn-outline:hover {
+  background: rgba(30, 41, 59, 0.75) !important;
+  color: #f8fafc !important;
+  border-color: rgba(165, 180, 252, 0.85) !important;
+}
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .level-text,
 .profile-section.profile-theme-platinum .level-text {
-  color: #94a3b8 !important;
-  text-shadow: 0 0 5px rgba(148,163,184,0.4);
+  color: #cbd5e1 !important;
+  -webkit-text-fill-color: #cbd5e1 !important;
+  text-shadow: 0 0 6px rgba(148, 163, 184, 0.35);
+}
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .level-text-num,
+.profile-section.profile-theme-platinum .level-text-num {
+  color: #7dd3fc !important;
+  -webkit-text-fill-color: #7dd3fc !important;
 }
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .exp-bar-wrap,
 .profile-section.profile-theme-platinum .exp-bar-wrap {
   position: relative;
   overflow: hidden;
+  background: rgba(15, 23, 42, 0.55) !important;
+  border: 1px solid rgba(56, 189, 248, 0.22) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .exp-bar-fill,
 .profile-section.profile-theme-platinum .exp-bar-fill {
   position: relative;
-  background: linear-gradient(90deg, #64748b, #94a3b8, #cbd5e1, #94a3b8) !important;
+  background: linear-gradient(90deg, #0369a1, #0284c7, #0ea5e9, #38bdf8, #7dd3fc, #38bdf8) !important;
   background-size: 200% 100% !important;
   animation: platinum-flow 3s linear infinite !important;
-  box-shadow: 0 0 10px rgba(148,163,184,0.4);
+  box-shadow:
+    0 0 18px rgba(56, 189, 248, 0.65),
+    0 0 36px rgba(14, 165, 233, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35);
 }
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .exp-bar-fill::after,
 .profile-section.profile-theme-platinum .exp-bar-fill::after {
@@ -1654,9 +2596,9 @@
   position: absolute;
   top: 0;
   left: -100%;
-  width: 60%;
+  width: 55%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
   animation: exp-shine-sweep 2.5s ease-in-out infinite;
 }
 .profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .level-exp-emblem,
@@ -1678,13 +2620,305 @@
   100% { background-position: 200% 50%; }
 }
 
+/* --- LEGEND: 깊이·파티클·L프레임 (DOM은 항상 두고 표시만 토글) --- */
+.profile-section .legend-ambient {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .legend-ambient,
+.profile-section.profile-theme-legend .legend-ambient {
+  display: block;
+}
+.legend-depth-sphere {
+  position: absolute;
+  width: min(120%, 720px);
+  height: min(110%, 520px);
+  right: -25%;
+  top: -30%;
+  background: radial-gradient(
+    circle at 45% 45%,
+    rgba(167, 139, 250, 0.42) 0%,
+    rgba(109, 40, 217, 0.22) 28%,
+    rgba(88, 28, 135, 0.08) 48%,
+    transparent 62%
+  );
+  filter: blur(36px);
+  opacity: 0.85;
+  animation: legend-sphere-breathe 10s ease-in-out infinite;
+}
+@keyframes legend-sphere-breathe {
+  0%,
+  100% {
+    opacity: 0.78;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.04);
+  }
+}
+.legend-sparks {
+  position: absolute;
+  inset: 0;
+}
+.legend-spark {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 6px rgba(244, 114, 182, 0.95), 0 0 12px rgba(168, 85, 247, 0.55);
+  opacity: 0.55;
+  animation: legend-spark-drift 14s ease-in-out infinite;
+}
+.legend-spark:nth-child(1) {
+  left: 8%;
+  top: 12%;
+  animation-delay: 0s;
+}
+.legend-spark:nth-child(2) {
+  left: 18%;
+  top: 28%;
+  animation-delay: 0.4s;
+}
+.legend-spark:nth-child(3) {
+  left: 92%;
+  top: 18%;
+  animation-delay: 0.8s;
+}
+.legend-spark:nth-child(4) {
+  left: 78%;
+  top: 8%;
+  animation-delay: 1.2s;
+}
+.legend-spark:nth-child(5) {
+  left: 55%;
+  top: 22%;
+  animation-delay: 0.2s;
+}
+.legend-spark:nth-child(6) {
+  left: 12%;
+  top: 55%;
+  animation-delay: 1.6s;
+}
+.legend-spark:nth-child(7) {
+  left: 32%;
+  top: 72%;
+  animation-delay: 2s;
+}
+.legend-spark:nth-child(8) {
+  left: 88%;
+  top: 62%;
+  animation-delay: 2.4s;
+}
+.legend-spark:nth-child(9) {
+  left: 65%;
+  top: 48%;
+  animation-delay: 0.6s;
+}
+.legend-spark:nth-child(10) {
+  left: 42%;
+  top: 38%;
+  animation-delay: 1.4s;
+}
+.legend-spark:nth-child(11) {
+  left: 5%;
+  top: 88%;
+  animation-delay: 2.8s;
+}
+.legend-spark:nth-child(12) {
+  left: 95%;
+  top: 42%;
+  animation-delay: 3.2s;
+}
+.legend-spark:nth-child(13) {
+  left: 25%;
+  top: 15%;
+  animation-delay: 3.6s;
+}
+.legend-spark:nth-child(14) {
+  left: 70%;
+  top: 78%;
+  animation-delay: 4s;
+}
+.legend-spark:nth-child(15) {
+  left: 48%;
+  top: 12%;
+  animation-delay: 4.4s;
+}
+.legend-spark:nth-child(16) {
+  left: 15%;
+  top: 40%;
+  animation-delay: 4.8s;
+}
+.legend-spark:nth-child(17) {
+  left: 58%;
+  top: 65%;
+  animation-delay: 5.2s;
+}
+.legend-spark:nth-child(18) {
+  left: 38%;
+  top: 52%;
+  animation-delay: 5.6s;
+}
+.legend-spark:nth-child(19) {
+  left: 82%;
+  top: 28%;
+  animation-delay: 6s;
+}
+.legend-spark:nth-child(20) {
+  left: 22%;
+  top: 8%;
+  animation-delay: 6.4s;
+}
+@keyframes legend-spark-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.35;
+  }
+  25% {
+    transform: translate(8px, -12px) scale(1.2);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(-6px, -22px) scale(0.9);
+    opacity: 0.55;
+  }
+  75% {
+    transform: translate(10px, -8px) scale(1.1);
+    opacity: 0.7;
+  }
+}
+.profile-section .legend-l-frame {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  left: 14px;
+  bottom: 14px;
+  width: 56px;
+  height: 56px;
+  z-index: 1;
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .legend-l-frame,
+.profile-section.profile-theme-legend .legend-l-frame {
+  display: block;
+}
+.legend-l-arm-v {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 4px;
+  height: 52px;
+  border-radius: 2px;
+  background: linear-gradient(to top, #fbcfe8 0%, #f472b6 35%, rgba(236, 72, 153, 0.35) 100%);
+  box-shadow:
+    0 0 14px rgba(244, 114, 182, 0.85),
+    0 0 28px rgba(236, 72, 153, 0.35);
+  transform-origin: bottom center;
+  animation: legend-l-throb-v 3.2s ease-in-out infinite;
+}
+.legend-l-arm-h {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 52px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(to right, #fbcfe8 0%, #f472b6 40%, rgba(190, 24, 93, 0.25) 100%);
+  box-shadow:
+    0 0 12px rgba(244, 114, 182, 0.65),
+    0 0 22px rgba(190, 24, 93, 0.25);
+  animation: legend-l-throb-h 3.2s ease-in-out infinite;
+}
+.legend-l-corner-dot {
+  position: absolute;
+  left: -3px;
+  bottom: -3px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff, #fbcfe8 55%, #ec4899 100%);
+  box-shadow:
+    0 0 10px 2px #fff,
+    0 0 22px 4px rgba(244, 114, 182, 0.95),
+    0 0 40px rgba(236, 72, 153, 0.55);
+  animation: legend-l-corner-pulse 2.4s ease-in-out infinite;
+}
+@keyframes legend-l-throb-v {
+  0%,
+  100% {
+    transform: scaleX(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scaleX(1.25);
+    filter: brightness(1.15);
+  }
+}
+@keyframes legend-l-throb-h {
+  0%,
+  100% {
+    transform: scaleY(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scaleY(1.35);
+    filter: brightness(1.12);
+  }
+}
+@keyframes legend-l-corner-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.92;
+  }
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .tier-particle,
+.profile-section.profile-theme-legend .tier-particle {
+  width: 3px;
+  height: 3px;
+  background: radial-gradient(circle, #fce7f3 0%, rgba(236, 72, 153, 0.85) 45%, transparent 70%);
+  box-shadow: 0 0 8px rgba(244, 114, 182, 0.9), 0 0 14px rgba(168, 85, 247, 0.35);
+  animation: legend-tier-particle-drift 9s ease-in-out infinite;
+}
+@keyframes legend-tier-particle-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.45;
+  }
+  50% {
+    transform: translate(12px, -20px) scale(1.35);
+    opacity: 1;
+  }
+}
+
 /* --- [4b] LEGEND THEME (tier-4 & profile-theme-legend 전용, 진한 핑크) --- */
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum),
 .profile-section.profile-theme-legend {
-  background: radial-gradient(circle at top right, #2d1525, #0f0a0c) !important;
-  border: 1px solid rgba(236, 72, 153, 0.35) !important;
+  background:
+    linear-gradient(145deg, rgba(26, 8, 20, 0.88) 0%, rgba(15, 10, 12, 0.92) 55%, rgba(20, 10, 18, 0.9) 100%),
+    radial-gradient(circle at 100% 0%, rgba(236, 72, 153, 0.18) 0%, transparent 45%),
+    radial-gradient(circle at 0% 100%, rgba(88, 28, 135, 0.2) 0%, transparent 50%) !important;
+  border: 1px solid rgba(236, 72, 153, 0.4) !important;
   position: relative;
   overflow: visible;
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(15, 10, 12, 0.5),
+    0 24px 48px rgba(0, 0, 0, 0.35);
 }
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum)::before,
 .profile-section.profile-theme-legend::before {
@@ -1694,8 +2928,9 @@
   right: -10%;
   width: 50%;
   height: 60%;
-  background: radial-gradient(ellipse, rgba(236,72,153,0.12) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(236, 72, 153, 0.14) 0%, transparent 70%);
   pointer-events: none;
+  z-index: 0;
 }
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum)::after,
 .profile-section.profile-theme-legend::after {
@@ -1705,16 +2940,70 @@
   left: -5%;
   width: 40%;
   height: 50%;
-  background: radial-gradient(ellipse, rgba(190,24,93,0.1) 0%, transparent 70%);
+  background: radial-gradient(ellipse, rgba(168, 85, 247, 0.12) 0%, transparent 72%);
   pointer-events: none;
+  z-index: 0;
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .profile-border-svg,
+.profile-section.profile-theme-legend .profile-border-svg {
+  filter: drop-shadow(0 0 4px rgba(244, 114, 182, 0.9)) drop-shadow(0 0 14px rgba(236, 72, 153, 0.55))
+    drop-shadow(0 0 28px rgba(190, 24, 93, 0.35));
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .avatar.legend-border,
+.profile-section.profile-theme-legend .avatar.legend-border {
+  border: 2px solid #f472b6 !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(252, 231, 243, 0.55),
+    0 0 0 1px rgba(236, 72, 153, 0.65),
+    0 0 24px rgba(244, 114, 182, 0.95),
+    0 0 48px rgba(236, 72, 153, 0.55),
+    0 0 72px rgba(190, 24, 93, 0.35),
+    0 0 96px rgba(168, 85, 247, 0.2) !important;
+  animation: legend-avatar-aura 4.5s ease-in-out infinite;
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .avatar-wrap:hover .avatar.legend-border,
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .avatar.legend-border:hover,
+.profile-section.profile-theme-legend .avatar-wrap:hover .avatar,
+.profile-section.profile-theme-legend .avatar:hover {
+  border-color: #fda4af !important;
+  box-shadow:
+    inset 0 0 0 1px #fff,
+    0 0 0 2px rgba(244, 114, 182, 0.95),
+    0 0 36px rgba(244, 114, 182, 1),
+    0 0 64px rgba(236, 72, 153, 0.65),
+    0 0 96px rgba(168, 85, 247, 0.45) !important;
+  animation: avatar-legend-glow 0.8s ease-in-out;
+}
+@keyframes legend-avatar-aura {
+  0%,
+  100% {
+    box-shadow:
+      inset 0 0 0 1px rgba(252, 231, 243, 0.55),
+      0 0 0 1px rgba(236, 72, 153, 0.65),
+      0 0 22px rgba(244, 114, 182, 0.85),
+      0 0 44px rgba(236, 72, 153, 0.45),
+      0 0 68px rgba(190, 24, 93, 0.28),
+      0 0 88px rgba(168, 85, 247, 0.15);
+  }
+  50% {
+    box-shadow:
+      inset 0 0 0 1px rgba(252, 231, 243, 0.65),
+      0 0 0 1px rgba(236, 72, 153, 0.75),
+      0 0 32px rgba(244, 114, 182, 1),
+      0 0 56px rgba(236, 72, 153, 0.6),
+      0 0 84px rgba(190, 24, 93, 0.4),
+      0 0 104px rgba(168, 85, 247, 0.28);
+  }
 }
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .info h2,
 .profile-section.profile-theme-legend .info h2 {
-  background: linear-gradient(to right, #f9a8d4, #ec4899, #be185d);
+  background: linear-gradient(to right, #fdf4ff, #f9a8d4, #ec4899, #fda4af);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
   font-weight: 800;
+  filter: drop-shadow(0 0 14px rgba(244, 114, 182, 0.55)) drop-shadow(0 0 28px rgba(168, 85, 247, 0.35))
+    drop-shadow(0 0 42px rgba(236, 72, 153, 0.2));
 }
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .info h2 .tier-name-badge,
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .info h2 .legend-badge,
@@ -1731,18 +3020,124 @@
   color: #f9a8d4 !important;
   text-shadow: 0 0 5px rgba(236, 72, 153, 0.4);
 }
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .tier-badge-pill-legend,
+.profile-section.profile-theme-legend .tier-badge-pill-legend {
+  background: linear-gradient(135deg, #581c87, #831843, #be185d, #ec4899) !important;
+  color: #fff7fb !important;
+  border: 1px solid rgba(252, 231, 243, 0.45) !important;
+  box-shadow:
+    0 0 20px rgba(236, 72, 153, 0.55),
+    0 0 40px rgba(168, 85, 247, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.65),
+    0 0 18px rgba(244, 114, 182, 0.85),
+    0 0 28px rgba(192, 38, 211, 0.45) !important;
+}
+/* Lv.201+ 레전드 테마: 실제 티어 뱃지는 SINGULARITY 클래스 → 핑크 레전드 톤으로 통일 */
+.profile-section.profile-theme-legend .tier-badge-pill-singularity {
+  background: linear-gradient(135deg, #581c87, #831843, #be185d, #ec4899) !important;
+  background-size: 100% 100% !important;
+  animation: none !important;
+  color: #fff7fb !important;
+  -webkit-text-fill-color: #fff7fb !important;
+  border: 1px solid rgba(252, 231, 243, 0.45) !important;
+  box-shadow:
+    0 0 20px rgba(236, 72, 153, 0.55),
+    0 0 40px rgba(168, 85, 247, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+  text-shadow:
+    0 0 8px rgba(255, 255, 255, 0.65),
+    0 0 18px rgba(244, 114, 182, 0.85),
+    0 0 28px rgba(192, 38, 211, 0.45) !important;
+}
+.profile-section.profile-theme-legend .level-text-num {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow:
+    0 0 12px rgba(244, 114, 182, 0.75),
+    0 0 24px rgba(236, 72, 153, 0.45);
+}
+.profile-section.profile-theme-legend .level-total-exp,
+.profile-section.profile-theme-legend .exp-next-hint {
+  color: #94a3b8 !important;
+}
+/* 레전드 전용 헤드라인 칩: 사선 패턴 + 메탈릭 테두리 느낌 */
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .headline-badge,
+.profile-section.profile-theme-legend .headline-badge {
+  background-image:
+    repeating-linear-gradient(
+      -32deg,
+      rgba(255, 255, 255, 0.04) 0 3px,
+      transparent 3px 10px
+    ),
+    linear-gradient(155deg, rgba(45, 12, 35, 0.95) 0%, rgba(75, 18, 55, 0.88) 45%, rgba(30, 10, 28, 0.92) 100%) !important;
+  background-origin: border-box !important;
+  color: #fdf4ff !important;
+  -webkit-text-fill-color: #fdf4ff !important;
+  border: 1px solid rgba(244, 114, 182, 0.35) !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.18),
+    0 0 0 2px rgba(30, 20, 40, 0.85),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1),
+    0 0 24px rgba(236, 72, 153, 0.2) !important;
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .headline-badge-dot,
+.profile-section.profile-theme-legend .headline-badge-dot {
+  background: linear-gradient(145deg, #fce7f3, #f472b6) !important;
+  box-shadow: 0 0 10px rgba(244, 114, 182, 0.85) !important;
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .hashtag-badge,
+.profile-section.profile-theme-legend .hashtag-badge {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  background: rgba(15, 8, 14, 0.55) !important;
+  border: 1px solid rgba(244, 114, 182, 0.35) !important;
+  border-radius: 10px !important;
+  padding: 5px 11px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .hashtag-badge + .hashtag-badge::before,
+.profile-section.profile-theme-legend .hashtag-badge + .hashtag-badge::before {
+  content: none !important;
+  margin: 0 !important;
+}
+.profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .hashtag-hash,
+.profile-section.profile-theme-legend .hashtag-hash {
+  color: #f472b6 !important;
+  -webkit-text-fill-color: #f472b6 !important;
+  font-weight: 800;
+}
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .exp-bar-wrap,
 .profile-section.profile-theme-legend .exp-bar-wrap {
   position: relative;
   overflow: hidden;
+  background: rgba(12, 6, 10, 0.65) !important;
+  border: 1px solid rgba(244, 114, 182, 0.28) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
 }
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .exp-bar-fill,
 .profile-section.profile-theme-legend .exp-bar-fill {
   position: relative;
-  background: linear-gradient(90deg, #be185d, #ec4899, #f9a8d4, #ec4899) !important;
-  background-size: 200% 100% !important;
-  animation: gold-flow 3s linear infinite !important;
-  box-shadow: 0 0 10px rgba(236, 72, 153, 0.5);
+  background: linear-gradient(
+    90deg,
+    #4c1d95 0%,
+    #7c3aed 14%,
+    #c026d3 28%,
+    #db2777 42%,
+    #ec4899 52%,
+    #fda4af 62%,
+    #ffffff 72%,
+    #fda4af 80%,
+    #ec4899 100%
+  ) !important;
+  background-size: 280% 100% !important;
+  animation: legend-spectral-flow 4s linear infinite !important;
+  box-shadow:
+    0 0 18px rgba(236, 72, 153, 0.75),
+    0 0 36px rgba(168, 85, 247, 0.45),
+    0 0 52px rgba(244, 114, 182, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
 }
 .profile-section.tier-4:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum) .exp-bar-fill::after,
 .profile-section.profile-theme-legend .exp-bar-fill::after {
@@ -1750,10 +3145,18 @@
   position: absolute;
   top: 0;
   left: -100%;
-  width: 60%;
+  width: 45%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.5), transparent);
-  animation: exp-shine-sweep 2.5s ease-in-out infinite;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), rgba(255, 255, 255, 0.35), transparent);
+  animation: exp-shine-sweep 2.2s ease-in-out infinite;
+}
+@keyframes legend-spectral-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
 }
 @keyframes exp-shine-sweep {
   0% { left: -60%; }
@@ -1782,6 +3185,398 @@
   100% { background-position: 200% 50%; }
 }
 
+/* --- [5] SINGULARITY 네이티브 (tier-5, 레전드 상점 테마 제외) --- */
+.singularity-ambient {
+  display: none;
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  border-radius: inherit;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .singularity-ambient {
+  display: block;
+}
+.singularity-nebula {
+  position: absolute;
+  inset: -18%;
+  background:
+    radial-gradient(ellipse at 28% 18%, rgba(99, 102, 241, 0.14) 0%, transparent 42%),
+    radial-gradient(ellipse at 72% 55%, rgba(34, 211, 238, 0.11) 0%, transparent 48%),
+    radial-gradient(ellipse at 45% 82%, rgba(196, 181, 253, 0.09) 0%, transparent 52%);
+  animation: singularity-nebula-drift 24s ease-in-out infinite;
+}
+@keyframes singularity-nebula-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.78;
+  }
+  50% {
+    transform: translate(-1.5%, 1.2%) scale(1.04);
+    opacity: 0.95;
+  }
+}
+.singularity-noise {
+  position: absolute;
+  inset: 0;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: singularity-noise-move 12s linear infinite;
+}
+@keyframes singularity-noise-move {
+  0% {
+    transform: translate(0, 0);
+  }
+  100% {
+    transform: translate(-6%, -5%);
+  }
+}
+.singularity-smog {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(185deg, transparent 0%, rgba(2, 6, 23, 0.42) 100%);
+}
+.singularity-twinkles {
+  position: absolute;
+  inset: 0;
+}
+.singularity-twinkle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 0 8px #e0ffff, 0 0 14px rgba(167, 243, 208, 0.6);
+  animation: singularity-twinkle-fade 5s ease-in-out infinite;
+  opacity: 0;
+}
+.singularity-twinkle:nth-child(1) {
+  left: 12%;
+  top: 18%;
+  animation-delay: 0s;
+}
+.singularity-twinkle:nth-child(2) {
+  left: 88%;
+  top: 22%;
+  animation-delay: 0.7s;
+}
+.singularity-twinkle:nth-child(3) {
+  left: 42%;
+  top: 12%;
+  animation-delay: 1.4s;
+}
+.singularity-twinkle:nth-child(4) {
+  left: 66%;
+  top: 48%;
+  animation-delay: 2.1s;
+}
+.singularity-twinkle:nth-child(5) {
+  left: 8%;
+  top: 62%;
+  animation-delay: 2.8s;
+}
+.singularity-twinkle:nth-child(6) {
+  left: 92%;
+  top: 72%;
+  animation-delay: 3.5s;
+}
+.singularity-twinkle:nth-child(7) {
+  left: 28%;
+  top: 38%;
+  animation-delay: 1.1s;
+}
+.singularity-twinkle:nth-child(8) {
+  left: 54%;
+  top: 28%;
+  animation-delay: 2.4s;
+}
+.singularity-twinkle:nth-child(9) {
+  left: 76%;
+  top: 14%;
+  animation-delay: 3.1s;
+}
+.singularity-twinkle:nth-child(10) {
+  left: 18%;
+  top: 78%;
+  animation-delay: 4.2s;
+}
+@keyframes singularity-twinkle-fade {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  20%,
+  45% {
+    opacity: 0.95;
+    transform: scale(1.15);
+  }
+  70% {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .info h2 {
+  background: linear-gradient(105deg, #ffffff 0%, #e0ffff 22%, #c4b5fd 48%, #a5f3fc 72%, #ffffff 100%);
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  filter: drop-shadow(0 0 14px rgba(224, 255, 255, 0.35)) drop-shadow(0 0 28px rgba(167, 243, 208, 0.18));
+  animation: singularity-title-holo 9s ease-in-out infinite;
+}
+/* h2 홀로 텍스트가 자식 뱃지 글자까지 투명 처리하는 것 방지 (팀원/관리자) */
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .info h2 .role-badge {
+  -webkit-text-fill-color: #ecfeff !important;
+  color: #ecfeff !important;
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.92), rgba(30, 41, 59, 0.88));
+  border: 1px solid rgba(103, 232, 249, 0.4);
+  box-shadow: 0 0 12px rgba(34, 211, 238, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  position: relative;
+  overflow: hidden;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .info h2 .role-badge::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.12), transparent);
+  transform: rotate(25deg);
+  animation: badge-shine 3s ease-in-out infinite 0.5s;
+  pointer-events: none;
+}
+@keyframes singularity-title-holo {
+  0%,
+  100% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .info p {
+  color: #94a3b8 !important;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .level-text {
+  color: rgba(224, 255, 255, 0.88) !important;
+  letter-spacing: 0.06em;
+  font-weight: 600;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .level-text-num {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  text-shadow: 0 0 14px rgba(125, 211, 252, 0.45);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .level-total-exp,
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .exp-next-hint {
+  color: rgba(148, 163, 184, 0.95) !important;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .headline-badges.singularity-headline-flow {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 14px;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .headline-badges.singularity-headline-flow .headline-badge {
+  transform: rotate(-2deg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #f8fafc !important;
+  -webkit-text-fill-color: #f8fafc !important;
+  border: 1px solid transparent !important;
+  background:
+    linear-gradient(rgba(2, 6, 23, 0.55), rgba(2, 6, 23, 0.55)) padding-box,
+    linear-gradient(118deg, rgba(34, 211, 238, 0.55), rgba(167, 139, 250, 0.6), rgba(224, 255, 255, 0.45)) border-box !important;
+  box-shadow: 0 0 18px rgba(34, 211, 238, 0.12) !important;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .headline-badges.singularity-headline-flow .headline-badge:nth-child(2) {
+  transform: rotate(2.4deg) translateY(-5px);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .headline-badges.singularity-headline-flow .headline-badge:nth-child(3) {
+  transform: rotate(-1.2deg) translateY(4px);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .headline-badges.singularity-headline-flow .headline-badge:nth-child(4) {
+  transform: rotate(1.8deg) translateY(-3px);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .headline-badges.singularity-headline-flow .headline-badge:nth-child(5) {
+  transform: rotate(-2.6deg) translateY(5px);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .headline-badges.singularity-headline-flow .headline-badge-dot {
+  background: linear-gradient(145deg, #e0ffff, #a5f3fc) !important;
+  box-shadow: 0 0 10px rgba(224, 255, 255, 0.65) !important;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .hashtag-badge + .hashtag-badge::before {
+  content: none !important;
+  margin: 0 !important;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .hashtag-badge {
+  background: transparent !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  border: 1px solid transparent !important;
+  border-radius: 999px !important;
+  padding: 5px 13px !important;
+  background-image:
+    linear-gradient(rgba(2, 6, 23, 0.2), rgba(2, 6, 23, 0.2)),
+    linear-gradient(112deg, rgba(34, 211, 238, 0.5), rgba(167, 139, 250, 0.55), rgba(224, 255, 255, 0.42)) !important;
+  background-origin: border-box !important;
+  background-clip: padding-box, border-box !important;
+  transition:
+    box-shadow 0.28s ease,
+    filter 0.28s ease;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .hashtag-badge:hover {
+  box-shadow: 0 0 18px rgba(255, 255, 255, 0.35), 0 0 32px rgba(34, 211, 238, 0.22);
+  filter: brightness(1.18);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .hashtag-hash {
+  color: #7dd3fc !important;
+  -webkit-text-fill-color: #7dd3fc !important;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .exp-bar-wrap {
+  background: rgba(2, 6, 23, 0.65) !important;
+  border: 1px solid rgba(125, 211, 252, 0.15) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .exp-bar-fill.singularity-mercury {
+  position: relative;
+  overflow: hidden;
+  transition:
+    width 1.15s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.45s ease;
+  background: linear-gradient(
+    90deg,
+    #020617 0%,
+    #1e293b 10%,
+    #64748b 24%,
+    #e2e8f0 38%,
+    #ffffff 48%,
+    #cbd5e1 58%,
+    #94a3b8 72%,
+    #f8fafc 86%,
+    #ffffff 100%
+  ) !important;
+  background-size: 320% 100%;
+  animation: singularity-mercury-flow 6.8s cubic-bezier(0.42, 0, 0.58, 1) infinite alternate;
+  box-shadow:
+    0 0 16px rgba(255, 255, 255, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend)
+  .exp-bar-fill.singularity-mercury::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    100deg,
+    transparent 0%,
+    transparent 36%,
+    rgba(255, 255, 255, 0.12) 44%,
+    rgba(224, 255, 255, 0.38) 50%,
+    rgba(255, 255, 255, 0.14) 56%,
+    transparent 64%,
+    transparent 100%
+  );
+  background-size: 220% 100%;
+  animation: singularity-mercury-sheen 4.2s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite alternate;
+  pointer-events: none;
+  mix-blend-mode: screen;
+  opacity: 0.92;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .exp-bar-fill.singularity-mercury--spark {
+  animation:
+    singularity-mercury-flow 6.8s cubic-bezier(0.42, 0, 0.58, 1) infinite alternate,
+    singularity-end-spark 1.6s ease-in-out infinite;
+}
+@keyframes singularity-mercury-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 100% 50%;
+  }
+}
+@keyframes singularity-mercury-sheen {
+  0% {
+    background-position: 0% 50%;
+    opacity: 0.55;
+  }
+  100% {
+    background-position: 100% 50%;
+    opacity: 1;
+  }
+}
+@keyframes singularity-end-spark {
+  0%,
+  100% {
+    box-shadow:
+      0 0 16px rgba(255, 255, 255, 0.45),
+      inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  }
+  50% {
+    box-shadow:
+      0 0 28px rgba(255, 255, 255, 0.85),
+      0 0 48px rgba(34, 211, 238, 0.55),
+      0 0 72px rgba(224, 255, 255, 0.35),
+      inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  }
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .tier-particle {
+  background: radial-gradient(circle, #f0fdfa 0%, rgba(167, 243, 208, 0.5) 42%, transparent 70%);
+  box-shadow: 0 0 10px rgba(224, 255, 255, 0.55), 0 0 18px rgba(34, 211, 238, 0.25);
+  animation: singularity-particle-drift 12s ease-in-out infinite;
+}
+@keyframes singularity-particle-drift {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+    opacity: 0.4;
+  }
+  50% {
+    transform: translate(14px, -18px) scale(1.25);
+    opacity: 0.95;
+  }
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .level-exp-emblem::before {
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.14) 0%, transparent 72%);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .profile-status-row {
+  background: rgba(2, 6, 23, 0.48);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-radius: 12px;
+  padding: 12px 16px;
+  border: 1px solid rgba(125, 211, 252, 0.12);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .profile-status-row .status-input {
+  color: #f1f5f9;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .btn-tier-exp {
+  color: #e0ffff;
+  background: rgba(34, 211, 238, 0.12);
+  border-color: rgba(125, 211, 252, 0.35);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .btn-tier-exp:hover {
+  border-color: rgba(224, 255, 255, 0.55);
+  background: rgba(34, 211, 238, 0.2);
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .btn-avatar-upload {
+  background: linear-gradient(135deg, #0f172a, #164e63) !important;
+  border: 2px solid rgba(125, 211, 252, 0.45) !important;
+  color: #e0ffff !important;
+  box-shadow: 0 0 14px rgba(34, 211, 238, 0.35) !important;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .level-exp-block {
+  border-color: rgba(125, 211, 252, 0.14);
+}
+
 /* profile-theme-platinum: tier-4와 동시 적용 시 플래티넘 스타일 우선 */
 .profile-section.profile-theme-platinum .profile-status-row .btn-save-status {
   background: linear-gradient(135deg, #334155, #64748b) !important;
@@ -1799,15 +3594,21 @@
   color: #e2e8f0 !important;
   border-color: rgba(148,163,184,0.4) !important;
 }
+.profile-section.profile-theme-platinum .tier-badge-pill-legend {
+  background: linear-gradient(135deg, #1e3a8a, #334155, #475569) !important;
+  color: #e2e8f0 !important;
+  border: 1px solid rgba(147, 197, 253, 0.45) !important;
+  box-shadow: 0 0 14px rgba(96, 165, 250, 0.35) !important;
+  text-shadow: none !important;
+}
 .profile-section.profile-theme-platinum .expertise-tag {
   background: linear-gradient(135deg, rgba(100,116,139,0.25), rgba(148,163,184,0.2)) !important;
   border-color: rgba(148,163,184,0.5) !important;
   color: #e2e8f0 !important;
 }
 /* profile-theme-platinum: 헤드라인 뱃지는 기본 그라디언트 유지 */
-/* 플래티넘 테마: 프로필 이미지 뱃지만 제거 (medal 아이콘) */
-.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .symbol-badge-medal,
-.profile-section.profile-theme-platinum .symbol-badge-medal {
+/* PLATINUM 네이티브(tier-3) 카드는 메달 미사용 — DOM에도 없음. 플래티넘 테마(shop)는 메달 틴트로 표시 */
+.profile-section.tier-3:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic) .symbol-badge-medal {
   display: none !important;
 }
 
@@ -1843,6 +3644,9 @@
   background: #fbbf24;
   box-shadow: 0 0 10px #fbbf24;
 }
+.theme-preview.theme-singularity {
+  border-radius: 8px 8px 0 0;
+}
 
 /* 프로필 이미지 없을 때: 모든 테마에서 검정색 테두리 (최종 오버라이드) */
 .profile-section .avatar.avatar-no-image,
@@ -1853,6 +3657,14 @@
 .profile-section.profile-theme-legend .avatar.avatar-no-image {
   border: 2px solid #1f2937 !important;
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 0 1px rgba(0, 0, 0, 0.15) !important;
+}
+.profile-section.tier-5:not(.profile-theme-basic):not(.profile-theme-rare):not(.profile-theme-epic):not(.profile-theme-platinum):not(.profile-theme-legend) .avatar.avatar-no-image.singularity-border {
+  border: 2px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(224, 255, 255, 0.35),
+    0 0 0 2px rgba(125, 211, 252, 0.35),
+    0 0 28px rgba(255, 255, 255, 0.45),
+    0 0 52px rgba(34, 211, 238, 0.3) !important;
 }
 .profile-section .avatar-wrap:hover .avatar.avatar-no-image,
 .profile-section .avatar.avatar-no-image:hover {

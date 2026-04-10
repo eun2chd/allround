@@ -660,7 +660,45 @@
       color: #fff;
       border-color: var(--main-purple);
     }
-    .btn-info svg { width: 18px; height: 18px; }
+    .btn-info svg { width: 18px; height: 18px; flex-shrink: 0; }
+    .btn-info-ico { display: block; }
+
+    /* 안내 아이콘: 기능별 색 (프로필 적용 오른쪽) */
+    .btn-info--tier {
+      background: rgba(245, 158, 11, 0.14);
+      color: #b45309;
+      border-color: rgba(245, 158, 11, 0.4);
+    }
+    .btn-info--tier:hover {
+      background: linear-gradient(145deg, #f59e0b, #ea580c);
+      color: #fff;
+      border-color: rgba(234, 88, 12, 0.85);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12) inset, 0 4px 14px rgba(245, 158, 11, 0.35);
+    }
+
+    .btn-info--hashtag {
+      background: rgba(6, 182, 212, 0.12);
+      color: #0e7490;
+      border-color: rgba(34, 211, 238, 0.38);
+    }
+    .btn-info--hashtag:hover {
+      background: linear-gradient(145deg, #22d3ee, #0891b2);
+      color: #fff;
+      border-color: rgba(8, 145, 178, 0.9);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12) inset, 0 4px 14px rgba(34, 211, 238, 0.32);
+    }
+
+    .btn-info--headline {
+      background: rgba(236, 72, 153, 0.12);
+      color: #be185d;
+      border-color: rgba(244, 114, 182, 0.45);
+    }
+    .btn-info--headline:hover {
+      background: linear-gradient(145deg, #f472b6, #db2777);
+      color: #fff;
+      border-color: rgba(219, 39, 119, 0.9);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12) inset, 0 4px 14px rgba(236, 72, 153, 0.35);
+    }
     /* 모달 */
     .modal-overlay {
       display: none;

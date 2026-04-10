@@ -5,28 +5,77 @@ import { listExpActivitiesForUi } from '../../services/expRewardsConfig'
 import { saveUserHashtags } from '../../services/profileMutations'
 import type { MypageSnapshotData } from '../../types/mypage'
 
-export const PROFILE_THEME_STORAGE_KEY = 'allyoung_profile_theme'
+/** 예전 단일 키 — 마이그레이션용만 사용 */
+export const PROFILE_THEME_STORAGE_KEY_LEGACY = 'allyoung_profile_theme'
 export const PROFILE_THEME_EVENT = 'allyoung-profile-theme'
 
-const EXP_ACTIVITY_ROWS = listExpActivitiesForUi()
+const THEME_CLASS_KEYS = ['basic', 'rare', 'epic', 'platinum', 'legend', 'singularity', 'default'] as const
 
-function emitProfileThemeApplied() {
-  window.dispatchEvent(new CustomEvent(PROFILE_THEME_EVENT))
+/**
+ * 테마 상점 카드별「적용 중」표시.
+ * - 레전드 카드: 저장값 `legend` 또는 (구버전) Lv.141~200 구간의 `default` = 티어 네이티브 핑크
+ * - 싱귤래러티 카드: `singularity` 또는 Lv.201+ `default` = 티어 네이티브 코스믹
+ */
+function isProfileThemeCardActive(cardKey: string, storedTheme: string, userLevel: number): boolean {
+  if (cardKey === 'default') {
+    return storedTheme === 'legend' || (storedTheme === 'default' && userLevel >= 141 && userLevel <= 200)
+  }
+  if (cardKey === 'singularity') {
+    return storedTheme === 'singularity' || (storedTheme === 'default' && userLevel >= 201)
+  }
+  return storedTheme === cardKey
 }
 
-function applyProfileThemeClass(theme: string) {
-  const el = document.getElementById('profileSection')
-  if (!el) return
-  ;['basic', 'rare', 'epic', 'platinum', 'legend', 'default'].forEach((t) => {
-    el.classList.remove(`profile-theme-${t}`)
-  })
-  if (theme && theme !== 'default') el.classList.add(`profile-theme-${theme}`)
+/** Lv.201 이상이면 레벨 조건 없이 모든 상점 테마 적용 가능 */
+const PROFILE_THEME_MASTER_LEVEL = 201
+
+export function profileThemeStorageKey(userId: string): string {
+  return `allyoung_profile_theme:${userId}`
+}
+
+/**
+ * 본인 프로필에서만 migrateLegacy=true 권장(구 전역 키 → 해당 유저 전용 키로 이전).
+ * 타인 프로필은 항상 default(테마 미적용).
+ */
+export function readProfileThemeForUser(userId: string, migrateLegacy: boolean): string {
+  if (!userId) return 'default'
   try {
-    localStorage.setItem(PROFILE_THEME_STORAGE_KEY, theme || 'default')
+    const scopedKey = profileThemeStorageKey(userId)
+    let v = localStorage.getItem(scopedKey)
+    if (!v && migrateLegacy) {
+      const leg = localStorage.getItem(PROFILE_THEME_STORAGE_KEY_LEGACY)
+      if (leg) {
+        localStorage.setItem(scopedKey, leg)
+        localStorage.removeItem(PROFILE_THEME_STORAGE_KEY_LEGACY)
+        v = leg
+      }
+    }
+    if (v && (THEME_CLASS_KEYS as readonly string[]).includes(v)) return v
   } catch {
     /* ignore */
   }
-  emitProfileThemeApplied()
+  return 'default'
+}
+
+const EXP_ACTIVITY_ROWS = listExpActivitiesForUi()
+
+export function applyProfileThemeClass(theme: string, ownerUserId: string) {
+  const el = document.getElementById('profileSection')
+  if (!el) return
+  THEME_CLASS_KEYS.forEach((t) => {
+    el.classList.remove(`profile-theme-${t}`)
+  })
+  const t = theme || 'default'
+  if (t !== 'default') el.classList.add(`profile-theme-${t}`)
+  try {
+    if (ownerUserId) {
+      localStorage.setItem(profileThemeStorageKey(ownerUserId), t)
+      localStorage.removeItem(PROFILE_THEME_STORAGE_KEY_LEGACY)
+    }
+  } catch {
+    /* ignore */
+  }
+  window.dispatchEvent(new CustomEvent(PROFILE_THEME_EVENT))
 }
 
 type Props = {
@@ -122,8 +171,13 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
               </tr>
               <tr>
                 <td>LEGEND</td>
-                <td>Lv.141~</td>
+                <td>Lv.141~200</td>
                 <td>최고 등급 + 레전드 뱃지</td>
+              </tr>
+              <tr>
+                <td>SINGULARITY</td>
+                <td>Lv.201~</td>
+                <td>특이점 코스믹 프로필 + 홀로그램 프레임</td>
               </tr>
             </tbody>
           </table>
@@ -269,7 +323,7 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
             </div>
             <div className="headline-tier-item">
               <div className="headline-tier-header">
-                <span className="headline-tier-dot headline-tier-dot--legend" aria-hidden /> LEGEND (Lv.141+) — 자동
+                <span className="headline-tier-dot headline-tier-dot--legend" aria-hidden /> LEGEND (Lv.141~200) — 자동
                 헤드라인 5종
               </div>
               <ul>
@@ -278,6 +332,19 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
                 <li>결과로 증명된 최고 수준의 도전자</li>
                 <li>기준이 되는 퍼포먼스 크리에이터</li>
                 <li>도전을 넘어 성취를 설계하는 상위 1%</li>
+              </ul>
+            </div>
+            <div className="headline-tier-item">
+              <div className="headline-tier-header">
+                <span className="headline-tier-dot headline-tier-dot--singularity" aria-hidden /> SINGULARITY (Lv.201+) —
+                자동 헤드라인 5종
+              </div>
+              <ul>
+                <li>시스템의 한계를 넘어선 특이점에 도달한 존재</li>
+                <li>가능성의 경계를 재정의하는 크리에이터</li>
+                <li>데이터와 직관을 넘나드는 차원의 성과자</li>
+                <li>침묵 속에서도 압도적인 밀도로 증명하는 전문가</li>
+                <li>다음 세대의 기준이 되는 싱귤래러티</li>
               </ul>
             </div>
           </div>
@@ -380,6 +447,7 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
 
   if (openId === 'theme') {
     const level = snapshot.level
+    const storedTheme = readProfileThemeForUser(String(snapshot.profile.id || ''), true)
     const themes: { key: string; req: number; levelLabel: string; name: string; desc: string; variant: string }[] = [
       { key: 'basic', req: 1, levelLabel: 'Lv.1 BRONZE', name: '브론즈 프로필', desc: '"도전의 시작" · BRONZE 등급입니다.', variant: 'theme-basic' },
       { key: 'rare', req: 21, levelLabel: 'Lv.21 SILVER', name: '경험축적 프로필', desc: '"경험의 축적" · SILVER 등급입니다.', variant: 'theme-rare' },
@@ -388,10 +456,18 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
       {
         key: 'default',
         req: 141,
-        levelLabel: 'Lv.141 LEGEND',
-        name: '최고성과 프로필',
-        desc: '"영향력 있는 성취자" · Lv.141부터 LEGEND 등급 전용입니다.',
+        levelLabel: 'Lv.141~200 LEGEND',
+        name: '레전드 네이티브',
+        desc: '"영향력 있는 성취자" · LEGEND 티어 기본 프로필(핑크·에너지)입니다.',
         variant: 'theme-default-tier',
+      },
+      {
+        key: 'singularity',
+        req: 201,
+        levelLabel: 'Lv.201+ SINGULARITY',
+        name: '싱귤래러티 · 특이점',
+        desc: '"시스템의 한계를 돌파" · 코스믹 어비스, 홀로그램, 이벤트 호라이즌 프레임이 적용됩니다.',
+        variant: 'theme-singularity',
       },
     ]
     return wrap(
@@ -404,12 +480,14 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
         </div>
         <div className="modal-body">
           <p className="profile-theme-desc">
-            현재 티어에 해당하는 특별한 프로필을 적용해 보세요!{' '}
+            원하는 프로필 테마를 골라 적용해 보세요. Lv.{PROFILE_THEME_MASTER_LEVEL} 이상이면 아래 모든 테마를 사용할 수
+            있습니다.{' '}
             <HiSparkles className="profile-theme-desc-ico" aria-hidden />
           </p>
           <div className="profile-theme-grid" data-user-level={level}>
             {themes.map((th) => {
-              const locked = level < th.req
+              const locked = level < PROFILE_THEME_MASTER_LEVEL && level < th.req
+              const active = !locked && isProfileThemeCardActive(th.key, storedTheme, level)
               return (
                 <div key={th.key} className="profile-theme-card" data-theme={th.key} data-level-required={th.req}>
                   <div className={`theme-preview ${th.variant}`}>
@@ -419,8 +497,21 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
                         <HiSparkles className="tier-crown-ico" />
                       </div>
                     ) : null}
-                    <div className={'theme-preview-avatar' + (th.key === 'default' ? ' legendary' : '')} />
-                    <div className={'theme-preview-bar' + (th.key === 'default' ? ' legendary' : '')} />
+                    {th.key === 'singularity' ? <div className="theme-singularity-preview-stars" aria-hidden /> : null}
+                    <div
+                      className={
+                        'theme-preview-avatar' +
+                        (th.key === 'default' ? ' legendary' : '') +
+                        (th.key === 'singularity' ? ' singularity-mini' : '')
+                      }
+                    />
+                    <div
+                      className={
+                        'theme-preview-bar' +
+                        (th.key === 'default' ? ' legendary' : '') +
+                        (th.key === 'singularity' ? ' singularity-mini' : '')
+                      }
+                    />
                     <div className="theme-lock-overlay" style={{ display: locked ? 'flex' : 'none' }}>
                       <HiLockClosed className="theme-lock-ico" aria-hidden />
                       <span className="theme-lock-msg">레벨 조건이 되지 않습니다</span>
@@ -432,11 +523,15 @@ export function MypageOverlayModals({ snapshot, openId, onClose, onSaved }: Prop
                     <p className="theme-desc">{th.desc}</p>
                     <button
                       type="button"
-                      className="theme-apply-btn"
+                      className={'theme-apply-btn' + (active ? ' active' : '')}
                       disabled={locked}
                       onClick={() => {
                         if (locked) return
-                        applyProfileThemeClass(th.key === 'default' ? 'default' : th.key)
+                        applyProfileThemeClass(
+                          /* 레전드 카드: Lv.201+에서도 핑크 레전드 UI를 쓰려면 profile-theme-legend 필요 (default는 티어 네이티브=코스믹과 동일해 보임) */
+                          th.key === 'default' ? 'legend' : th.key,
+                          String(snapshot.profile.id || ''),
+                        )
                         appToast('프로필 테마가 적용되었습니다.')
                         onClose()
                       }}

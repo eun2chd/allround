@@ -26,6 +26,7 @@ async function loadTierExpMilestones(sb: ReturnType<typeof getSupabase>) {
     { tier: 'GOLD', level: 71, exp: 0, level_range: 'Lv.71 ~ Lv.120' },
     { tier: 'PLATINUM', level: 121, exp: 0, level_range: 'Lv.121 ~ Lv.140' },
     { tier: 'LEGEND', level: 141, exp: 0, level_range: 'Lv.141 ~ Lv.200' },
+    { tier: 'SINGULARITY', level: 201, exp: 0, level_range: 'Lv.201 ~' },
   ]
   try {
     const { data: rows } = await sb.from('level_config').select('level, exp_to_next').order('level')
@@ -107,7 +108,8 @@ export async function fetchMypageSnapshot(userId: string, viewerId: string): Pro
     /* ignore */
   }
 
-  const hashtagMaxLimit = tierLevel === 2 ? 5 : tierLevel === 3 ? 10 : tierLevel === 4 ? 15 : 0
+  const hashtagMaxLimit =
+    tierLevel === 2 ? 5 : tierLevel === 3 ? 10 : tierLevel === 4 ? 15 : tierLevel === 5 ? 20 : 0
 
   const representativeWorks: MypageSnapshotData['representative_works'] = []
   try {

@@ -41,6 +41,7 @@ const TIER_LABEL: Record<string, string> = {
   GOLD: '골드',
   PLATINUM: '플래티넘',
   LEGEND: '레전드',
+  SINGULARITY: '싱귤래러티',
 }
 
 const FEEDBACK_STATUS_LABEL: Record<string, string> = {

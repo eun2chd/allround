@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from 'react'
+import { createPortal } from 'react-dom'
 import {
   HiArrowPath,
   HiArrowRightCircle,
@@ -118,6 +119,8 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     checkFilter: '',
     participationFilter: '',
     bookmarkOnly: false,
+    deadlineSoonOnly: false,
+    registeredTodayOnly: false,
   })
   const [uiQ, setUiQ] = useState('')
   const [rows, setRows] = useState<ContestRow[]>([])
@@ -141,6 +144,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     title: string
     row: ContestRow
   } | null>(null)
+  const [filterPanelExpanded, setFilterPanelExpanded] = useState(false)
 
   const userLevel = me.user_level ?? 1
   const canBulk = userLevel >= 71
@@ -212,6 +216,8 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     checkFilter: '',
     participationFilter: '',
     bookmarkOnly: false,
+    deadlineSoonOnly: false,
+    registeredTodayOnly: false,
   }
 
   const applySearch = () => {
@@ -232,7 +238,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     setPage(1)
   }
 
-  const togglePartChip = (v: '' | 'participate' | 'pass') => {
+  const togglePartChip = (v: 'participate' | 'pass' | 'none') => {
     setFilters((f) => ({ ...f, participationFilter: f.participationFilter === v ? '' : v }))
     setPage(1)
   }
@@ -403,6 +409,8 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     }
   }
 
+  const contestListScrollRef = useRef<HTMLDivElement>(null)
+
   return (
     <div id="pageAllyoung">
       <header className="page-header">
@@ -421,57 +429,106 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
         </div>
       </header>
 
-      <ContestSummaryCards summary={summary} loading={summaryLoading} />
+      <ContestSummaryCards
+        summary={summary}
+        loading={summaryLoading}
+        newTodayFilterActive={filters.registeredTodayOnly}
+        onNewTodayClick={() =>
+          setFilters((f) => ({ ...f, registeredTodayOnly: !f.registeredTodayOnly }))
+        }
+        deadlineSoonFilterActive={filters.deadlineSoonOnly}
+        onDeadlineSoonClick={() =>
+          setFilters((f) => ({ ...f, deadlineSoonOnly: !f.deadlineSoonOnly }))
+        }
+      />
 
-      <div className="contest-filter-panel" id="filterBar">
-        <div className="filter-chip-row" aria-label="빠른 필터">
-          <span className="filter-chip-row__label">빠른 필터</span>
+      <div
+        className={
+          'contest-filter-panel' + (filterPanelExpanded ? ' contest-filter-panel--expanded' : '')
+        }
+        id="filterBar"
+      >
+        <div className="contest-filter-panel__head">
+          <div className="contest-filter-panel__head-text">
+            <span className="contest-filter-panel__title">필터</span>
+            <span className="contest-filter-panel__subtitle">빠른 필터 · 상세 조건 · 검색</span>
+          </div>
           <button
             type="button"
-            className={'filter-chip' + (filters.bookmarkOnly ? ' is-active' : '')}
-            onClick={() => {
-              setFilters((f) => ({ ...f, bookmarkOnly: !f.bookmarkOnly }))
-              setPage(1)
-            }}
+            className="contest-filter-panel__toggle"
+            aria-expanded={filterPanelExpanded}
+            aria-controls="contestFilterPanelBody"
+            onClick={() => setFilterPanelExpanded((v) => !v)}
           >
-            <HiStar className="filter-chip__ico" aria-hidden />
-            즐겨찾기만
-          </button>
-          <button
-            type="button"
-            className={'filter-chip' + (filters.checkFilter === 'unchecked' ? ' is-active' : '')}
-            onClick={() => toggleCheckChip('unchecked')}
-          >
-            <span className="filter-chip__ico filter-chip__ico--dot" aria-hidden />
-            미확인
-          </button>
-          <button
-            type="button"
-            className={'filter-chip' + (filters.checkFilter === 'checked' ? ' is-active' : '')}
-            onClick={() => toggleCheckChip('checked')}
-          >
-            <HiCheck className="filter-chip__ico" aria-hidden />
-            확인함
-          </button>
-          <button
-            type="button"
-            className={'filter-chip' + (filters.participationFilter === 'participate' ? ' is-active' : '')}
-            onClick={() => togglePartChip('participate')}
-          >
-            <HiPlayCircle className="filter-chip__ico" aria-hidden />
-            참가만
-          </button>
-          <button
-            type="button"
-            className={'filter-chip' + (filters.participationFilter === 'pass' ? ' is-active' : '')}
-            onClick={() => togglePartChip('pass')}
-          >
-            <HiArrowRightCircle className="filter-chip__ico" aria-hidden />
-            패스만
+            <span>{filterPanelExpanded ? '접기' : '펼치기'}</span>
+            <HiChevronDown
+              className={'contest-filter-panel__toggle-ico' + (filterPanelExpanded ? ' is-open' : '')}
+              aria-hidden
+            />
           </button>
         </div>
 
-        <div className="contest-filter-detail-row">
+        <div
+          id="contestFilterPanelBody"
+          className="contest-filter-panel__body"
+          hidden={!filterPanelExpanded}
+        >
+          <div className="filter-chip-row" aria-label="빠른 필터">
+            <span className="filter-chip-row__label">빠른 필터</span>
+            <button
+              type="button"
+              className={'filter-chip' + (filters.bookmarkOnly ? ' is-active' : '')}
+              onClick={() => {
+                setFilters((f) => ({ ...f, bookmarkOnly: !f.bookmarkOnly }))
+                setPage(1)
+              }}
+            >
+              <HiStar className="filter-chip__ico" aria-hidden />
+              즐겨찾기만
+            </button>
+            <button
+              type="button"
+              className={'filter-chip' + (filters.checkFilter === 'unchecked' ? ' is-active' : '')}
+              onClick={() => toggleCheckChip('unchecked')}
+            >
+              <span className="filter-chip__ico filter-chip__ico--dot" aria-hidden />
+              미확인
+            </button>
+            <button
+              type="button"
+              className={'filter-chip' + (filters.checkFilter === 'checked' ? ' is-active' : '')}
+              onClick={() => toggleCheckChip('checked')}
+            >
+              <HiCheck className="filter-chip__ico" aria-hidden />
+              확인함
+            </button>
+            <button
+              type="button"
+              className={'filter-chip' + (filters.participationFilter === 'participate' ? ' is-active' : '')}
+              onClick={() => togglePartChip('participate')}
+            >
+              <HiPlayCircle className="filter-chip__ico" aria-hidden />
+              참가만
+            </button>
+            <button
+              type="button"
+              className={'filter-chip' + (filters.participationFilter === 'pass' ? ' is-active' : '')}
+              onClick={() => togglePartChip('pass')}
+            >
+              <HiArrowRightCircle className="filter-chip__ico" aria-hidden />
+              패스만
+            </button>
+            <button
+              type="button"
+              className={'filter-chip' + (filters.participationFilter === 'none' ? ' is-active' : '')}
+              onClick={() => togglePartChip('none')}
+            >
+              <span className="filter-chip__ico filter-chip__ico--dot filter-chip__ico--neutral" aria-hidden />
+              미선택만
+            </button>
+          </div>
+
+          <div className="contest-filter-detail-row">
           <span className="contest-filter-detail-label">상세 조건</span>
           <div className="filter-pill-group" role="group" aria-label="상세 필터">
             <div className="filter-select-field">
@@ -545,6 +602,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
                 <option value="">참가/패스 · 전체</option>
                 <option value="participate">참가만</option>
                 <option value="pass">패스만</option>
+                <option value="none">참가·패스 미선택</option>
               </select>
             </div>
           </div>
@@ -552,25 +610,26 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
             <HiArrowPath className="filter-reset-btn__ico" aria-hidden />
             초기화
           </button>
-        </div>
+          </div>
 
-        <div className="contest-filter-search-row">
-          <div className="filter-search filter-search--primary">
-            <HiMagnifyingGlass className="filter-search__icon" aria-hidden />
-            <input
-              type="text"
-              id="searchInput"
-              className="filter-search__input"
-              placeholder="제목, 주최·주관 검색"
-              autoComplete="off"
-              value={uiQ}
-              onChange={(e) => setUiQ(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && applySearch()}
-              aria-label="검색어"
-            />
-            <button type="button" id="searchButton" className="filter-search__submit" onClick={applySearch}>
-              검색
-            </button>
+          <div className="contest-filter-search-row">
+            <div className="filter-search filter-search--primary">
+              <HiMagnifyingGlass className="filter-search__icon" aria-hidden />
+              <input
+                type="text"
+                id="searchInput"
+                className="filter-search__input"
+                placeholder="제목, 주최·주관 검색"
+                autoComplete="off"
+                value={uiQ}
+                onChange={(e) => setUiQ(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && applySearch()}
+                aria-label="검색어"
+              />
+              <button type="button" id="searchButton" className="filter-search__submit" onClick={applySearch}>
+                검색
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -622,7 +681,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
             전체 내용확인
           </button>
         </div>
-        <div className="contest-list-x-scroll">
+        <div className="contest-list-x-scroll" ref={contestListScrollRef}>
         <table className="contest-table">
           <thead>
             <tr>
@@ -633,7 +692,9 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
               <th style={{ width: 60 }}>D-day</th>
               <th style={{ width: 200 }}>제목</th>
               <th style={{ width: 180 }}>주최/주관</th>
-              <th style={{ width: 100 }}>카테고리</th>
+              <th className="contest-th-category" style={{ width: 72 }}>
+                카테고리
+              </th>
               <th style={{ width: 80 }}>출처</th>
               <th style={{ width: 100 }}>생성시간</th>
               <th style={{ width: 100 }}>업데이트시간</th>
@@ -669,7 +730,8 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
                     key={rk + String(idx)}
                     row={row}
                     rowNo={rowNo}
-                    menuFlipUp={rows.length > 0 && idx >= rows.length - 2}
+                    listScrollRef={contestListScrollRef}
+                    menuFlipUp={rows.length > 1 && idx >= rows.length - 2 && idx > 0}
                     open={!!open}
                     bookmarked={bookmarked}
                     checked={checked}
@@ -732,9 +794,14 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
   )
 }
 
+const MENU_FLOAT_GAP = 4
+const MENU_FALLBACK_H = 120
+const MENU_FALLBACK_W = 160
+
 function FragmentWithDetail({
   row,
   rowNo,
+  listScrollRef,
   menuFlipUp,
   open,
   bookmarked,
@@ -754,7 +821,8 @@ function FragmentWithDetail({
 }: {
   row: ContestRow
   rowNo: number
-  /** 목록 하단부: 더보기 패널을 위로 펼쳐 잘림 방지 */
+  listScrollRef: RefObject<HTMLDivElement | null>
+  /** 목록 하단부: 더보기 패널을 위로 펼칠 때(뷰포트 여유 있으면) */
   menuFlipUp: boolean
   open: boolean
   bookmarked: boolean
@@ -773,13 +841,62 @@ function FragmentWithDetail({
   detail: ReactNode
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
+  const [menuFixed, setMenuFixed] = useState<{ top: number; left: number; flip: boolean } | null>(null)
   const menuWrapRef = useRef<HTMLDivElement>(null)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const menuPortalRef = useRef<HTMLUListElement>(null)
+
+  const updateMenuPosition = useCallback(() => {
+    if (!menuOpen || !menuTriggerRef.current) return
+    const t = menuTriggerRef.current.getBoundingClientRect()
+    const p = menuPortalRef.current
+    const ph = p?.offsetHeight ?? MENU_FALLBACK_H
+    const pw = p?.offsetWidth ?? MENU_FALLBACK_W
+    const edge = 8
+    let flip = menuFlipUp
+    if (!flip && t.bottom + MENU_FLOAT_GAP + ph > window.innerHeight - edge && t.top > ph + MENU_FLOAT_GAP + edge) {
+      flip = true
+    }
+    if (flip && t.top - MENU_FLOAT_GAP - ph < edge && t.bottom + MENU_FLOAT_GAP + ph < window.innerHeight - edge) {
+      flip = false
+    }
+    let left = t.right - pw
+    left = Math.max(edge, Math.min(left, window.innerWidth - pw - edge))
+    const top = flip ? t.top - MENU_FLOAT_GAP - ph : t.bottom + MENU_FLOAT_GAP
+    setMenuFixed({ top, left, flip })
+  }, [menuOpen, menuFlipUp])
+
+  useLayoutEffect(() => {
+    if (!menuOpen) {
+      setMenuFixed(null)
+      return
+    }
+    updateMenuPosition()
+    const id = requestAnimationFrame(() => requestAnimationFrame(updateMenuPosition))
+    return () => cancelAnimationFrame(id)
+  }, [menuOpen, updateMenuPosition])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const sc = listScrollRef.current
+    const onScrollOrResize = () => updateMenuPosition()
+    window.addEventListener('resize', onScrollOrResize)
+    window.addEventListener('scroll', onScrollOrResize, true)
+    sc?.addEventListener('scroll', onScrollOrResize)
+    return () => {
+      window.removeEventListener('resize', onScrollOrResize)
+      window.removeEventListener('scroll', onScrollOrResize, true)
+      sc?.removeEventListener('scroll', onScrollOrResize)
+    }
+  }, [menuOpen, listScrollRef, updateMenuPosition])
 
   useEffect(() => {
     if (!menuOpen) return
     function handleDocMouseDown(e: MouseEvent) {
-      const el = menuWrapRef.current
-      if (el && !el.contains(e.target as Node)) setMenuOpen(false)
+      const t = e.target as Node
+      if (menuWrapRef.current?.contains(t)) return
+      if (menuPortalRef.current?.contains(t)) return
+      setMenuOpen(false)
     }
     document.addEventListener('mousedown', handleDocMouseDown)
     return () => document.removeEventListener('mousedown', handleDocMouseDown)
@@ -826,7 +943,12 @@ function FragmentWithDetail({
           </span>
         </td>
         <td className="host-cell">{row.host || '-'}</td>
-        <td>{row.category || '-'}</td>
+        <td
+          className="contest-category-cell"
+          title={row.category?.trim() ? row.category : undefined}
+        >
+          {row.category || '-'}
+        </td>
         <td>{row.source || '-'}</td>
         <td>{formatFetchTime(row.created_at)}</td>
         <td>{formatFetchTime(row.updated_at)}</td>
@@ -849,6 +971,7 @@ function FragmentWithDetail({
         <td className="action-cell" onClick={(e) => e.stopPropagation()}>
           <div className="contest-menu-wrap" ref={menuWrapRef}>
             <button
+              ref={menuTriggerRef}
               type="button"
               className="btn btn-action contest-menu-trigger"
               aria-expanded={menuOpen}
@@ -858,76 +981,98 @@ function FragmentWithDetail({
               더보기
               <HiChevronDown className="contest-menu-caret-ico" aria-hidden />
             </button>
-            {menuOpen ? (
-              <ul
-                className={
-                  'contest-menu-panel' + (menuFlipUp ? ' contest-menu-panel--flip-up' : '')
-                }
-                role="menu"
-              >
-                <li role="none">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className="contest-menu-item"
-                    onClick={() => {
-                      onContentCheck()
-                      setMenuOpen(false)
-                    }}
-                  >
-                    내용확인
-                  </button>
-                </li>
-                <li role="none">
-                  <button
-                    type="button"
-                    role="menuitem"
+            {menuOpen
+              ? createPortal(
+                  <ul
+                    ref={menuPortalRef}
                     className={
-                      'contest-menu-item' +
-                      (part === 'participate' ? ' contest-menu-item--active' : '') +
-                      (participateLocked ? ' contest-menu-item--locked' : '')
+                      'contest-menu-panel contest-menu-panel--portal' +
+                      (menuFixed?.flip ? ' contest-menu-panel--flip-up' : '')
                     }
-                    title={
-                      participateLocked ? '먼저 내용확인을 해주세요. (표시 해제는 이 항목을 다시 누르세요)' : undefined
+                    style={
+                      menuFixed
+                        ? { top: menuFixed.top, left: menuFixed.left }
+                        : menuTriggerRef.current
+                          ? (() => {
+                              const r = menuTriggerRef.current!.getBoundingClientRect()
+                              return {
+                                top: r.bottom + MENU_FLOAT_GAP,
+                                left: Math.max(8, r.right - MENU_FALLBACK_W),
+                              }
+                            })()
+                          : undefined
                     }
-                    onClick={() => {
-                      if (participateLocked) {
-                        showToast('내용확인 먼저 처리해주세요.')
-                        setMenuOpen(false)
-                        return
-                      }
-                      onParticipate()
-                      setMenuOpen(false)
-                    }}
+                    role="menu"
                   >
-                    참가
-                  </button>
-                </li>
-                <li role="none">
-                  <button
-                    type="button"
-                    role="menuitem"
-                    className={
-                      'contest-menu-item' +
-                      (part === 'pass' ? ' contest-menu-item--active' : '') +
-                      (passLocked ? ' contest-menu-item--locked' : '')
-                    }
-                    title={passLocked ? '먼저 내용확인을 해주세요. (표시 해제는 이 항목을 다시 누르세요)' : undefined}
-                    onClick={() => {
-                      if (passLocked) {
-                        showToast('내용확인 먼저 처리해주세요.')
-                        setMenuOpen(false)
-                        return
-                      }
-                      onPass()
-                      setMenuOpen(false)
-                    }}
-                  >
-                    패스
-                  </button>
-                </li>
-              </ul>
-            ) : null}
+                    <li role="none">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className="contest-menu-item"
+                        onClick={() => {
+                          onContentCheck()
+                          setMenuOpen(false)
+                        }}
+                      >
+                        내용확인
+                      </button>
+                    </li>
+                    <li role="none">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={
+                          'contest-menu-item' +
+                          (part === 'participate' ? ' contest-menu-item--active' : '') +
+                          (participateLocked ? ' contest-menu-item--locked' : '')
+                        }
+                        title={
+                          participateLocked
+                            ? '먼저 내용확인을 해주세요. (표시 해제는 이 항목을 다시 누르세요)'
+                            : undefined
+                        }
+                        onClick={() => {
+                          if (participateLocked) {
+                            showToast('내용확인 먼저 처리해주세요.')
+                            setMenuOpen(false)
+                            return
+                          }
+                          onParticipate()
+                          setMenuOpen(false)
+                        }}
+                      >
+                        참가
+                      </button>
+                    </li>
+                    <li role="none">
+                      <button
+                        type="button"
+                        role="menuitem"
+                        className={
+                          'contest-menu-item' +
+                          (part === 'pass' ? ' contest-menu-item--active' : '') +
+                          (passLocked ? ' contest-menu-item--locked' : '')
+                        }
+                        title={
+                          passLocked ? '먼저 내용확인을 해주세요. (표시 해제는 이 항목을 다시 누르세요)' : undefined
+                        }
+                        onClick={() => {
+                          if (passLocked) {
+                            showToast('내용확인 먼저 처리해주세요.')
+                            setMenuOpen(false)
+                            return
+                          }
+                          onPass()
+                          setMenuOpen(false)
+                        }}
+                      >
+                        패스
+                      </button>
+                    </li>
+                  </ul>,
+                  document.body,
+                )
+              : null}
           </div>
         </td>
       </tr>

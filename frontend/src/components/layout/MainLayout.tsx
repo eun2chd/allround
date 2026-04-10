@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Outlet, useNavigate } from 'react-router-dom'
 import { useAuthMe } from '../../hooks/useAuthMe'
 import { usePresenceHeartbeat } from '../../hooks/usePresenceHeartbeat'
@@ -13,6 +13,8 @@ export function MainLayout() {
   const { me, loading } = useAuthMe()
   usePresenceHeartbeat(me?.user_id)
   const [hubTab, setHubTab] = useState<'allyoung' | 'startup'>('allyoung')
+  const [mobileUsersOpen, setMobileUsersOpen] = useState(false)
+  const closeMobileUsers = useCallback(() => setMobileUsersOpen(false), [])
 
   useEffect(() => {
     if (!loading && !me) {
@@ -30,12 +32,25 @@ export function MainLayout() {
     <>
       <AppLnb me={me} hubTab={hubTab} onHubTab={setHubTab} />
       <div className="app-main-column">
-        <AppNav me={me} hubTab={hubTab} onHubTab={setHubTab} />
+        <AppNav
+          me={me}
+          hubTab={hubTab}
+          onHubTab={setHubTab}
+          onOpenUsersPanel={() => {
+            if (typeof window !== 'undefined' && window.matchMedia('(max-width: 1100px)').matches) {
+              setMobileUsersOpen(true)
+            }
+          }}
+        />
         <div className="app-main-with-sidebars">
           <Outlet context={ctx} />
         </div>
       </div>
-      <UsersSidebar currentUserId={me.user_id} />
+      <UsersSidebar
+        currentUserId={me.user_id}
+        mobileOpen={mobileUsersOpen}
+        onMobileClose={closeMobileUsers}
+      />
       <LayoutShortcutBar />
     </>
   )

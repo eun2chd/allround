@@ -15,8 +15,12 @@ export type FilterState = {
   category: string
   source: string
   checkFilter: '' | 'checked' | 'unchecked'
-  participationFilter: '' | 'participate' | 'pass'
+  participationFilter: '' | 'participate' | 'pass' | 'none'
   bookmarkOnly: boolean
+  /** D-3 이내·마감 등 요약 카드와 동일 기준 */
+  deadlineSoonOnly: boolean
+  /** 오늘 등록(로컬 0시 이후 created_at) 요약 카드와 동일 기준 */
+  registeredTodayOnly: boolean
 }
 
 /** 목록에서 참가(participate)일 때 개인/팀 표시용 */

@@ -18,10 +18,20 @@ function parseDdayDays(d: string | null | undefined): number | null {
   return null
 }
 
-/** D-3 이내(0~3) 또는 마감 표기 */
-function isDeadlineWithin3Days(d: string | null | undefined): boolean {
+/** D-3 이내(0~3) 또는 마감/D-day/오늘 — 대시보드 요약·목록 필터 공통 */
+export function isContestDeadlineWithin3Days(d: string | null | undefined): boolean {
   const n = parseDdayDays(d)
   return n !== null && n <= 3
+}
+
+/** 요약 카드 `newToday`와 동일: 로컬 달력 기준 오늘 0시 이후 등록 */
+export function isContestCreatedToday(createdAt: string | null | undefined): boolean {
+  if (createdAt == null || String(createdAt).trim() === '') return false
+  const t = new Date(String(createdAt).replace('Z', '+00:00')).getTime()
+  if (Number.isNaN(t)) return false
+  const start = new Date()
+  start.setHours(0, 0, 0, 0)
+  return t >= start.getTime()
 }
 
 export async function fetchContestDashboardSummary(): Promise<ContestDashboardSummary | null> {
@@ -45,7 +55,7 @@ export async function fetchContestDashboardSummary(): Promise<ContestDashboardSu
   if (error) return null
 
   const deadlineSoon = (ddayRows || []).filter((r) =>
-    isDeadlineWithin3Days((r as { d_day?: string }).d_day),
+    isContestDeadlineWithin3Days((r as { d_day?: string }).d_day),
   ).length
 
   return {

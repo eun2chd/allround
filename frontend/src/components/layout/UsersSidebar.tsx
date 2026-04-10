@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { HiChevronDoubleLeft, HiChevronDoubleRight } from 'react-icons/hi2'
+import { HiChevronDoubleLeft, HiChevronDoubleRight, HiXMark } from 'react-icons/hi2'
 import { fetchSidebarUsers } from '../../services/sidebarSupabaseService'
 import { getSupabase } from '../../services/supabaseClient'
 
@@ -38,9 +38,12 @@ function isWithin30Min(lastSeen?: string | null): boolean {
 
 type Props = {
   currentUserId: string
+  /** 1100px 이하에서 우측 시트로 표시 */
+  mobileOpen?: boolean
+  onMobileClose?: () => void
 }
 
-export function UsersSidebar({ currentUserId }: Props) {
+export function UsersSidebar({ currentUserId, mobileOpen = false, onMobileClose }: Props) {
   const [collapsed, setCollapsed] = useState(() => {
     try {
       return localStorage.getItem(SIDEBAR_KEY) === '1'
@@ -163,10 +166,66 @@ export function UsersSidebar({ currentUserId }: Props) {
     return () => window.removeEventListener('keydown', onKey)
   }, [])
 
+  useEffect(() => {
+    if (!mobileOpen || !onMobileClose) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onMobileClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [mobileOpen, onMobileClose])
+
+  useEffect(() => {
+    if (!mobileOpen) return
+    const mq = window.matchMedia('(max-width: 1100px)')
+    if (!mq.matches) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [mobileOpen])
+
+  useEffect(() => {
+    if (!onMobileClose) return
+    const mq = window.matchMedia('(max-width: 1100px)')
+    const sync = () => {
+      if (!mq.matches) onMobileClose()
+    }
+    mq.addEventListener('change', sync)
+    if (!mq.matches && mobileOpen) onMobileClose()
+    return () => mq.removeEventListener('change', sync)
+  }, [mobileOpen, onMobileClose])
+
+  const sheetOpen = mobileOpen
+  const asideClass =
+    'sidebar-users' +
+    (collapsed ? ' collapsed' : '') +
+    (sheetOpen ? ' sidebar-users--mobile-open' : '')
+
   return (
-    <aside className={'sidebar-users' + (collapsed ? ' collapsed' : '')} id="sidebarUsers" aria-label="접속 유저">
+    <>
+      {sheetOpen ? (
+        <button
+          type="button"
+          className="sidebar-users-mobile-backdrop"
+          aria-label="접속 유저 패널 닫기"
+          onClick={() => onMobileClose?.()}
+        />
+      ) : null}
+      <aside className={asideClass} id="sidebarUsers" aria-label="접속 유저">
       <div className="sidebar-header">
         <span className="sidebar-title">접속 유저</span>
+        {sheetOpen ? (
+          <button
+            type="button"
+            className="sidebar-users-mobile-close"
+            aria-label="닫기"
+            onClick={() => onMobileClose?.()}
+          >
+            <HiXMark aria-hidden />
+          </button>
+        ) : null}
       </div>
       <div className="sidebar-user-list">
         <div id="sidebarUserList">
@@ -186,7 +245,14 @@ export function UsersSidebar({ currentUserId }: Props) {
               const statusMsg = (u.status_message || '').trim()
 
               return (
-                <Link key={u.id} to={`/mypage/${encodeURIComponent(u.id)}`} className="user-item">
+                <Link
+                  key={u.id}
+                  to={`/mypage/${encodeURIComponent(u.id)}`}
+                  className="user-item"
+                  onClick={() => {
+                    if (sheetOpen) onMobileClose?.()
+                  }}
+                >
                   <div
                     className="user-avatar"
                     style={u.profile_url ? { backgroundImage: `url('${u.profile_url.replace(/'/g, "\\'")}')` } : undefined}
@@ -223,5 +289,6 @@ export function UsersSidebar({ currentUserId }: Props) {
         </button>
       </div>
     </aside>
+    </>
   )
 }

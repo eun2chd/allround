@@ -90,7 +90,7 @@ export async function updateLevelConfigRow(
   const tid = Math.trunc(tierId)
   if (lv < 1) return { ok: false, error: '레벨은 1 이상이어야 합니다.' }
   if (exp < 1 || exp > 1_000_000) return { ok: false, error: 'exp_to_next는 1~1,000,000 범위여야 합니다.' }
-  if (tid < 1 || tid > 5) return { ok: false, error: 'tier_id는 1~5여야 합니다.' }
+  if (tid < 1 || tid > 6) return { ok: false, error: 'tier_id는 1~6이어야 합니다.' }
   const sb = getSupabase()
   const { error } = await sb.from('level_config').update({ exp_to_next: exp, tier_id: tid }).eq('level', lv)
   if (error) return { ok: false, error: error.message || '저장에 실패했습니다.' }
@@ -107,7 +107,7 @@ export async function insertLevelConfigRow(
   const tid = Math.trunc(tierId)
   if (lv < 1) return { ok: false, error: '레벨은 1 이상이어야 합니다.' }
   if (exp < 1 || exp > 1_000_000) return { ok: false, error: 'exp_to_next는 1~1,000,000 범위여야 합니다.' }
-  if (tid < 1 || tid > 5) return { ok: false, error: 'tier_id는 1~5여야 합니다.' }
+  if (tid < 1 || tid > 6) return { ok: false, error: 'tier_id는 1~6이어야 합니다.' }
   const sb = getSupabase()
   const { error } = await sb.from('level_config').insert({ level: lv, exp_to_next: exp, tier_id: tid })
   if (error) return { ok: false, error: error.message || '추가에 실패했습니다.' }

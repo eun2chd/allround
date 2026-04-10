@@ -22,6 +22,13 @@ export const HEADLINE_BY_TIER: Record<number, string[]> = {
     '기준이 되는 퍼포먼스 크리에이터',
     '도전을 넘어 성취를 설계하는 상위 1%',
   ],
+  5: [
+    '시스템의 한계를 넘어선 특이점에 도달한 존재',
+    '가능성의 경계를 재정의하는 크리에이터',
+    '데이터와 직관을 넘나드는 차원의 성과자',
+    '침묵 속에서도 압도적인 밀도로 증명하는 전문가',
+    '다음 세대의 기준이 되는 싱귤래러티',
+  ],
 }
 
 export type LevelConfigRow = { level: number; exp_to_next: number }
@@ -31,7 +38,8 @@ export function getTierFromLevel(level: number): { tierId: number; tierName: str
   if (level <= 70) return { tierId: 2, tierName: 'SILVER', tierLevel: 1 }
   if (level <= 120) return { tierId: 3, tierName: 'GOLD', tierLevel: 2 }
   if (level <= 140) return { tierId: 4, tierName: 'PLATINUM', tierLevel: 3 }
-  return { tierId: 5, tierName: 'LEGEND', tierLevel: 4 }
+  if (level <= 200) return { tierId: 5, tierName: 'LEGEND', tierLevel: 4 }
+  return { tierId: 6, tierName: 'SINGULARITY', tierLevel: 5 }
 }
 
 export function computeLevelFromExpRows(totalExpVal: number, rows: LevelConfigRow[]): number {
@@ -73,7 +81,7 @@ export function resolveLevelProgress(totalExp: number, levelConfigRows: LevelCon
   }
   let level = computeLevelFromExpRows(totalExp, levelConfigRows)
   let { expCurrent, expNext, expPercent } = computeLevelExpCached(level, totalExp, levelConfigRows)
-  for (let i = 0; i < 199; i++) {
+  for (let i = 0; i < 320; i++) {
     if (expNext <= 0 || expCurrent < expNext) break
     const nextLevel = level + 1
     const ec = computeLevelExpCached(nextLevel, totalExp, levelConfigRows)
