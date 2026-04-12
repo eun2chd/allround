@@ -168,12 +168,16 @@ ALLFORYOUNG_LIST_CATEGORY = "공모전"
 ALLFORYOUNG_LIST_PAGE_SIZE = 24
 
 WEVITY_BASE = "https://www.wevity.com"
+# Chrome UA는 주기적으로 갱신 (오래된 UA만으로 WAF에 걸리는 경우 완화)
 WEVITY_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/131.0.0.0 Safari/537.36"
+    ),
     "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
     "Accept-Language": "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
     "Accept-Encoding": "gzip, deflate",
-    "Referer": "https://www.wevity.com/",
+    "Referer": f"{WEVITY_BASE}/",
     "Connection": "keep-alive",
     "Upgrade-Insecure-Requests": "1",
     "Sec-Fetch-Dest": "document",
@@ -182,6 +186,29 @@ WEVITY_HEADERS = {
     "Sec-Fetch-User": "?1",
     "Cache-Control": "max-age=0",
 }
+
+
+def _wevity_warmup_session(session: requests.Session) -> None:
+    """첫 목록 요청 전 메인 접속(쿠키·세션). GitHub Actions 등에서 403 완화에 도움이 되는 경우가 있음."""
+    if getattr(session, "_wevity_warmup_done", False):
+        return
+    try:
+        time.sleep(0.35)
+        session.get(
+            f"{WEVITY_BASE}/",
+            timeout=30,
+            allow_redirects=True,
+            headers={
+                "Sec-Fetch-Site": "none",
+                "Sec-Fetch-Mode": "navigate",
+                "Sec-Fetch-Dest": "document",
+                "Sec-Fetch-User": "?1",
+            },
+        )
+        time.sleep(0.55)
+    except requests.RequestException as e:
+        logger.warning("위비티 워밍업(/) 실패 — 목록 요청 계속: %s", e)
+    setattr(session, "_wevity_warmup_done", True)
 
 
 def crawl_wevity_detail(contest_id: str) -> dict | None:
@@ -370,8 +397,21 @@ def parse_wevity_list_html(html: str) -> list[dict]:
 
 
 def fetch_wevity_list_page(session: requests.Session, page: int) -> list[dict]:
+    _wevity_warmup_session(session)
     url = f"{WEVITY_BASE}/?c=find&s=1&gbn=list&gp={page}"
-    resp = session.get(url, timeout=30)
+    referer = f"{WEVITY_BASE}/" if page <= 1 else f"{WEVITY_BASE}/?c=find&s=1&gbn=list&gp={page - 1}"
+    extra_headers = {
+        "Referer": referer,
+        "Sec-Fetch-Site": "same-origin",
+    }
+    resp = session.get(url, timeout=30, allow_redirects=True, headers=extra_headers)
+    if resp.status_code == 403:
+        logger.error(
+            "위비티 목록 403 — 사이트가 요청 IP를 막은 경우가 많습니다 "
+            "(GitHub 호스티드 러너 등 데이터센터 IP). "
+            "로컬/집 PC 셀프호스티드 러너·리셔널 프록시 사용을 검토하세요. url=%s",
+            url,
+        )
     resp.raise_for_status()
     return parse_wevity_list_html(resp.text)
 
