@@ -8,8 +8,13 @@ K-Startup(공공데이터포털 API)은 **한국 달력일(KST)당 1회**만 실
 기본: 목록(및 필요 시 상세) 처리 → DB 저장 뒤 대기.  
 `--page-batch-size`로 여러 목록 페이지를 모아 한 번에 upsert한 뒤 대기하면 **대기 횟수만 줄어** 같은 총 요청 수로 더 빨리 끝납니다(대상 사이트에는 목록 N페이지가 연속으로 나가므로 과도한 배치는 피하세요).
 
+일일 GitHub Actions: `python crawl_server.py --single-cycle` — 한 번만 위비티·요즘것들·K-Startup(가능 시) 수행 후 종료.  
+DB `crawl_logs`에 오늘(KST) `status=success`가 있으면 해당 작업은 스킵합니다. `--force-daily`로 스킵 무시.
+
 실행:  python crawl_server.py
-옵션:  --dday-refresh  사이클 끝에 목록만 돌며 D-day만 갱신 (refresh-* 엣지와 유사)
+옵션:  --single-cycle  위 한 사이클만 (Actions 일일 스케줄)
+       --force-daily   --single-cycle 과 함께: crawl_logs 당일 성공이 있어도 재실행
+       --dday-refresh  사이클 끝에 목록만 돌며 D-day만 갱신 (refresh-* 엣지와 유사)
        --page-batch-size, --sleep-batch-odd, --sleep-batch-even
 """
 
@@ -58,6 +63,9 @@ WEVITY_MAX_PAGES = 100
 ALLFORYOUNG_MAX_PAGES = 50
 DDAY_REFRESH_WORKERS = 15
 
+JOB_CONTEST_CRAWL = "contest_crawl"
+JOB_KSTARTUP_CRAWL = "kstartup_crawl"
+
 _stop = threading.Event()
 
 
@@ -87,6 +95,44 @@ def _parse_timestamptz_utc(value: object) -> datetime:
     if s.endswith("Z"):
         s = s[:-1] + "+00:00"
     return datetime.fromisoformat(s).astimezone(timezone.utc)
+
+
+def _crawl_log_has_success(client, job_name: str, run_date: str) -> bool:
+    """crawl_logs 에 해당 일(KST) success 행이 있으면 True."""
+    try:
+        res = (
+            client.table("crawl_logs")
+            .select("id")
+            .eq("job_name", job_name)
+            .eq("run_date", run_date)
+            .eq("status", "success")
+            .limit(1)
+            .execute()
+        )
+    except Exception as e:
+        log.warning("crawl_logs 조회 실패(스킵 검사 생략, 수집 진행): %s", e)
+        return False
+    return bool(res.data)
+
+
+def _crawl_log_upsert(
+    client,
+    job_name: str,
+    run_date: str,
+    status: str,
+    message: str | None,
+    started_iso: str,
+) -> None:
+    finished = iso_now()
+    row = {
+        "job_name": job_name,
+        "run_date": run_date,
+        "status": status,
+        "message": (message[:8000] if message else None),
+        "started_at": started_iso,
+        "finished_at": finished,
+    }
+    client.table("crawl_logs").upsert(row, on_conflict="job_name,run_date").execute()
 
 
 def kstartup_should_skip_daily_public_api(client) -> bool:
@@ -752,8 +798,91 @@ def run_refresh_allforyoung_dday(
     _refresh_dday_pool(client_factory, SOURCE_ALLFORYOUNG, all_rows)
 
 
+def run_one_cycle(client, new_client, args: argparse.Namespace) -> None:
+    """한 사이클: 공모전(위비티→요즘것들) → 알림 → K-Startup → (호출 측에서 D-day)."""
+    pb = args.page_batch_size
+    so, se = args.sleep_batch_odd, args.sleep_batch_even
+    sk = args.single_cycle
+    force = args.force_daily
+    today_kst = kstartup_calendar_date_kst()
+
+    def _contest_pipeline() -> None:
+        log.info("위비티 공모전 크롤링 시작")
+        w_ins, w_upd = run_wevity(client, pb, so, se)
+        if _stop.is_set():
+            return
+        log.info("요즘것들 공모전 크롤링 시작")
+        a_ins, a_upd = run_allforyoung(client, pb, so, se)
+        if _stop.is_set():
+            return
+        notify_contest_cycle_summary(client, w_ins, w_upd, a_ins, a_upd)
+
+    if sk and not force and _crawl_log_has_success(client, JOB_CONTEST_CRAWL, today_kst):
+        log.info(
+            "contest_crawl — crawl_logs 에 오늘(KST %s) success 있음 — 스킵",
+            today_kst,
+        )
+    elif sk:
+        started = iso_now()
+        try:
+            _contest_pipeline()
+            if not _stop.is_set():
+                _crawl_log_upsert(client, JOB_CONTEST_CRAWL, today_kst, "success", None, started)
+        except Exception as e:
+            log.exception("공모전 수집 중 오류")
+            if not _stop.is_set():
+                _crawl_log_upsert(client, JOB_CONTEST_CRAWL, today_kst, "fail", str(e), started)
+            raise
+    else:
+        _contest_pipeline()
+
+    if _stop.is_set():
+        return
+
+    log.info("K-Startup 창업 크롤링 시작")
+    if not K_START_UP_SERVICE:
+        log.warning("K_START_UP_SERVICE 미설정 — 창업 단계 건너뜀 (.env에 추가)")
+    elif sk and not force and _crawl_log_has_success(client, JOB_KSTARTUP_CRAWL, today_kst):
+        log.info(
+            "kstartup_crawl — crawl_logs 에 오늘(KST %s) success 있음 — 스킵",
+            today_kst,
+        )
+    elif kstartup_should_skip_daily_public_api(client):
+        log.info(
+            "K-Startup 공공 API — kstartup_crawl_state.updated_at 이 오늘(한국 %s) — 스킵",
+            kstartup_calendar_date_kst(),
+        )
+    elif sk:
+        started_k = iso_now()
+        try:
+            run_kstartup(client, K_START_UP_SERVICE, pb, so, se)
+            if not _stop.is_set():
+                _crawl_log_upsert(
+                    client, JOB_KSTARTUP_CRAWL, today_kst, "success", None, started_k
+                )
+        except Exception as e:
+            log.exception("K-Startup 수집 중 오류")
+            if not _stop.is_set():
+                _crawl_log_upsert(
+                    client, JOB_KSTARTUP_CRAWL, today_kst, "fail", str(e), started_k
+                )
+            raise
+    else:
+        run_kstartup(client, K_START_UP_SERVICE, pb, so, se)
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="로컬 크롤 서버 (위비티 → 요즘것들 → K-Startup 반복)")
+    parser.add_argument(
+        "--single-cycle",
+        action="store_true",
+        help="한 사이클만 수행 후 종료 (GitHub Actions 일일 스케줄, crawl_logs 로 당일 중복 방지)",
+    )
+    parser.add_argument(
+        "--force-daily",
+        action="store_true",
+        help="--single-cycle 일 때 crawl_logs 당일 success 가 있어도 공모전·K-Startup 다시 실행",
+    )
     parser.add_argument(
         "--dday-refresh",
         action="store_true",
@@ -795,6 +924,8 @@ def main() -> None:
         parser.error("--page-batch-size 는 1 이상이어야 합니다.")
     if args.cycle_wait_minutes < 0:
         parser.error("--cycle-wait-minutes 는 0 이상이어야 합니다.")
+    if args.force_daily and not args.single_cycle:
+        parser.error("--force-daily 는 --single-cycle 과 함께만 사용할 수 있습니다.")
 
     signal.signal(signal.SIGINT, _signal_handler)
     signal.signal(signal.SIGTERM, _signal_handler)
@@ -814,32 +945,23 @@ def main() -> None:
             se,
         )
 
+    if args.single_cycle:
+        log.info("========== 단일 크롤링 사이클 (crawl_logs / GitHub Actions) ==========")
+        run_one_cycle(client, new_client, args)
+        if not _stop.is_set() and args.dday_refresh:
+            log.info("========== D-day 갱신 (위비티) ==========")
+            run_refresh_wevity_dday(new_client, pb, so, se)
+            if not _stop.is_set():
+                log.info("========== D-day 갱신 (요즘것들) ==========")
+                run_refresh_allforyoung_dday(new_client, pb, so, se)
+        log.info("단일 사이클 종료")
+        return
+
     cycle_n = 0
     while not _stop.is_set():
         cycle_n += 1
         log.info("========== %s번째 크롤링 사이클을 시작합니다 ==========", cycle_n)
-        log.info("위비티 공모전 크롤링 시작")
-        w_ins, w_upd = run_wevity(client, pb, so, se)
-        if _stop.is_set():
-            break
-        log.info("요즘것들 공모전 크롤링 시작")
-        a_ins, a_upd = run_allforyoung(client, pb, so, se)
-        if _stop.is_set():
-            break
-        notify_contest_cycle_summary(client, w_ins, w_upd, a_ins, a_upd)
-        if _stop.is_set():
-            break
-        log.info("K-Startup 창업 크롤링 시작")
-        if K_START_UP_SERVICE:
-            if kstartup_should_skip_daily_public_api(client):
-                log.info(
-                    "K-Startup 공공 API — kstartup_crawl_state.updated_at 이 오늘(한국 %s) — 스킵",
-                    kstartup_calendar_date_kst(),
-                )
-            else:
-                run_kstartup(client, K_START_UP_SERVICE, pb, so, se)
-        else:
-            log.warning("K_START_UP_SERVICE 미설정 — 창업 단계 건너뜀 (.env에 추가)")
+        run_one_cycle(client, new_client, args)
         if _stop.is_set():
             break
         if args.dday_refresh:

@@ -1,0 +1,44 @@
+# 매일 1회: python crawl_server.py --single-cycle
+# Supabase 마이그레이션으로 public.crawl_logs 테이블 적용 후 사용.
+#
+# 필요한 Repository secrets (예시 이름 — 기존 이름과 맞추어 등록):
+#   SUPABASE_URL
+#   SUPABASE_SERVICE_ROLE_KEY
+#   VITE_NTP_SUPABASE_ANON_KEY  (get_supabase_admin_client 폴백용, service_role 만 있어도 됨)
+#   K_START_UP_SERVICE          (K-Startup 공공 API 키, 없으면 해당 단계만 스킵)
+
+name: Daily crawl
+
+on:
+  schedule:
+    # 02:30 UTC ≈ 한국 11:30 — 원하면 cron 만 조정
+    - cron: '30 2 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: daily-crawl
+  cancel-in-progress: false
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      VITE_NTP_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      VITE_NTP_SUPABASE_ANON_KEY: ${{ secrets.VITE_NTP_SUPABASE_ANON_KEY }}
+      K_START_UP_SERVICE: ${{ secrets.K_START_UP_SERVICE }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run single crawl cycle
+        run: python crawl_server.py --single-cycle
