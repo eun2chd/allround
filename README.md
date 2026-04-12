@@ -78,7 +78,7 @@ python crawl_server.py --dday-refresh
 ```bash
 # 예: 목록 4페이지마다 DB 반영·배치 대기 1회 (홀수 10초·짝수 20초).
 # 공모전 알림은 배치마다가 아니라 사이클(위비티+요즘것들) 끝에 합산 1회.
-# 한 사이클이 끝나면 기본 30분 후 다시 시작 — 바로 반복하려면 --cycle-wait-minutes 0
+# 한 사이클이 끝나면 기본 3시간(180분) 후 다시 시작 — 바로 반복하려면 --cycle-wait-minutes 0
 python crawl_server.py --page-batch-size 4 --sleep-batch-odd 10 --sleep-batch-even 20
 
 # python crawl_server.py --page-batch-size 4 --sleep-batch-odd 10 --sleep-batch-even 20 --cycle-wait-minutes 0

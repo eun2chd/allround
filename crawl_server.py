@@ -2,6 +2,9 @@
 로컬 Python 크롤 서버: 위비티 → 요즘것들 → K-Startup 순으로 끝까지 수집·upsert 후 반복.
 엣지 함수(`supabase/functions/*`)와 동일한 DB 반영·알림 규칙을 따른다.
 
+K-Startup(공공데이터포털 API)은 **한국 달력일(KST)당 1회**만 실행한다. `kstartup_crawl_state.updated_at`이
+오늘(KST)로 이미 갱신돼 있으면 같은 날 이후 사이클에서는 API를 호출하지 않는다.
+
 기본: 목록(및 필요 시 상세) 처리 → DB 저장 뒤 대기.  
 `--page-batch-size`로 여러 목록 페이지를 모아 한 번에 upsert한 뒤 대기하면 **대기 횟수만 줄어** 같은 총 요청 수로 더 빨리 끝납니다(대상 사이트에는 목록 N페이지가 연속으로 나가므로 과도한 배치는 피하세요).
 
@@ -19,6 +22,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -64,6 +68,49 @@ def _signal_handler(_signum, _frame) -> None:
 
 def iso_now() -> str:
     return datetime.now(timezone.utc).isoformat()
+
+
+_KST = ZoneInfo("Asia/Seoul")
+
+
+def kstartup_calendar_date_kst() -> str:
+    """공공 API 일일 한도 기준 달력일 (YYYY-MM-DD, Asia/Seoul)."""
+    return datetime.now(_KST).date().isoformat()
+
+
+def _parse_timestamptz_utc(value: object) -> datetime:
+    if isinstance(value, datetime):
+        if value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc)
+        return value.astimezone(timezone.utc)
+    s = str(value).strip()
+    if s.endswith("Z"):
+        s = s[:-1] + "+00:00"
+    return datetime.fromisoformat(s).astimezone(timezone.utc)
+
+
+def kstartup_should_skip_daily_public_api(client) -> bool:
+    """`kstartup_crawl_state.updated_at`이 오늘(KST)이면 이미 일일 수집된 것으로 보고 True."""
+    today_kst = kstartup_calendar_date_kst()
+    try:
+        res = (
+            client.table("kstartup_crawl_state")
+            .select("updated_at")
+            .eq("id", 1)
+            .limit(1)
+            .execute()
+        )
+        row = (res.data or [None])[0]
+        if not row:
+            return False
+        raw = row.get("updated_at")
+        if raw is None:
+            return False
+        updated_kst_date = _parse_timestamptz_utc(raw).astimezone(_KST).date().isoformat()
+        return updated_kst_date == today_kst
+    except Exception as e:
+        log.warning("K-Startup 일일 스킵 여부 조회 실패 — 수집 진행(재시도): %s", e)
+        return False
 
 
 def sleep_after_batch(
@@ -414,10 +461,12 @@ def run_kstartup(
     sleep_batch_even: int,
 ) -> None:
     biz_last, ann_last = probe_last_pages(service_key)
+    biz_range = f"1~{biz_last}" if biz_last else "범위 조회 실패(스킵)"
+    ann_range = f"1~{ann_last}" if ann_last else "범위 조회 실패(스킵)"
     log.info(
-        "K-Startup 범위 — 통합지원 1~%s페이지, 공고 1~%s페이지 (한 페이지에 각각 최대 10건)",
-        biz_last,
-        ann_last,
+        "K-Startup 범위 — 통합지원 %s페이지, 공고 %s페이지 (한 페이지에 각각 최대 10건)",
+        biz_range,
+        ann_range,
     )
     max_p = max(biz_last, ann_last)
     biz_new_total = ann_new_total = 0
@@ -737,9 +786,9 @@ def main() -> None:
     parser.add_argument(
         "--cycle-wait-minutes",
         type=int,
-        default=30,
+        default=180,
         metavar="M",
-        help="한 사이클(공모전·K-Startup·선택 D-day) 종료 후 다음 사이클까지 대기 분. 0이면 바로 반복",
+        help="한 사이클(공모전·K-Startup·선택 D-day) 종료 후 다음 사이클까지 대기 분 (기본 180=3시간). 0이면 바로 반복",
     )
     args = parser.parse_args()
     if args.page_batch_size < 1:
@@ -782,7 +831,13 @@ def main() -> None:
             break
         log.info("K-Startup 창업 크롤링 시작")
         if K_START_UP_SERVICE:
-            run_kstartup(client, K_START_UP_SERVICE, pb, so, se)
+            if kstartup_should_skip_daily_public_api(client):
+                log.info(
+                    "K-Startup 공공 API — kstartup_crawl_state.updated_at 이 오늘(한국 %s) — 스킵",
+                    kstartup_calendar_date_kst(),
+                )
+            else:
+                run_kstartup(client, K_START_UP_SERVICE, pb, so, se)
         else:
             log.warning("K_START_UP_SERVICE 미설정 — 창업 단계 건너뜀 (.env에 추가)")
         if _stop.is_set():
