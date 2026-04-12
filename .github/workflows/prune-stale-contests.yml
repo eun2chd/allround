@@ -1,6 +1,6 @@
 # 하루 1회: Edge Function prune-stale-contests 호출 (오래된 크롤 공고 정리)
 #
-# GitHub 저장소 Settings → Secrets and variables → Actions → Variables:
+# GitHub 저장소 Settings → Secrets and variables → Actions → Secrets:
 #   SUPABASE_URL — https://<project-ref>.supabase.co (끝 슬래시 없어도 됨)
 #   SUPABASE_SERVICE_ROLE_KEY — Bearer 로 전달. Edge 함수에 CRON_SECRET 이 있으면 그 값과 동일해야 함.
 
@@ -21,16 +21,16 @@ on:
 jobs:
   prune:
     runs-on: ubuntu-latest
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SECRET: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
     steps:
       - name: Call prune-stale-contests
-        env:
-          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
-          SECRET: ${{ vars.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           set -euo pipefail
           BASE="${SUPABASE_URL%/}"
           if [ -z "${BASE:-}" ]; then
-            echo "::error::SUPABASE_URL repository variable is not set"
+            echo "::error::SUPABASE_URL secret is not set"
             exit 1
           fi
           URL="${BASE}/functions/v1/prune-stale-contests"
