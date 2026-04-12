@@ -1,8 +1,8 @@
 # 하루 1회: Edge Function prune-stale-contests 호출 (오래된 크롤 공고 정리)
 #
-# GitHub 저장소 Settings → Secrets and variables → Actions 에 설정:
-#   SUPABASE_PRUNE_URL  — https://<project-ref>.supabase.co/functions/v1/prune-stale-contests
-#   SUPABASE_CRON_SECRET (선택) — Supabase Edge 함수 환경변수 CRON_SECRET 과 동일하면 Bearer 로 전달
+# GitHub 저장소 Settings → Secrets and variables → Actions → Variables:
+#   SUPABASE_URL — https://<project-ref>.supabase.co (끝 슬래시 없어도 됨)
+#   SUPABASE_SERVICE_ROLE_KEY — Bearer 로 전달. Edge 함수에 CRON_SECRET 이 있으면 그 값과 동일해야 함.
 
 name: Prune stale contests
 
@@ -24,14 +24,16 @@ jobs:
     steps:
       - name: Call prune-stale-contests
         env:
-          URL: ${{ secrets.SUPABASE_PRUNE_URL }}
-          SECRET: ${{ secrets.SUPABASE_CRON_SECRET }}
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SECRET: ${{ vars.SUPABASE_SERVICE_ROLE_KEY }}
         run: |
           set -euo pipefail
-          if [ -z "${URL:-}" ]; then
-            echo "::error::SUPABASE_PRUNE_URL secret is not set"
+          BASE="${SUPABASE_URL%/}"
+          if [ -z "${BASE:-}" ]; then
+            echo "::error::SUPABASE_URL repository variable is not set"
             exit 1
           fi
+          URL="${BASE}/functions/v1/prune-stale-contests"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             DAYS='${{ github.event.inputs.days }}'
           else
