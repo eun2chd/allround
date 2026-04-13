@@ -5,6 +5,10 @@
 K-Startup(공공데이터포털 API)은 **한국 달력일(KST)당 1회**만 실행한다. `kstartup_crawl_state.updated_at`이
 오늘(KST)로 이미 갱신돼 있으면 같은 날 이후 사이클에서는 API를 호출하지 않는다.
 
+K-Startup 구간은 위비티·요즘것들과 별도로 `--kstartup-page-batch-size`(기본 5)와
+`--kstartup-sleep-batch-odd` / `--kstartup-sleep-batch-even`(기본 1·2초)를 쓰며,
+`kstartup_crawler`의 `numOfRows` 기본 100(`KSTARTUP_NUM_ROWS`)으로 페이지 수를 줄인다.
+
 기본: 목록(및 필요 시 상세) 처리 → DB 저장 뒤 대기.  
 `--page-batch-size`로 여러 목록 페이지를 모아 한 번에 upsert한 뒤 대기하면 **대기 횟수만 줄어** 같은 총 요청 수로 더 빨리 끝납니다(대상 사이트에는 목록 N페이지가 연속으로 나가므로 과도한 배치는 피하세요).
 
@@ -45,6 +49,7 @@ from kstartup_crawler import (
     SOURCE_KSTARTUP,
     fetch_announcement_page,
     fetch_business_page,
+    get_kstartup_num_of_rows,
     probe_last_pages,
 )
 
@@ -506,13 +511,18 @@ def run_kstartup(
     sleep_batch_odd: int,
     sleep_batch_even: int,
 ) -> None:
+    rows_per_page = get_kstartup_num_of_rows()
     biz_last, ann_last = probe_last_pages(service_key)
     biz_range = f"1~{biz_last}" if biz_last else "범위 조회 실패(스킵)"
     ann_range = f"1~{ann_last}" if ann_last else "범위 조회 실패(스킵)"
     log.info(
-        "K-Startup 범위 — 통합지원 %s페이지, 공고 %s페이지 (한 페이지에 각각 최대 10건)",
+        "K-Startup 범위 — 통합지원 %s페이지, 공고 %s페이지 (API 페이지당 최대 %s건, 배치 크기 %s·배치 간 대기 %s/%s초)",
         biz_range,
         ann_range,
+        rows_per_page,
+        page_batch_size,
+        sleep_batch_odd,
+        sleep_batch_even,
     )
     max_p = max(biz_last, ann_last)
     biz_new_total = ann_new_total = 0
@@ -532,6 +542,9 @@ def run_kstartup(
             break
 
         p_first, p_last = pages_in_batch[0], pages_in_batch[-1]
+
+        batch_biz_rows = batch_ann_rows = 0
+        batch_biz_new = batch_biz_upd = batch_ann_new = batch_ann_upd = 0
 
         for pg in pages_in_batch:
             if _stop.is_set():
@@ -567,6 +580,9 @@ def run_kstartup(
                 client.table("startup_business").upsert(biz_rows, on_conflict="id").execute()
                 biz_new_total += biz_new_pg
                 biz_upd_total += biz_upd_pg
+                batch_biz_rows += len(biz_rows)
+                batch_biz_new += biz_new_pg
+                batch_biz_upd += biz_upd_pg
 
             if ann_rows:
                 sns = [r["pbanc_sn"] for r in ann_rows]
@@ -579,36 +595,32 @@ def run_kstartup(
                 client.table("startup_announcement").upsert(ann_rows, on_conflict="pbanc_sn").execute()
                 ann_new_total += ann_new_pg
                 ann_upd_total += ann_upd_pg
+                batch_ann_rows += len(ann_rows)
+                batch_ann_new += ann_new_pg
+                batch_ann_upd += ann_upd_pg
 
-            biz_part = (
-                f"통합지원 {len(biz_rows)}건 upsert (신규 {biz_new_pg}, 기존행 갱신 {biz_upd_pg})"
-                if biz_rows
-                else (
-                    f"통합지원 스킵 (수집 끝, {biz_last}페이지까지)"
-                    if pg > biz_last
-                    else "통합지원 API 0건"
-                )
-            )
-            ann_part = (
-                f"공고 {len(ann_rows)}건 upsert (신규 {ann_new_pg}, 기존행 갱신 {ann_upd_pg})"
-                if ann_rows
-                else (
-                    f"공고 스킵 (수집 끝, {ann_last}페이지까지)"
-                    if pg > ann_last
-                    else "공고 API 0건"
-                )
-            )
-            log.info(
-                "K-Startup [%s/%s] %s | %s | 누적: 통합 신규 %s·갱신 %s, 공고 신규 %s·갱신 %s",
-                pg,
-                max_p,
-                biz_part,
-                ann_part,
-                biz_new_total,
-                biz_upd_total,
-                ann_new_total,
-                ann_upd_total,
-            )
+        biz_part = (
+            f"통합지원 {batch_biz_rows}건 upsert (신규 {batch_biz_new}, 기존행 갱신 {batch_biz_upd})"
+            if batch_biz_rows
+            else "통합지원 API 0건(또는 해당 구간 스킵)"
+        )
+        ann_part = (
+            f"공고 {batch_ann_rows}건 upsert (신규 {batch_ann_new}, 기존행 갱신 {batch_ann_upd})"
+            if batch_ann_rows
+            else "공고 API 0건(또는 해당 구간 스킵)"
+        )
+        log.info(
+            "K-Startup 배치 API페이지 %s~%s / %s: %s | %s | 누적: 통합 신규 %s·갱신 %s, 공고 신규 %s·갱신 %s",
+            p_first,
+            p_last,
+            max_p,
+            biz_part,
+            ann_part,
+            biz_new_total,
+            biz_upd_total,
+            ann_new_total,
+            ann_upd_total,
+        )
 
         if not _stop.is_set():
             sleep_after_batch(
@@ -802,6 +814,8 @@ def run_one_cycle(client, new_client, args: argparse.Namespace) -> None:
     """한 사이클: 공모전(위비티→요즘것들) → 알림 → K-Startup → (호출 측에서 D-day)."""
     pb = args.page_batch_size
     so, se = args.sleep_batch_odd, args.sleep_batch_even
+    kpb = args.kstartup_page_batch_size
+    kso, kse = args.kstartup_sleep_batch_odd, args.kstartup_sleep_batch_even
     sk = args.single_cycle
     force = args.force_daily
     today_kst = kstartup_calendar_date_kst()
@@ -855,7 +869,7 @@ def run_one_cycle(client, new_client, args: argparse.Namespace) -> None:
     elif sk:
         started_k = iso_now()
         try:
-            run_kstartup(client, K_START_UP_SERVICE, pb, so, se)
+            run_kstartup(client, K_START_UP_SERVICE, kpb, kso, kse)
             if not _stop.is_set():
                 _crawl_log_upsert(
                     client, JOB_KSTARTUP_CRAWL, today_kst, "success", None, started_k
@@ -868,7 +882,7 @@ def run_one_cycle(client, new_client, args: argparse.Namespace) -> None:
                 )
             raise
     else:
-        run_kstartup(client, K_START_UP_SERVICE, pb, so, se)
+        run_kstartup(client, K_START_UP_SERVICE, kpb, kso, kse)
 
 
 def main() -> None:
@@ -913,6 +927,30 @@ def main() -> None:
         help="배치 2·4·6… 처리 후 대기 초 (기존 짝수 페이지 20초와 동일)",
     )
     parser.add_argument(
+        "--kstartup-page-batch-size",
+        type=int,
+        default=5,
+        metavar="N",
+        help=(
+            "K-Startup 전용: 통합·공고 API 목록 페이지 N개를 연속 처리한 뒤 대기 1회 "
+            "(위비티·요즘것들의 --page-batch-size와 별도; 기본 5)"
+        ),
+    )
+    parser.add_argument(
+        "--kstartup-sleep-batch-odd",
+        type=int,
+        default=1,
+        metavar="SEC",
+        help="K-Startup 배치 1·3·5… 처리 후 대기 초 (기본 1)",
+    )
+    parser.add_argument(
+        "--kstartup-sleep-batch-even",
+        type=int,
+        default=2,
+        metavar="SEC",
+        help="K-Startup 배치 2·4·6… 처리 후 대기 초 (기본 2)",
+    )
+    parser.add_argument(
         "--cycle-wait-minutes",
         type=int,
         default=180,
@@ -922,6 +960,8 @@ def main() -> None:
     args = parser.parse_args()
     if args.page_batch_size < 1:
         parser.error("--page-batch-size 는 1 이상이어야 합니다.")
+    if args.kstartup_page_batch_size < 1:
+        parser.error("--kstartup-page-batch-size 는 1 이상이어야 합니다.")
     if args.cycle_wait_minutes < 0:
         parser.error("--cycle-wait-minutes 는 0 이상이어야 합니다.")
     if args.force_daily and not args.single_cycle:

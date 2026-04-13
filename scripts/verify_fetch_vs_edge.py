@@ -52,12 +52,17 @@ def main() -> int:
         print(f" OK (샘플 id={a[0].get('id')}, d_day={a[0].get('d_day')!r})")
 
     if K_START_UP_SERVICE:
-        from kstartup_crawler import fetch_announcement_page, fetch_business_page
+        from kstartup_crawler import (
+            fetch_announcement_page,
+            fetch_business_page,
+            get_kstartup_num_of_rows,
+        )
 
+        n = get_kstartup_num_of_rows()
         biz, bm = fetch_business_page(K_START_UP_SERVICE, 1)
         ann, am = fetch_announcement_page(K_START_UP_SERVICE, 1)
         print(
-            f"[crawl-kstartup XML] 통합지원 p1: {len(biz)}건 (currentCount={bm.get('current_count')}), "
+            f"[crawl-kstartup XML] numOfRows={n} 통합지원 p1: {len(biz)}건 (currentCount={bm.get('current_count')}), "
             f"공고 p1: {len(ann)}건 (currentCount={am.get('current_count')}) OK"
         )
     else:

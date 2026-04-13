@@ -1,11 +1,15 @@
 """
 K-Startup 공공 API 수집 (엣지 `crawl-kstartup`와 동일 매핑)
 ServiceKey는 URL 인코딩된 값 그대로 붙이지 말 것 (이중 인코딩 시 401).
+
+목록 호출 `numOfRows`는 기본 100(`get_kstartup_num_of_rows`, 환경변수 `KSTARTUP_NUM_ROWS` 10~100).
+API가 거부하면 `KSTARTUP_NUM_ROWS=10`으로 되돌린다.
 """
 
 from __future__ import annotations
 
 import logging
+import os
 import re
 import time
 from typing import Any
@@ -15,8 +19,21 @@ import requests
 logger = logging.getLogger("allyoung.kstartup")
 
 KSTARTUP_BASE = "https://apis.data.go.kr/B552735/kisedKstartupService01"
-PER_PAGE = 10
 SOURCE_KSTARTUP = "K-Startup"
+
+
+def get_kstartup_num_of_rows() -> int:
+    """목록 API `numOfRows`. 공공데이터포털 관례상 최대 100(미만·초과는 클램프).
+
+    환경변수 `KSTARTUP_NUM_ROWS`로 조정 가능(기본 100). 호출당 레코드 수가 늘면
+    페이지 수·HTTP 횟수가 줄어 전체 크롤 시간이 단축된다.
+    """
+    raw = os.environ.get("KSTARTUP_NUM_ROWS", "100").strip()
+    try:
+        n = int(raw)
+    except ValueError:
+        n = 100
+    return max(10, min(100, n))
 
 # 공공데이터포털: 502/503만 재시도. 429는 할당량 초과가 대부분이라 재호출만 소모함.
 _API_RETRY_STATUSES = frozenset({502, 503})
@@ -94,7 +111,12 @@ def fetch_api(api_name: str, service_key: str, page_no: int, num_of_rows: int) -
     url = f"{KSTARTUP_BASE}/{api_name}?ServiceKey={service_key}&page={page_no}&numOfRows={num_of_rows}"
     last_body_snip = ""
     for attempt in range(_API_MAX_RETRIES):
-        logger.info("K-Startup API 요청 %s page=%s", api_name, page_no)
+        logger.debug(
+            "K-Startup API 요청 %s page=%s numOfRows=%s",
+            api_name,
+            page_no,
+            num_of_rows,
+        )
         res = requests.get(
             url,
             headers={"Accept": "application/xml, text/xml, */*"},
@@ -193,7 +215,8 @@ def map_announcement_item(col: dict[str, str]) -> dict[str, Any] | None:
 
 
 def fetch_business_page(service_key: str, page: int) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    xml = fetch_api("getBusinessInformation01", service_key, page, PER_PAGE)
+    n = get_kstartup_num_of_rows()
+    xml = fetch_api("getBusinessInformation01", service_key, page, n)
     meta = parse_pagination(xml)
     if meta["current_count"] == 0:
         return [], meta
@@ -208,7 +231,8 @@ def fetch_business_page(service_key: str, page: int) -> tuple[list[dict[str, Any
 
 
 def fetch_announcement_page(service_key: str, page: int) -> tuple[list[dict[str, Any]], dict[str, int]]:
-    xml = fetch_api("getAnnouncementInformation01", service_key, page, PER_PAGE)
+    n = get_kstartup_num_of_rows()
+    xml = fetch_api("getAnnouncementInformation01", service_key, page, n)
     meta = parse_pagination(xml)
     if meta["current_count"] == 0:
         return [], meta
@@ -228,9 +252,10 @@ def probe_last_pages(service_key: str) -> tuple[int, int]:
     한쪽 API만 실패(예: 429 할당량)해도 다른 쪽은 계속할 수 있도록, 실패 시 해당 종류만
     페이지 상한 0으로 두어 run_kstartup에서 해당 수집을 건너뜀. 둘 다 실패하면 (0, 0).
     """
+    n = get_kstartup_num_of_rows()
     biz_last = 0
     try:
-        xml_b = fetch_api("getBusinessInformation01", service_key, 1, PER_PAGE)
+        xml_b = fetch_api("getBusinessInformation01", service_key, 1, n)
         b = parse_pagination(xml_b)
         biz_last = (
             max(1, (b["total_count"] + b["per_page"] - 1) // b["per_page"]) if b["total_count"] else 1
@@ -245,7 +270,7 @@ def probe_last_pages(service_key: str) -> tuple[int, int]:
 
     ann_last = 0
     try:
-        xml_a = fetch_api("getAnnouncementInformation01", service_key, 1, PER_PAGE)
+        xml_a = fetch_api("getAnnouncementInformation01", service_key, 1, n)
         a = parse_pagination(xml_a)
         ann_last = (
             max(1, (a["total_count"] + a["per_page"] - 1) // a["per_page"]) if a["total_count"] else 1
