@@ -1,24 +1,26 @@
 """
-로컬 Python 크롤 서버: 위비티 → 요즘것들 → K-Startup 순으로 끝까지 수집·upsert 후 반복.
+로컬 Python 크롤 서버: 요즘것들 공모전 → K-Startup 순으로 수집·upsert 후 반복.
+(위비티 전용 반복은 `crawl_wevity_only_loop.py` — `run_wevity` 등은 이 모듈에 남아 재사용.)
+
 엣지 함수(`supabase/functions/*`)와 동일한 DB 반영·알림 규칙을 따른다.
 
 K-Startup(공공데이터포털 API)은 **한국 달력일(KST)당 1회**만 실행한다. `kstartup_crawl_state.updated_at`이
 오늘(KST)로 이미 갱신돼 있으면 같은 날 이후 사이클에서는 API를 호출하지 않는다.
 
-K-Startup 구간은 위비티·요즘것들과 별도로 `--kstartup-page-batch-size`(기본 5)와
+K-Startup 구간은 요즘것들 공모전 구간과 별도로 `--kstartup-page-batch-size`(기본 5)와
 `--kstartup-sleep-batch-odd` / `--kstartup-sleep-batch-even`(기본 1·2초)를 쓰며,
 `kstartup_crawler`의 `numOfRows` 기본 100(`KSTARTUP_NUM_ROWS`)으로 페이지 수를 줄인다.
 
 기본: 목록(및 필요 시 상세) 처리 → DB 저장 뒤 대기.  
 `--page-batch-size`로 여러 목록 페이지를 모아 한 번에 upsert한 뒤 대기하면 **대기 횟수만 줄어** 같은 총 요청 수로 더 빨리 끝납니다(대상 사이트에는 목록 N페이지가 연속으로 나가므로 과도한 배치는 피하세요).
 
-일일 GitHub Actions: `python crawl_server.py --single-cycle` — 한 번만 위비티·요즘것들·K-Startup(가능 시) 수행 후 종료.  
+일일 GitHub Actions: `python crawl_server.py --single-cycle` — 한 번만 요즘것들·K-Startup(가능 시) 수행 후 종료.  
 DB `crawl_logs`에 오늘(KST) `status=success`가 있으면 해당 작업은 스킵합니다. `--force-daily`로 스킵 무시.
 
 실행:  python crawl_server.py
 옵션:  --single-cycle  위 한 사이클만 (Actions 일일 스케줄)
        --force-daily   --single-cycle 과 함께: crawl_logs 당일 성공이 있어도 재실행
-       --dday-refresh  사이클 끝에 목록만 돌며 D-day만 갱신 (refresh-* 엣지와 유사)
+       --dday-refresh  사이클 끝에 요즘것들 목록만 돌며 D-day만 갱신 (refresh-allforyoung-dday 엣지와 유사)
        --page-batch-size, --sleep-batch-odd, --sleep-batch-even
 """
 
@@ -255,7 +257,7 @@ def notify_contest_cycle_summary(
     allforyoung_inserted: int,
     allforyoung_updated: int,
 ) -> None:
-    """위비티·요즘것들 한 사이클 합산 알림 1건 (배치마다 넣지 않음)."""
+    """공모전 한 사이클 합산 알림 1건. 위비티·요즘것들 단독/병행 모두 지원 (배치마다 넣지 않음)."""
     total_ins = wevity_inserted + allforyoung_inserted
     total_upd = wevity_updated + allforyoung_updated
     if total_ins + total_upd <= 0:
@@ -269,13 +271,21 @@ def notify_contest_cycle_summary(
         bits.append(f"요즘것들 신규 {allforyoung_inserted}·갱신 {allforyoung_updated}")
     detail = f" ({', '.join(bits)})" if bits else ""
     msg = f"공모전 수집 완료 — 신규 {total_ins}건, 업데이트 {total_upd}건{detail}"
+    w_any = bool(wevity_inserted or wevity_updated)
+    a_any = bool(allforyoung_inserted or allforyoung_updated)
+    if w_any and a_any:
+        notif_source = "위비티·요즘것들"
+    elif w_any:
+        notif_source = "위비티"
+    else:
+        notif_source = "요즘것들"
     try:
         r = (
             client.table("notifications")
             .insert(
                 {
                     "type": "insert" if has_new else "update",
-                    "source": "위비티·요즘것들",
+                    "source": notif_source,
                     "count": total_ins + total_upd,
                     "message": msg,
                 }
@@ -811,7 +821,7 @@ def run_refresh_allforyoung_dday(
 
 
 def run_one_cycle(client, new_client, args: argparse.Namespace) -> None:
-    """한 사이클: 공모전(위비티→요즘것들) → 알림 → K-Startup → (호출 측에서 D-day)."""
+    """한 사이클: 공모전(요즘것들) → 알림 → K-Startup → (호출 측에서 선택 D-day)."""
     pb = args.page_batch_size
     so, se = args.sleep_batch_odd, args.sleep_batch_even
     kpb = args.kstartup_page_batch_size
@@ -821,15 +831,11 @@ def run_one_cycle(client, new_client, args: argparse.Namespace) -> None:
     today_kst = kstartup_calendar_date_kst()
 
     def _contest_pipeline() -> None:
-        log.info("위비티 공모전 크롤링 시작")
-        w_ins, w_upd = run_wevity(client, pb, so, se)
-        if _stop.is_set():
-            return
         log.info("요즘것들 공모전 크롤링 시작")
         a_ins, a_upd = run_allforyoung(client, pb, so, se)
         if _stop.is_set():
             return
-        notify_contest_cycle_summary(client, w_ins, w_upd, a_ins, a_upd)
+        notify_contest_cycle_summary(client, 0, 0, a_ins, a_upd)
 
     if sk and not force and _crawl_log_has_success(client, JOB_CONTEST_CRAWL, today_kst):
         log.info(
@@ -886,7 +892,7 @@ def run_one_cycle(client, new_client, args: argparse.Namespace) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="로컬 크롤 서버 (위비티 → 요즘것들 → K-Startup 반복)")
+    parser = argparse.ArgumentParser(description="로컬 크롤 서버 (요즘것들 → K-Startup 반복)")
     parser.add_argument(
         "--single-cycle",
         action="store_true",
@@ -908,8 +914,8 @@ def main() -> None:
         default=1,
         metavar="N",
         help=(
-            "목록 페이지 N개를 묶어 처리한 뒤 대기 1회. "
-            "위비티·요즘것들은 배치당 DB upsert 1회; K-Startup은 API 페이지마다 upsert 유지·대기만 배치 단위"
+            "요즘것들 목록 페이지 N개를 묶어 처리한 뒤 대기 1회. "
+            "배치당 contests upsert 1회; K-Startup은 `--kstartup-*` 옵션으로 별도"
         ),
     )
     parser.add_argument(
@@ -933,7 +939,7 @@ def main() -> None:
         metavar="N",
         help=(
             "K-Startup 전용: 통합·공고 API 목록 페이지 N개를 연속 처리한 뒤 대기 1회 "
-            "(위비티·요즘것들의 --page-batch-size와 별도; 기본 5)"
+            "(요즘것들의 --page-batch-size와 별도; 기본 5)"
         ),
     )
     parser.add_argument(
@@ -989,11 +995,8 @@ def main() -> None:
         log.info("========== 단일 크롤링 사이클 (crawl_logs / GitHub Actions) ==========")
         run_one_cycle(client, new_client, args)
         if not _stop.is_set() and args.dday_refresh:
-            log.info("========== D-day 갱신 (위비티) ==========")
-            run_refresh_wevity_dday(new_client, pb, so, se)
-            if not _stop.is_set():
-                log.info("========== D-day 갱신 (요즘것들) ==========")
-                run_refresh_allforyoung_dday(new_client, pb, so, se)
+            log.info("========== D-day 갱신 (요즘것들) ==========")
+            run_refresh_allforyoung_dday(new_client, pb, so, se)
         log.info("단일 사이클 종료")
         return
 
@@ -1005,10 +1008,6 @@ def main() -> None:
         if _stop.is_set():
             break
         if args.dday_refresh:
-            log.info("========== D-day 갱신 (위비티) ==========")
-            run_refresh_wevity_dday(new_client, pb, so, se)
-            if _stop.is_set():
-                break
             log.info("========== D-day 갱신 (요즘것들) ==========")
             run_refresh_allforyoung_dday(new_client, pb, so, se)
         log.info("크롤링 종료")
