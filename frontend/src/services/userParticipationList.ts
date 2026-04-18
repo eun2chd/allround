@@ -63,6 +63,8 @@ export async function fetchUserParticipationPage(opts: {
   filter: 'all' | 'participate' | 'pass'
   /** 상세(contest_participation_detail)가 있는 행만 */
   detailOnly?: boolean
+  /** 참가 중 상세가 없는 행만 (패스 제외) */
+  noDetailOnly?: boolean
   /** 공모전 제목 부분 일치(대소문자 무시) */
   titleSearch?: string
 }): Promise<{ success: boolean; data: ParticipationRow[]; total: number }> {
@@ -144,6 +146,10 @@ export async function fetchUserParticipationPage(opts: {
 
   let filtered = enriched
   if (opts.detailOnly) filtered = filtered.filter((r) => r.has_detail)
+  else if (opts.noDetailOnly)
+    filtered = filtered.filter(
+      (r) => String(r.status || '') === 'participate' && !r.has_detail,
+    )
   const qTitle = (opts.titleSearch || '').trim().toLowerCase()
   if (qTitle) filtered = filtered.filter((r) => (r.title || '').toLowerCase().includes(qTitle))
 

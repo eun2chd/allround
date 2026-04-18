@@ -25,7 +25,9 @@ type Props = {
 export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
   const confirm = useConfirm()
   const [filter, setFilter] = useState<'all' | 'participate' | 'pass'>('all')
-  const [detailOnly, setDetailOnly] = useState(false)
+  const [detailRegistrationFilter, setDetailRegistrationFilter] = useState<
+    'all' | 'detail' | 'nodetail'
+  >('all')
   const [titleInput, setTitleInput] = useState('')
   const [titleSearch, setTitleSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -45,7 +47,7 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
 
   useEffect(() => {
     setPage(1)
-  }, [titleSearch, detailOnly])
+  }, [titleSearch, detailRegistrationFilter])
 
   useEffect(() => {
     let cancelled = false
@@ -57,7 +59,8 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
           page,
           perPage,
           filter: filter === 'all' ? 'all' : filter,
-          detailOnly,
+          detailOnly: detailRegistrationFilter === 'detail',
+          noDetailOnly: detailRegistrationFilter === 'nodetail',
           titleSearch: titleSearch || undefined,
         })
         if (!cancelled) {
@@ -71,7 +74,7 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
     return () => {
       cancelled = true
     }
-  }, [profileId, filter, page, listVersion, detailOnly, titleSearch])
+  }, [profileId, filter, page, listVersion, detailRegistrationFilter, titleSearch])
 
   const totalPages = Math.max(1, Math.ceil(total / perPage))
 
@@ -127,10 +130,23 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
           <input
             type="checkbox"
             className="participation-detail-only-check"
-            checked={detailOnly}
-            onChange={(e) => setDetailOnly(e.target.checked)}
+            checked={detailRegistrationFilter === 'detail'}
+            onChange={(e) =>
+              setDetailRegistrationFilter(e.target.checked ? 'detail' : 'all')
+            }
           />
           <span>상세등록만</span>
+        </label>
+        <label className="participation-detail-only-label">
+          <input
+            type="checkbox"
+            className="participation-detail-only-check"
+            checked={detailRegistrationFilter === 'nodetail'}
+            onChange={(e) =>
+              setDetailRegistrationFilter(e.target.checked ? 'nodetail' : 'all')
+            }
+          />
+          <span>미등록만</span>
         </label>
         <div className="participation-title-search-wrap">
           <label className="participation-title-search-label" htmlFor="participation-title-search-input">
