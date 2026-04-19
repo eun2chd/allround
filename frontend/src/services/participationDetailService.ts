@@ -8,6 +8,49 @@ function safeAscii(s: string) {
   return [...String(s)].filter((c) => /[a-zA-Z0-9._-]/.test(c)).join('') || 'x'
 }
 
+/** 텍스트 파일인 경우 한글 깨짐 방지를 위해 UTF-8로 변환 */
+async function prepareFileForUpload(file: File): Promise<{ blob: Blob; contentType: string }> {
+  const name = file.name.toLowerCase()
+  const ext = name.split('.').pop() || ''
+
+  // MIME 타입 매핑
+  const mimeMap: Record<string, string> = {
+    pdf: 'application/pdf',
+    txt: 'text/plain; charset=utf-8',
+    doc: 'application/msword',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    hwp: 'application/x-hwp',
+    ppt: 'application/vnd.ms-powerpoint',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    xls: 'application/vnd.ms-excel',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    zip: 'application/zip',
+    png: 'image/png',
+    jpg: 'image/jpeg',
+    jpeg: 'image/jpeg',
+    gif: 'image/gif',
+  }
+
+  const contentType = mimeMap[ext] || file.type || 'application/octet-stream'
+
+  if (ext === 'txt') {
+    const buffer = await file.arrayBuffer()
+    try {
+      // UTF-8 시도
+      const utf8Decoder = new TextDecoder('utf-8', { fatal: true })
+      utf8Decoder.decode(buffer)
+      return { blob: file, contentType }
+    } catch (e) {
+      // UTF-8 실패 시 CP949(EUC-KR)로 간주하고 변환
+      const cp949Decoder = new TextDecoder('cp949')
+      const text = cp949Decoder.decode(buffer)
+      return { blob: new Blob([text], { type: 'text/plain; charset=utf-8' }), contentType }
+    }
+  }
+
+  return { blob: file, contentType }
+}
+
 /** 마이페이지 주인(`profileUserId`)의 참가 상세 1건. 타인 프로필 조회 시에도 동일. */
 export async function fetchParticipationDetailRow(profileUserId: string, source: string, contestId: string) {
   const sb = getSupabase()
@@ -77,14 +120,15 @@ export async function upsertParticipationDetailRow(opts: {
 
   if (opts.documentFile && opts.documentFile.name) {
     const orig = opts.documentFile.name
+    const { blob, contentType } = await prepareFileForUpload(opts.documentFile)
     const ext = (orig.includes('.') ? orig.split('.').pop() : '')?.toLowerCase() || 'pdf'
     const safeExt = ALLOWED_DOC_EXT.has(ext) ? ext : 'pdf'
     const safe_key = `doc_${safeAscii(opts.source)}_${safeAscii(opts.contest_id)}_${Date.now()}.${safeExt}`
     const path = `private/${uid}/${safe_key}`
-    const buf = await opts.documentFile.arrayBuffer()
+    const buf = await blob.arrayBuffer()
     const { error: upErr } = await sb.storage.from(CONTEST_BUCKET).upload(path, buf, {
       upsert: true,
-      contentType: opts.documentFile.type || 'application/octet-stream',
+      contentType,
     })
     if (upErr) return { success: false, error: upErr.message }
     const { data: pub } = sb.storage.from(CONTEST_BUCKET).getPublicUrl(path)

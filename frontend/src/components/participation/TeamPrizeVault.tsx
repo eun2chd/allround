@@ -183,25 +183,25 @@ export function TeamPrizeVault({
 
   const headline =
     goalWon > 0
-      ? `${year}년 목표 ${goalPrizeManwon.toLocaleString('ko-KR')}만 원 중 ${formatWonReadable(won)} 달성! (수령 완료)`
+      ? `${year}년 목표를 향해 ${honestPct}% 달려왔어요! (${formatWonReadable(won)} 달성)`
       : won > 0
-        ? `${year}년 팀 상금(수령 완료) ${formatWonReadable(won)} — 목표는 관리자에서 만원 단위로 설정`
-        : `${year}년 팀 금고 — 수령 완료된 상금만 통에 쌓여요.`
+        ? `${year}년 우리 팀이 모은 소중한 상금 ${formatWonReadable(won)}`
+        : `${year}년 팀 금고 — 상금 수령이 완료되면 이 통에 소중히 쌓여요.`;
 
   const levelLine =
     goalWon > 0
       ? completedGoals > 0
-        ? `무한 성장 · 목표를 ${completedGoals}회 넘겼어요. 지금은 ${completedGoals + 1}번째 구간을 채우는 중!`
-        : `첫 목표 구간을 채우면 레벨 업 보너스(후광·축하 바)가 켜져요.`
-      : null
+        ? `놀라운 성과예요! 목표를 ${completedGoals}번이나 달성하고 더 큰 성장을 이어가고 있습니다.`
+        : `첫 번째 목표를 달성하면 팀 금고에 특별한 효과가 나타납니다.`
+      : null;
 
   const pendingCount = settlementCounts['미수령']
 
   const caption = isEmpty
-    ? '여기에 우리의 첫 상금을 채워볼까요? (수령 완료만 반영)'
+    ? '우리의 첫 상금을 채워볼까요?'
     : lootTier >= 4
-      ? ''
-      : '가득 채울수록 보람 채워져요'
+      ? '전설적인 기록이 쓰여지고 있어요!'
+      : '우리의 열정이 차곡차곡 쌓이고 있어요';
 
   return (
     <section
@@ -347,27 +347,23 @@ export function TeamPrizeVault({
             <div className="team-prize-vault-progress-meta">
               {goalWon > 0 ? (
                 <>
-                  <span title="실제 목표 대비 비율(수령 완료)">{honestPct}%</span>
+                  <span className="team-prize-vault-progress-percent">{honestPct}% 달성</span>
                   <span className="team-prize-vault-progress-delim">·</span>
-                  <span>
+                  <span className="team-prize-vault-progress-remaining">
                     {goalMet
                       ? won > goalWon
-                        ? `목표 초과 ${formatWonReadable(won - goalWon)}`
-                        : '목표 금액 달성'
-                      : `${formatWonReadable(Math.max(0, goalWon - won))} 남음`}
-                  </span>
-                  <span className="team-prize-vault-progress-delim">·</span>
-                  <span className="team-prize-vault-progress-visual-hint" title="통·막대는 80% 법칙으로 천천히 차요">
-                    통 높이 ≈ {Math.round(visualFill * 100)}%
+                        ? `목표를 ${formatWonReadable(won - goalWon)} 초과 달성했어요!`
+                        : '목표 금액을 모두 채웠습니다!'
+                      : `목표까지 ${formatWonReadable(Math.max(0, goalWon - won))} 남았습니다`}
                   </span>
                 </>
               ) : (
-                <span>목표 금액을 넣으면 막대가 목표 대비 %로 움직여요</span>
+                <span className="team-prize-vault-progress-no-goal">목표를 설정하고 팀의 성장을 한눈에 확인해보세요!</span>
               )}
               {closed ? (
                 <>
                   <span className="team-prize-vault-progress-delim">·</span>
-                  <span className="team-prize-vault-closed-tag">연도 마감</span>
+                  <span className="team-prize-vault-closed-tag">시즌 종료</span>
                 </>
               ) : null}
             </div>
@@ -389,18 +385,14 @@ export function TeamPrizeVault({
               'team-prize-vault-settlement' + (pendingCount > 0 ? ' team-prize-vault-settlement--pending' : '')
             }
           >
-            <h3 className="team-prize-vault-settlement-title">상금 정산 상태</h3>
+            <h3 className="team-prize-vault-settlement-title">상금 수령 현황</h3>
             <p className="team-prize-vault-settlement-hint">
-              집계 대상은 「상금 수령」+ 금액이 입력된 건뿐입니다. <strong>금고 통·막대</strong>에는{' '}
-              <strong>수령 완료</strong> 금액만 반영됩니다. 정산 상태는{' '}
-              <strong>해당 공모전을 등록한 팀원 본인</strong>이{' '}
-              <strong>마이페이지 → 참가 목록 → 상세 등록(또는 수정)</strong> 모달에서 바꿉니다. 건수{' '}
-              <strong>{prizeEntryCount}</strong>
+              팀원분들이 <strong>수령 완료</strong>한 금액만 금고에 소중히 보관됩니다.
+              입금 대기 중인 상금이 있다면 <strong>마이페이지</strong>에서 상태를 업데이트해주세요.
             </p>
             {pendingCount > 0 ? (
               <p className="team-prize-vault-pending-cta">
-                미수령 {pendingCount}건 — 위 공모전을 등록한 팀원이 마이페이지에서 상세를 열고 「상금 정산 상태」를
-                바꾸면 금고에 반영돼요. (참여현황 화면은 보기 전용입니다.)
+                현재 <strong>{pendingCount}건</strong>의 상금이 입금을 기다리고 있어요.
               </p>
             ) : null}
             <ul className="team-prize-vault-settlement-chips">

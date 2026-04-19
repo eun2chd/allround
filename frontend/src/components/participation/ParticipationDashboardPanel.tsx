@@ -5,6 +5,7 @@ import { normalizePrizeSettlement, PRIZE_SETTLEMENT_STATUSES } from '../../featu
 import { parseDdayDays } from '../../services/contestDashboardSummaryService'
 import type { TeamMemberContest, TeamMemberOverview } from '../../services/teamParticipationService'
 import { TeamPrizeVault, type PrizeVaultProgress } from './TeamPrizeVault'
+import { PaginationBar } from '../common/PaginationBar'
 
 export type DashboardFlatRow = TeamMemberContest & {
   memberId: string
@@ -99,6 +100,9 @@ export function ParticipationDashboardPanel({
   const [tableFilter, setTableFilter] = useState<TableFilter>('all')
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('focus')
   const [incompleteMemberIdFilter, setIncompleteMemberIdFilter] = useState('')
+  const [tablePage, setTablePage] = useState(1)
+  const [incompletePage, setIncompletePage] = useState(1)
+  const PAGE_SIZE = 10
 
   const flat = useMemo(() => flattenMembers(members), [members])
   const flatFiltered = useMemo(
@@ -158,10 +162,22 @@ export function ParticipationDashboardPanel({
     }
   }, [incompleteMemberIdFilter, incompleteMemberOptions])
 
+  useEffect(() => {
+    setTablePage(1)
+  }, [tableFilter, scopeFilter, dashboardYear])
+
+  useEffect(() => {
+    setIncompletePage(1)
+  }, [incompleteMemberIdFilter, dashboardYear])
+
   const incompleteFilteredRows = useMemo(() => {
     if (!incompleteMemberIdFilter) return incompleteRows
     return incompleteRows.filter((r) => r.memberId === incompleteMemberIdFilter)
   }, [incompleteRows, incompleteMemberIdFilter])
+
+  const paginatedIncompleteRows = useMemo(() => {
+    return incompleteFilteredRows.slice((incompletePage - 1) * PAGE_SIZE, incompletePage * PAGE_SIZE)
+  }, [incompleteFilteredRows, incompletePage])
 
   const incompleteFilterSelectValue = incompleteMemberOptions.some(
     ([id]) => id === incompleteMemberIdFilter,
@@ -293,6 +309,10 @@ export function ParticipationDashboardPanel({
       return true
     })
   }, [flatFiltered, tableFilter, scopeFilter, startToday])
+
+  const paginatedRows = useMemo(() => {
+    return tableRows.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE)
+  }, [tableRows, tablePage])
 
   const resolveMember = (memberId: string): TeamMemberOverview | undefined =>
     members.find((m) => m.id === memberId)
@@ -508,7 +528,7 @@ export function ParticipationDashboardPanel({
               {incompleteFilteredRows.length === 0 ? (
                 <p className="participation-incomplete-filter-empty">선택한 팀원에 해당하는 항목이 없습니다.</p>
               ) : null}
-              {incompleteFilteredRows.map((r) => {
+              {paginatedIncompleteRows.map((r) => {
                 const n = parseDdayDays(r.d_day)
                 const urgent5 = n !== null && n !== -1 && n <= 5
                 const urgent10 = n !== null && n !== -1 && n <= 10
@@ -554,46 +574,60 @@ export function ParticipationDashboardPanel({
                 )
               })}
             </div>
+            {incompleteFilteredRows.length > PAGE_SIZE ? (
+              <div className="participation-dashboard-pagination">
+                <PaginationBar
+                  total={incompleteFilteredRows.length}
+                  page={incompletePage}
+                  pageSize={PAGE_SIZE}
+                  onGo={setIncompletePage}
+                />
+              </div>
+            ) : null}
           </div>
         </details>
       ) : null}
 
-      <section className="participation-dashboard-table-section" aria-label="전체 지원 이력">
-        <div className="participation-dashboard-section-head participation-dashboard-table-head">
-          <h2>전체 지원 이력</h2>
-          <div className="participation-table-filters">
-            <div className="participation-scope-toggle" role="group" aria-label="목록 범위">
-              <button
-                type="button"
-                className={scopeFilter === 'focus' ? 'active' : ''}
-                onClick={() => setScopeFilter('focus')}
-              >
-                집중 (진행 중)
-              </button>
-              <button
-                type="button"
-                className={scopeFilter === 'all' ? 'active' : ''}
-                onClick={() => setScopeFilter('all')}
-              >
-                전체
-              </button>
+      <details className="participation-incomplete-details participation-table-accordion">
+        <summary className="participation-incomplete-summary">
+          <span className="participation-incomplete-summary-title">전체 지원 이력</span>
+          <span className="participation-incomplete-summary-count">{tableRows.length}건</span>
+        </summary>
+        <div className="participation-incomplete-details-body">
+          <div className="participation-dashboard-section-head participation-dashboard-table-head">
+            <div className="participation-table-filters">
+              <div className="participation-scope-toggle" role="group" aria-label="목록 범위">
+                <button
+                  type="button"
+                  className={scopeFilter === 'focus' ? 'active' : ''}
+                  onClick={() => setScopeFilter('focus')}
+                >
+                  집중 (진행 중)
+                </button>
+                <button
+                  type="button"
+                  className={scopeFilter === 'all' ? 'active' : ''}
+                  onClick={() => setScopeFilter('all')}
+                >
+                  전체
+                </button>
+              </div>
+              <label className="participation-status-filter-label">
+                <span className="visually-hidden">상태 필터</span>
+                <select
+                  className="participation-status-filter-select"
+                  value={tableFilter}
+                  onChange={(e) => setTableFilter(e.target.value as TableFilter)}
+                >
+                  <option value="all">상태 · 전체</option>
+                  <option value="지원완료">지원완료</option>
+                  <option value="심사·진행">심사·본선</option>
+                  <option value="수상">수상</option>
+                  <option value="미수상">탈락·미수상</option>
+                </select>
+              </label>
             </div>
-            <label className="participation-status-filter-label">
-              <span className="visually-hidden">상태 필터</span>
-              <select
-                className="participation-status-filter-select"
-                value={tableFilter}
-                onChange={(e) => setTableFilter(e.target.value as TableFilter)}
-              >
-                <option value="all">상태 · 전체</option>
-                <option value="지원완료">지원완료</option>
-                <option value="심사·진행">심사·본선</option>
-                <option value="수상">수상</option>
-                <option value="미수상">탈락·미수상</option>
-              </select>
-            </label>
           </div>
-        </div>
         <div className="participation-dashboard-table-wrap">
           <table className="participation-dashboard-table">
             <thead>
@@ -608,14 +642,14 @@ export function ParticipationDashboardPanel({
               </tr>
             </thead>
             <tbody>
-              {tableRows.length === 0 ? (
+              {paginatedRows.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="participation-dashboard-table-empty">
                     조건에 맞는 행이 없습니다.
                   </td>
                 </tr>
               ) : (
-                tableRows.map((r) => {
+                paginatedRows.map((r) => {
                   const m = resolveMember(r.memberId)
                   const prize =
                     r.has_prize && r.prize_amount != null ? formatKrw(Number(r.prize_amount)) : '—'
@@ -671,7 +705,18 @@ export function ParticipationDashboardPanel({
             </tbody>
           </table>
         </div>
-      </section>
+        {tableRows.length > PAGE_SIZE ? (
+          <div className="participation-dashboard-pagination">
+            <PaginationBar
+              total={tableRows.length}
+              page={tablePage}
+              pageSize={PAGE_SIZE}
+              onGo={setTablePage}
+            />
+          </div>
+        ) : null}
+        </div>
+      </details>
     </div>
   )
 }
