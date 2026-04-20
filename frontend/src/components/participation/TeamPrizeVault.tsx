@@ -40,8 +40,6 @@ export type PrizeVaultContributor = {
 type Props = {
   progress: PrizeVaultProgress
   settlementCounts: PrizeVaultSettlementCounts
-  /** 상금 액수가 입력된 건 수 (정산 집계 대상) */
-  prizeEntryCount: number
   /**
    * 금고에 들어가는 상금(원): **수령 완료** 합계. 생략 시 `progress.totalAchievedWon`(DB·레거시 합)을 씁니다.
    */
@@ -122,7 +120,6 @@ function VaultMascotBee({ className }: { className?: string }) {
 export function TeamPrizeVault({
   progress,
   settlementCounts,
-  prizeEntryCount,
   vaultReceivedWon,
   coinImageSrc = DEFAULT_VAULT_COIN_SRC,
   prizeContributors = [],

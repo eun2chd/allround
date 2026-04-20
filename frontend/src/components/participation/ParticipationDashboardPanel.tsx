@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { participationRowTouchesYear } from '../../features/participation/participationRowYear'
 import { normalizePrizeSettlement, PRIZE_SETTLEMENT_STATUSES } from '../../features/participation/prizeSettlement'
@@ -88,6 +88,302 @@ type Props = {
   onOpenContest: (member: TeamMemberOverview, c: TeamMemberContest) => void
 }
 
+const DASHBOARD_PAGE_SIZE = 10
+
+type IncompleteDetailsProps = {
+  incompleteRows: DashboardFlatRow[]
+  incompleteFilteredRows: DashboardFlatRow[]
+  incompleteMemberOptions: [string, string][]
+  effectiveIncompleteMemberIdFilter: string
+  onMemberFilterChange: (memberId: string) => void
+  members: TeamMemberOverview[]
+  onOpenContest: (member: TeamMemberOverview, c: TeamMemberContest) => void
+}
+
+/** 페이지 state는 여기 두고 상위에서 `key`로 필터·연도 변경 시 리셋 */
+function ParticipationIncompleteDetailsBlock({
+  incompleteRows,
+  incompleteFilteredRows,
+  incompleteMemberOptions,
+  effectiveIncompleteMemberIdFilter,
+  onMemberFilterChange,
+  members,
+  onOpenContest,
+}: IncompleteDetailsProps) {
+  const [incompletePage, setIncompletePage] = useState(1)
+  const paginatedIncompleteRows = useMemo(
+    () =>
+      incompleteFilteredRows.slice(
+        (incompletePage - 1) * DASHBOARD_PAGE_SIZE,
+        incompletePage * DASHBOARD_PAGE_SIZE,
+      ),
+    [incompleteFilteredRows, incompletePage],
+  )
+
+  const resolveMember = (memberId: string): TeamMemberOverview | undefined =>
+    members.find((m) => m.id === memberId)
+
+  return (
+    <details className="participation-incomplete-details">
+      <summary className="participation-incomplete-summary">
+        <span className="participation-incomplete-summary-title">상세 등록이 필요한 참가</span>
+        <span className="participation-incomplete-summary-count">
+          {effectiveIncompleteMemberIdFilter
+            ? `${incompleteFilteredRows.length}/${incompleteRows.length}건`
+            : `${incompleteRows.length}건`}
+        </span>
+      </summary>
+      <div className="participation-incomplete-details-body">
+        <p className="participation-dashboard-section-desc participation-incomplete-details-desc">
+          참가만 눌렀고 상세를 안 채운 공모전입니다. D-day가 10일 이내인 항목을 위에 모았습니다.
+        </p>
+        <div className="participation-incomplete-filter-row">
+          <label className="participation-incomplete-filter-label" htmlFor="participation-incomplete-member-filter">
+            팀원(닉네임)
+          </label>
+          <select
+            id="participation-incomplete-member-filter"
+            className="participation-status-filter-select participation-incomplete-member-select"
+            value={effectiveIncompleteMemberIdFilter}
+            onChange={(e) => onMemberFilterChange(e.target.value)}
+          >
+            <option value="">전체</option>
+            {incompleteMemberOptions.map(([memberId, nickname]) => (
+              <option key={memberId} value={memberId}>
+                {nickname}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div className="participation-incomplete-list">
+          {incompleteFilteredRows.length === 0 ? (
+            <p className="participation-incomplete-filter-empty">선택한 팀원에 해당하는 항목이 없습니다.</p>
+          ) : null}
+          {paginatedIncompleteRows.map((r) => {
+            const n = parseDdayDays(r.d_day)
+            const urgent5 = n !== null && n !== -1 && n <= 5
+            const urgent10 = n !== null && n !== -1 && n <= 10
+            const m = resolveMember(r.memberId)
+            return (
+              <div
+                key={`${r.memberId}-${r.source}-${r.id}`}
+                className={
+                  'participation-incomplete-card' +
+                  (urgent5 ? ' participation-incomplete-card--d5' : '') +
+                  (!urgent5 && urgent10 ? ' participation-incomplete-card--d10' : '')
+                }
+              >
+                <div className="participation-incomplete-main">
+                  <span className="participation-incomplete-dday">
+                    {r.d_day?.trim() ? r.d_day : 'D-day —'}
+                  </span>
+                  <span className="participation-incomplete-title">{r.title || '(제목 없음)'}</span>
+                </div>
+                <div className="participation-incomplete-meta">
+                  <span>{r.memberNickname}</span>
+                  <span>·</span>
+                  <span>{r.source || '요즘것들'}</span>
+                </div>
+                <div className="participation-incomplete-actions">
+                  {m ? (
+                    <button
+                      type="button"
+                      className="btn btn-outline participation-incomplete-btn"
+                      onClick={() => onOpenContest(m, r)}
+                    >
+                      요약 보기
+                    </button>
+                  ) : null}
+                  <Link
+                    to={`/mypage/${encodeURIComponent(r.memberId)}#participationSection`}
+                    className="btn btn-primary participation-incomplete-btn"
+                  >
+                    상세 등록하러 가기
+                  </Link>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        {incompleteFilteredRows.length > DASHBOARD_PAGE_SIZE ? (
+          <div className="participation-dashboard-pagination">
+            <PaginationBar
+              total={incompleteFilteredRows.length}
+              page={incompletePage}
+              pageSize={DASHBOARD_PAGE_SIZE}
+              onGo={setIncompletePage}
+            />
+          </div>
+        ) : null}
+      </div>
+    </details>
+  )
+}
+
+type HistoryTableProps = {
+  tableRows: DashboardFlatRow[]
+  tableFilter: TableFilter
+  scopeFilter: ScopeFilter
+  setTableFilter: (f: TableFilter) => void
+  setScopeFilter: (s: ScopeFilter) => void
+  now: Date
+  members: TeamMemberOverview[]
+  onOpenContest: (member: TeamMemberOverview, c: TeamMemberContest) => void
+}
+
+function ParticipationHistoryTableBlock({
+  tableRows,
+  tableFilter,
+  scopeFilter,
+  setTableFilter,
+  setScopeFilter,
+  now,
+  members,
+  onOpenContest,
+}: HistoryTableProps) {
+  const [tablePage, setTablePage] = useState(1)
+  const paginatedRows = useMemo(
+    () =>
+      tableRows.slice((tablePage - 1) * DASHBOARD_PAGE_SIZE, tablePage * DASHBOARD_PAGE_SIZE),
+    [tableRows, tablePage],
+  )
+
+  const resolveMember = (memberId: string): TeamMemberOverview | undefined =>
+    members.find((m) => m.id === memberId)
+
+  return (
+    <details className="participation-incomplete-details participation-table-accordion">
+      <summary className="participation-incomplete-summary">
+        <span className="participation-incomplete-summary-title">전체 지원 이력</span>
+        <span className="participation-incomplete-summary-count">{tableRows.length}건</span>
+      </summary>
+      <div className="participation-incomplete-details-body">
+        <div className="participation-dashboard-section-head participation-dashboard-table-head">
+          <div className="participation-table-filters">
+            <div className="participation-scope-toggle" role="group" aria-label="목록 범위">
+              <button
+                type="button"
+                className={scopeFilter === 'focus' ? 'active' : ''}
+                onClick={() => setScopeFilter('focus')}
+              >
+                집중 (진행 중)
+              </button>
+              <button
+                type="button"
+                className={scopeFilter === 'all' ? 'active' : ''}
+                onClick={() => setScopeFilter('all')}
+              >
+                전체
+              </button>
+            </div>
+            <label className="participation-status-filter-label">
+              <span className="visually-hidden">상태 필터</span>
+              <select
+                className="participation-status-filter-select"
+                value={tableFilter}
+                onChange={(e) => setTableFilter(e.target.value as TableFilter)}
+              >
+                <option value="all">상태 · 전체</option>
+                <option value="지원완료">지원완료</option>
+                <option value="심사·진행">심사·본선</option>
+                <option value="수상">수상</option>
+                <option value="미수상">탈락·미수상</option>
+              </select>
+            </label>
+          </div>
+        </div>
+        <div className="participation-dashboard-table-wrap">
+          <table className="participation-dashboard-table">
+            <thead>
+              <tr>
+                <th scope="col">공모전</th>
+                <th scope="col">팀원</th>
+                <th scope="col">지원일</th>
+                <th scope="col">결과 발표</th>
+                <th scope="col">상금</th>
+                <th scope="col">상태</th>
+                <th scope="col">비고·링크</th>
+              </tr>
+            </thead>
+            <tbody>
+              {paginatedRows.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="participation-dashboard-table-empty">
+                    조건에 맞는 행이 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                paginatedRows.map((r) => {
+                  const m = resolveMember(r.memberId)
+                  const prize =
+                    r.has_prize && r.prize_amount != null ? formatKrw(Number(r.prize_amount)) : '—'
+                  const st = r.has_detail ? r.participation_status || '—' : '상세 미등록'
+                  const du = daysUntilAnnouncement(r.result_announcement_date, now)
+                  return (
+                    <tr key={`${r.memberId}-${r.source}-${r.id}-tb`}>
+                      <td className="participation-dt-title">{r.title || '—'}</td>
+                      <td>{r.memberNickname}</td>
+                      <td>{formatDateShort(r.participation_registered_at || r.submitted_at)}</td>
+                      <td>
+                        {formatDateShort(r.result_announcement_date)}
+                        {du != null && du >= 0 ? (
+                          <span className="participation-dt-dd"> (D-{du})</span>
+                        ) : null}
+                      </td>
+                      <td>{prize}</td>
+                      <td>
+                        <span
+                          className={
+                            'participation-dt-status' +
+                            (st === '상세 미등록' ? ' participation-dt-status--warn' : '')
+                          }
+                        >
+                          {st}
+                        </span>
+                      </td>
+                      <td className="participation-dt-actions">
+                        {r.url ? (
+                          <a href={r.url} target="_blank" rel="noreferrer" className="participation-dt-link">
+                            원문
+                          </a>
+                        ) : null}
+                        {r.document_filename ? (
+                          <span className="participation-dt-doc" title={r.document_filename}>
+                            첨부
+                          </span>
+                        ) : null}
+                        {m ? (
+                          <button
+                            type="button"
+                            className="participation-dt-link-btn"
+                            onClick={() => onOpenContest(m, r)}
+                          >
+                            상세
+                          </button>
+                        ) : null}
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+        {tableRows.length > DASHBOARD_PAGE_SIZE ? (
+          <div className="participation-dashboard-pagination">
+            <PaginationBar
+              total={tableRows.length}
+              page={tablePage}
+              pageSize={DASHBOARD_PAGE_SIZE}
+              onGo={setTablePage}
+            />
+          </div>
+        ) : null}
+      </div>
+    </details>
+  )
+}
+
 export function ParticipationDashboardPanel({
   members,
   loading,
@@ -100,9 +396,6 @@ export function ParticipationDashboardPanel({
   const [tableFilter, setTableFilter] = useState<TableFilter>('all')
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('focus')
   const [incompleteMemberIdFilter, setIncompleteMemberIdFilter] = useState('')
-  const [tablePage, setTablePage] = useState(1)
-  const [incompletePage, setIncompletePage] = useState(1)
-  const PAGE_SIZE = 10
 
   const flat = useMemo(() => flattenMembers(members), [members])
   const flatFiltered = useMemo(
@@ -153,37 +446,20 @@ export function ParticipationDashboardPanel({
     return [...byId.entries()].sort((a, b) => a[1].localeCompare(b[1], 'ko'))
   }, [incompleteRows])
 
-  useEffect(() => {
+  /** 옵션에서 빠진 등 잘못된 값은 전체 보기와 동일하게 취급 */
+  const effectiveIncompleteMemberIdFilter = useMemo(() => {
     if (
-      incompleteMemberIdFilter &&
+      !incompleteMemberIdFilter ||
       !incompleteMemberOptions.some(([id]) => id === incompleteMemberIdFilter)
-    ) {
-      setIncompleteMemberIdFilter('')
-    }
+    )
+      return ''
+    return incompleteMemberIdFilter
   }, [incompleteMemberIdFilter, incompleteMemberOptions])
 
-  useEffect(() => {
-    setTablePage(1)
-  }, [tableFilter, scopeFilter, dashboardYear])
-
-  useEffect(() => {
-    setIncompletePage(1)
-  }, [incompleteMemberIdFilter, dashboardYear])
-
   const incompleteFilteredRows = useMemo(() => {
-    if (!incompleteMemberIdFilter) return incompleteRows
-    return incompleteRows.filter((r) => r.memberId === incompleteMemberIdFilter)
-  }, [incompleteRows, incompleteMemberIdFilter])
-
-  const paginatedIncompleteRows = useMemo(() => {
-    return incompleteFilteredRows.slice((incompletePage - 1) * PAGE_SIZE, incompletePage * PAGE_SIZE)
-  }, [incompleteFilteredRows, incompletePage])
-
-  const incompleteFilterSelectValue = incompleteMemberOptions.some(
-    ([id]) => id === incompleteMemberIdFilter,
-  )
-    ? incompleteMemberIdFilter
-    : ''
+    if (!effectiveIncompleteMemberIdFilter) return incompleteRows
+    return incompleteRows.filter((r) => r.memberId === effectiveIncompleteMemberIdFilter)
+  }, [incompleteRows, effectiveIncompleteMemberIdFilter])
 
   const prizeVaultSettlement = useMemo(() => {
     const counts = {
@@ -191,16 +467,14 @@ export function ParticipationDashboardPanel({
       '수령 완료': 0,
       '팀 회식비 전환': 0,
     } as Record<(typeof PRIZE_SETTLEMENT_STATUSES)[number], number>
-    let prizeEntryCount = 0
     for (const r of flatFiltered) {
       if (!r.has_prize) continue
       const amt = r.prize_amount != null ? Number(r.prize_amount) : 0
       if (amt <= 0) continue
-      prizeEntryCount += 1
       const norm = normalizePrizeSettlement(r.prize_settlement_status) || '미수령'
       counts[norm] += 1
     }
-    return { counts, prizeEntryCount }
+    return { counts }
   }, [flatFiltered])
 
   /** 금고 UI: 「수령 완료」만 합산 (미수령·회식비 전환은 제외) */
@@ -310,10 +584,6 @@ export function ParticipationDashboardPanel({
     })
   }, [flatFiltered, tableFilter, scopeFilter, startToday])
 
-  const paginatedRows = useMemo(() => {
-    return tableRows.slice((tablePage - 1) * PAGE_SIZE, tablePage * PAGE_SIZE)
-  }, [tableRows, tablePage])
-
   const resolveMember = (memberId: string): TeamMemberOverview | undefined =>
     members.find((m) => m.id === memberId)
 
@@ -381,7 +651,6 @@ export function ParticipationDashboardPanel({
         progress={prizeVault}
         vaultReceivedWon={vaultReceivedWon}
         settlementCounts={prizeVaultSettlement.counts}
-        prizeEntryCount={prizeVaultSettlement.prizeEntryCount}
         prizeContributors={prizeVaultContributors}
       />
 
@@ -493,230 +762,29 @@ export function ParticipationDashboardPanel({
       </div>
 
       {incompleteRows.length > 0 ? (
-        <details className="participation-incomplete-details">
-          <summary className="participation-incomplete-summary">
-            <span className="participation-incomplete-summary-title">상세 등록이 필요한 참가</span>
-            <span className="participation-incomplete-summary-count">
-              {incompleteMemberIdFilter
-                ? `${incompleteFilteredRows.length}/${incompleteRows.length}건`
-                : `${incompleteRows.length}건`}
-            </span>
-          </summary>
-          <div className="participation-incomplete-details-body">
-            <p className="participation-dashboard-section-desc participation-incomplete-details-desc">
-              참가만 눌렀고 상세를 안 채운 공모전입니다. D-day가 10일 이내인 항목을 위에 모았습니다.
-            </p>
-            <div className="participation-incomplete-filter-row">
-              <label className="participation-incomplete-filter-label" htmlFor="participation-incomplete-member-filter">
-                팀원(닉네임)
-              </label>
-              <select
-                id="participation-incomplete-member-filter"
-                className="participation-status-filter-select participation-incomplete-member-select"
-                value={incompleteFilterSelectValue}
-                onChange={(e) => setIncompleteMemberIdFilter(e.target.value)}
-              >
-                <option value="">전체</option>
-                {incompleteMemberOptions.map(([memberId, nickname]) => (
-                  <option key={memberId} value={memberId}>
-                    {nickname}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="participation-incomplete-list">
-              {incompleteFilteredRows.length === 0 ? (
-                <p className="participation-incomplete-filter-empty">선택한 팀원에 해당하는 항목이 없습니다.</p>
-              ) : null}
-              {paginatedIncompleteRows.map((r) => {
-                const n = parseDdayDays(r.d_day)
-                const urgent5 = n !== null && n !== -1 && n <= 5
-                const urgent10 = n !== null && n !== -1 && n <= 10
-                const m = resolveMember(r.memberId)
-                return (
-                  <div
-                    key={`${r.memberId}-${r.source}-${r.id}`}
-                    className={
-                      'participation-incomplete-card' +
-                      (urgent5 ? ' participation-incomplete-card--d5' : '') +
-                      (!urgent5 && urgent10 ? ' participation-incomplete-card--d10' : '')
-                    }
-                  >
-                    <div className="participation-incomplete-main">
-                      <span className="participation-incomplete-dday">
-                        {r.d_day?.trim() ? r.d_day : 'D-day —'}
-                      </span>
-                      <span className="participation-incomplete-title">{r.title || '(제목 없음)'}</span>
-                    </div>
-                    <div className="participation-incomplete-meta">
-                      <span>{r.memberNickname}</span>
-                      <span>·</span>
-                      <span>{r.source || '요즘것들'}</span>
-                    </div>
-                    <div className="participation-incomplete-actions">
-                      {m ? (
-                        <button
-                          type="button"
-                          className="btn btn-outline participation-incomplete-btn"
-                          onClick={() => onOpenContest(m, r)}
-                        >
-                          요약 보기
-                        </button>
-                      ) : null}
-                      <Link
-                        to={`/mypage/${encodeURIComponent(r.memberId)}#participationSection`}
-                        className="btn btn-primary participation-incomplete-btn"
-                      >
-                        상세 등록하러 가기
-                      </Link>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-            {incompleteFilteredRows.length > PAGE_SIZE ? (
-              <div className="participation-dashboard-pagination">
-                <PaginationBar
-                  total={incompleteFilteredRows.length}
-                  page={incompletePage}
-                  pageSize={PAGE_SIZE}
-                  onGo={setIncompletePage}
-                />
-              </div>
-            ) : null}
-          </div>
-        </details>
+        <ParticipationIncompleteDetailsBlock
+          key={`${incompleteMemberIdFilter}:${dashboardYear}`}
+          incompleteRows={incompleteRows}
+          incompleteFilteredRows={incompleteFilteredRows}
+          incompleteMemberOptions={incompleteMemberOptions}
+          effectiveIncompleteMemberIdFilter={effectiveIncompleteMemberIdFilter}
+          onMemberFilterChange={setIncompleteMemberIdFilter}
+          members={members}
+          onOpenContest={onOpenContest}
+        />
       ) : null}
 
-      <details className="participation-incomplete-details participation-table-accordion">
-        <summary className="participation-incomplete-summary">
-          <span className="participation-incomplete-summary-title">전체 지원 이력</span>
-          <span className="participation-incomplete-summary-count">{tableRows.length}건</span>
-        </summary>
-        <div className="participation-incomplete-details-body">
-          <div className="participation-dashboard-section-head participation-dashboard-table-head">
-            <div className="participation-table-filters">
-              <div className="participation-scope-toggle" role="group" aria-label="목록 범위">
-                <button
-                  type="button"
-                  className={scopeFilter === 'focus' ? 'active' : ''}
-                  onClick={() => setScopeFilter('focus')}
-                >
-                  집중 (진행 중)
-                </button>
-                <button
-                  type="button"
-                  className={scopeFilter === 'all' ? 'active' : ''}
-                  onClick={() => setScopeFilter('all')}
-                >
-                  전체
-                </button>
-              </div>
-              <label className="participation-status-filter-label">
-                <span className="visually-hidden">상태 필터</span>
-                <select
-                  className="participation-status-filter-select"
-                  value={tableFilter}
-                  onChange={(e) => setTableFilter(e.target.value as TableFilter)}
-                >
-                  <option value="all">상태 · 전체</option>
-                  <option value="지원완료">지원완료</option>
-                  <option value="심사·진행">심사·본선</option>
-                  <option value="수상">수상</option>
-                  <option value="미수상">탈락·미수상</option>
-                </select>
-              </label>
-            </div>
-          </div>
-        <div className="participation-dashboard-table-wrap">
-          <table className="participation-dashboard-table">
-            <thead>
-              <tr>
-                <th scope="col">공모전</th>
-                <th scope="col">팀원</th>
-                <th scope="col">지원일</th>
-                <th scope="col">결과 발표</th>
-                <th scope="col">상금</th>
-                <th scope="col">상태</th>
-                <th scope="col">비고·링크</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedRows.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="participation-dashboard-table-empty">
-                    조건에 맞는 행이 없습니다.
-                  </td>
-                </tr>
-              ) : (
-                paginatedRows.map((r) => {
-                  const m = resolveMember(r.memberId)
-                  const prize =
-                    r.has_prize && r.prize_amount != null ? formatKrw(Number(r.prize_amount)) : '—'
-                  const st = r.has_detail ? r.participation_status || '—' : '상세 미등록'
-                  const du = daysUntilAnnouncement(r.result_announcement_date, now)
-                  return (
-                    <tr key={`${r.memberId}-${r.source}-${r.id}-tb`}>
-                      <td className="participation-dt-title">{r.title || '—'}</td>
-                      <td>{r.memberNickname}</td>
-                      <td>{formatDateShort(r.participation_registered_at || r.submitted_at)}</td>
-                      <td>
-                        {formatDateShort(r.result_announcement_date)}
-                        {du != null && du >= 0 ? (
-                          <span className="participation-dt-dd"> (D-{du})</span>
-                        ) : null}
-                      </td>
-                      <td>{prize}</td>
-                      <td>
-                        <span
-                          className={
-                            'participation-dt-status' +
-                            (st === '상세 미등록' ? ' participation-dt-status--warn' : '')
-                          }
-                        >
-                          {st}
-                        </span>
-                      </td>
-                      <td className="participation-dt-actions">
-                        {r.url ? (
-                          <a href={r.url} target="_blank" rel="noreferrer" className="participation-dt-link">
-                            원문
-                          </a>
-                        ) : null}
-                        {r.document_filename ? (
-                          <span className="participation-dt-doc" title={r.document_filename}>
-                            첨부
-                          </span>
-                        ) : null}
-                        {m ? (
-                          <button
-                            type="button"
-                            className="participation-dt-link-btn"
-                            onClick={() => onOpenContest(m, r)}
-                          >
-                            상세
-                          </button>
-                        ) : null}
-                      </td>
-                    </tr>
-                  )
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-        {tableRows.length > PAGE_SIZE ? (
-          <div className="participation-dashboard-pagination">
-            <PaginationBar
-              total={tableRows.length}
-              page={tablePage}
-              pageSize={PAGE_SIZE}
-              onGo={setTablePage}
-            />
-          </div>
-        ) : null}
-        </div>
-      </details>
+      <ParticipationHistoryTableBlock
+        key={`${tableFilter}:${scopeFilter}:${dashboardYear}`}
+        tableRows={tableRows}
+        tableFilter={tableFilter}
+        scopeFilter={scopeFilter}
+        setTableFilter={setTableFilter}
+        setScopeFilter={setScopeFilter}
+        now={now}
+        members={members}
+        onOpenContest={onOpenContest}
+      />
     </div>
   )
 }
