@@ -6,32 +6,44 @@ export type ContestDashboardSummary = {
   deadlineSoon: number
 }
 
-/** d_day 텍스트에서 D-n 일수 추출. 마감=-1, D-day/오늘=0 (목록·대시보드 공통) */
+/**
+ * d_day 텍스트에서 일수 추출 (목록·대시보드 공통).
+ * D-day/오늘=0, D-n(마감 전)=양수, 마감=-1, D+n(마감 후)=음수(절댓값은 경과 일수).
+ */
 export function parseDdayDays(d: string | null | undefined): number | null {
   if (d == null) return null
   const s = String(d).trim()
   if (!s) return null
   if (s.includes('마감')) return -1
   if (s === 'D-day' || s.includes('오늘')) return 0
-  const m = /^D-(\d+)$/i.exec(s)
-  if (m) return parseInt(m[1], 10)
+  const mPlus = /^D\+(\d+)$/i.exec(s)
+  if (mPlus) return -parseInt(mPlus[1], 10)
+  const mMinus = /^D-(\d+)$/i.exec(s)
+  if (mMinus) return parseInt(mMinus[1], 10)
   return null
 }
 
 /**
- * 목록 정렬용: 숫자가 작을수록 더 급함 (오늘/D-day=0, D-1=1 … 마감·미인식은 뒤로)
+ * 목록 정렬용: 숫자가 작을수록 더 급함 (오늘/D-day=0, D-1=1 … 마감·D+·미인식은 뒤로)
  */
 export function ddayUrgencyRankForSort(d: string | null | undefined): number {
   const n = parseDdayDays(d)
   if (n === null) return 10000
   if (n === -1) return 9999
+  if (n < -1) return 10000 + Math.abs(n)
   return n
 }
 
-/** D-3 이내(0~3) 또는 마감/D-day/오늘 — 대시보드 요약·목록 필터 공통 */
+/** D-3 이내(0~3) — 대시보드 요약·목록 필터 공통 (마감·D+ 제외) */
 export function isContestDeadlineWithin3Days(d: string | null | undefined): boolean {
   const n = parseDdayDays(d)
-  return n !== null && n <= 3
+  return n !== null && n >= 0 && n <= 3
+}
+
+/** D+n 표기(마감 후 경과 일수) */
+export function isContestDdayPlus(d: string | null | undefined): boolean {
+  const n = parseDdayDays(d)
+  return n !== null && n < -1
 }
 
 /** 요약 카드 `newToday`와 동일: 로컬 달력 기준 오늘 0시 이후 등록 */

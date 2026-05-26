@@ -161,6 +161,11 @@
       background: #cbd5e1 !important;
       color: #334155 !important;
     }
+    tr.row-viewed .d-day.minus,
+    tr.row-viewed .d-day.plus {
+      background: #cbd5e1 !important;
+      color: #334155 !important;
+    }
     tr.row-viewed .participation-badge--participate {
       opacity: 0.92;
     }
@@ -429,7 +434,17 @@
     .d-day.urgent { background: #dc2626; color: #fff; }
     .d-day.soon { background: #ffedd5; color: #c2410c; }
     .d-day.normal { background: var(--soft-purple); color: var(--accent-green-dark); }
+    /* D-n: 마감 전(− 표기) — 여유 있을 때 녹색 계열 */
+    .d-day.minus { background: #dcfce7; color: #15803d; }
+    /* D+n: 마감 후(+ 표기) — 회색·파랑 계열 */
+    .d-day.plus { background: #e0e7ff; color: #4338ca; }
     .d-day.today { background: #ea580c; color: #fff; }
+    .d-day.empty {
+      background: transparent;
+      color: #9ca3af;
+      font-weight: 500;
+      padding: 0;
+    }
     .d-day-tag {
       border-radius: 999px;
       font-weight: 600;
@@ -1719,7 +1734,12 @@
       background: #94a3b8;
       opacity: 1;
     }
-    .filter-chip.is-active .filter-chip__ico--dot.filter-chip__ico--neutral {
+    .filter-chip__ico--dot.filter-chip__ico--dday-plus {
+      background: #4338ca;
+      opacity: 1;
+    }
+    .filter-chip.is-active .filter-chip__ico--dot.filter-chip__ico--neutral,
+    .filter-chip.is-active .filter-chip__ico--dot.filter-chip__ico--dday-plus {
       background: #fff;
     }
     .filter-chip:hover:not(.is-active) {

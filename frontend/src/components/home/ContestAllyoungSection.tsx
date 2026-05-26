@@ -75,8 +75,9 @@ function pruneParticipationPatch(patch: ParticipationPatch, server: Record<strin
 
 function ddayClass(dDay: string | undefined): string {
   const tag = 'd-day-tag'
-  if (!dDay) return `d-day normal ${tag}`
+  if (!dDay?.trim()) return `d-day empty ${tag}`
   const s = dDay.trim()
+  if (/^D\+/i.test(s)) return `d-day plus ${tag}`
   if (s.includes('오늘') || s === 'D-day') return `d-day today ${tag}`
   if (s.includes('마감')) return `d-day urgent ${tag}`
   const m = /^D-(\d+)$/i.exec(s)
@@ -84,6 +85,7 @@ function ddayClass(dDay: string | undefined): string {
     const n = parseInt(m[1], 10)
     if (n <= 3) return `d-day urgent ${tag}`
     if (n <= 7) return `d-day soon ${tag}`
+    return `d-day minus ${tag}`
   }
   return `d-day normal ${tag}`
 }
@@ -148,6 +150,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     bookmarkOnly: false,
     deadlineSoonOnly: false,
     registeredTodayOnly: false,
+    hideDdayPlus: false,
     sortDdayUrgent: false,
   })
   const [uiQ, setUiQ] = useState('')
@@ -322,6 +325,7 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
     bookmarkOnly: false,
     deadlineSoonOnly: false,
     registeredTodayOnly: false,
+    hideDdayPlus: false,
     sortDdayUrgent: false,
   }
 
@@ -774,6 +778,21 @@ export function ContestAllyoungSection({ me, showToast, loadingOverlay }: Props)
             >
               <span className="filter-chip__ico filter-chip__ico--dot filter-chip__ico--neutral" aria-hidden />
               미선택만
+            </button>
+            <button
+              type="button"
+              className={'filter-chip' + (filters.hideDdayPlus ? ' is-active' : '')}
+              onClick={() => {
+                setFilters((f) => ({ ...f, hideDdayPlus: !f.hideDdayPlus }))
+                setPage(1)
+              }}
+              title="D+n(마감 후) 표기 공고를 목록에서 숨깁니다"
+            >
+              <span
+                className="filter-chip__ico filter-chip__ico--dot filter-chip__ico--dday-plus"
+                aria-hidden
+              />
+              D+ 숨기
             </button>
           </div>
 

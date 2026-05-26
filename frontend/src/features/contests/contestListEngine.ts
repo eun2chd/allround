@@ -1,6 +1,7 @@
 import {
   ddayUrgencyRankForSort,
   isContestCreatedToday,
+  isContestDdayPlus,
   isContestDeadlineWithin3Days,
 } from '../../services/contestDashboardSummaryService'
 import {
@@ -237,6 +238,7 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     if (fp.bookmarkOnly) list = list.filter((row) => meta.bookmarkSet.has(makeKey(row)))
     if (fp.deadlineSoonOnly) list = list.filter((r) => isContestDeadlineWithin3Days(r.d_day))
     if (fp.registeredTodayOnly) list = list.filter((r) => isContestCreatedToday(r.created_at))
+    if (fp.hideDdayPlus) list = list.filter((r) => !isContestDdayPlus(r.d_day))
     list.sort(sortFn)
     const total = list.length
     const start = (page - 1) * PAGE_SIZE
@@ -281,6 +283,7 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     }
     if (fp.deadlineSoonOnly) list = list.filter((r) => isContestDeadlineWithin3Days(r.d_day))
     if (fp.registeredTodayOnly) list = list.filter((r) => isContestCreatedToday(r.created_at))
+    if (fp.hideDdayPlus) list = list.filter((r) => !isContestDdayPlus(r.d_day))
     list.sort(sortFn)
     const total = list.length
     const start = (page - 1) * PAGE_SIZE
@@ -293,6 +296,7 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
   const needsChunkedClientFilter =
     (fp.deadlineSoonOnly ||
       fp.registeredTodayOnly ||
+      fp.hideDdayPlus ||
       fp.participationFilter === 'none' ||
       fp.sortDdayUrgent === true) &&
     !bookmarkOnly &&
@@ -329,6 +333,12 @@ export async function loadContestList(page: number, fp: FilterState): Promise<Co
     if (fp.registeredTodayOnly) {
       working = working.filter((raw) =>
         isContestCreatedToday((raw.created_at as string | undefined) ?? undefined),
+      )
+    }
+
+    if (fp.hideDdayPlus) {
+      working = working.filter(
+        (raw) => !isContestDdayPlus((raw.d_day as string | undefined) ?? undefined),
       )
     }
 
