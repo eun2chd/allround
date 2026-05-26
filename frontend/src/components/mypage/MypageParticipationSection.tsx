@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
 import { useConfirm } from '../../context/ConfirmContext'
 import { contestFocusPath } from '../../features/contests/contestTypes'
 import { appToast } from '../../lib/appToast'
