@@ -1,3 +1,8 @@
+import {
+  countParticipationLifecycle,
+  matchesLifecycleFilter,
+  type LifecycleFilter,
+} from '../features/participation/participationLifecycle'
 import { getSupabase } from './supabaseClient'
 
 export type ParticipationRow = {
@@ -10,6 +15,12 @@ export type ParticipationRow = {
   host?: string
   has_detail?: boolean
   participation_status?: string | null
+  lifecycle_status?: string | null
+  result_announcement_date?: string | null
+  /** contest_participation.updated_at (지원·참가 등록 시각) */
+  participation_registered_at?: string | null
+  /** contest_participation_detail.submitted_at */
+  submitted_at?: string | null
   award_status?: string | null
   /** contest_participation: 개인/팀 */
   participation_mode?: 'individual' | 'team'
@@ -67,7 +78,14 @@ export async function fetchUserParticipationPage(opts: {
   noDetailOnly?: boolean
   /** 공모전 제목 부분 일치(대소문자 무시) */
   titleSearch?: string
-}): Promise<{ success: boolean; data: ParticipationRow[]; total: number }> {
+  /** 진행중·종료 (참가 행만, 패스는 제외) */
+  lifecycleFilter?: LifecycleFilter
+}): Promise<{
+  success: boolean
+  data: ParticipationRow[]
+  total: number
+  lifecycleCounts?: { ongoing: number; ended: number }
+}> {
   const sb = getSupabase()
   const {
     data: { session },
@@ -85,16 +103,27 @@ export async function fetchUserParticipationPage(opts: {
 
   const { data: detailRows } = await sb
     .from('contest_participation_detail')
-    .select('source, contest_id, participation_status, award_status')
+    .select(
+      'source, contest_id, participation_status, lifecycle_status, award_status, submitted_at, result_announcement_date',
+    )
     .eq('user_id', userId)
   const detailByKey = new Map<
     string,
-    { participation_status?: string | null; award_status?: string | null }
+    {
+      participation_status?: string | null
+      lifecycle_status?: string | null
+      award_status?: string | null
+      submitted_at?: string | null
+      result_announcement_date?: string | null
+    }
   >()
   for (const d of detailRows || []) {
     detailByKey.set(`${String(d.source)}:${String(d.contest_id)}`, {
       participation_status: d.participation_status as string | null | undefined,
+      lifecycle_status: d.lifecycle_status as string | null | undefined,
       award_status: d.award_status as string | null | undefined,
+      submitted_at: d.submitted_at as string | null | undefined,
+      result_announcement_date: d.result_announcement_date as string | null | undefined,
     })
   }
 
@@ -138,6 +167,10 @@ export async function fetchUserParticipationPage(opts: {
       host: c?.host ?? '-',
       has_detail: detail != null,
       participation_status: detail?.participation_status ?? null,
+      lifecycle_status: detail?.lifecycle_status ?? null,
+      result_announcement_date: detail?.result_announcement_date ?? null,
+      participation_registered_at: (p as { updated_at?: string | null }).updated_at ?? null,
+      submitted_at: detail?.submitted_at ?? null,
       award_status: detail?.award_status ?? null,
       participation_mode: String(p.status || '') === 'participate' ? mode : undefined,
       team_name: String(p.status || '') === 'participate' ? tn : null,
@@ -153,6 +186,31 @@ export async function fetchUserParticipationPage(opts: {
   const qTitle = (opts.titleSearch || '').trim().toLowerCase()
   if (qTitle) filtered = filtered.filter((r) => (r.title || '').toLowerCase().includes(qTitle))
 
+  const participateRows = filtered.filter((r) => String(r.status || '') === 'participate')
+  const lifecycleCounts = countParticipationLifecycle(
+    participateRows.map((r) => ({
+      lifecycle_status: r.lifecycle_status,
+      participation_status: r.participation_status,
+      result_announcement_date: r.result_announcement_date,
+    })),
+  )
+
+  const lifecycleFilter = opts.lifecycleFilter || 'all'
+  if (lifecycleFilter !== 'all') {
+    filtered = filtered.filter(
+      (r) =>
+        String(r.status || '') === 'participate' &&
+        matchesLifecycleFilter(
+          {
+            lifecycle_status: r.lifecycle_status,
+            participation_status: r.participation_status,
+            result_announcement_date: r.result_announcement_date,
+          },
+          lifecycleFilter,
+        ),
+    )
+  }
+
   filtered.sort((a, b) => {
     const sa = String(a.status || '')
     const sb_ = String(b.status || '')
@@ -164,5 +222,5 @@ export async function fetchUserParticipationPage(opts: {
   const total = filtered.length
   const offset = (opts.page - 1) * opts.perPage
   const pageRows = filtered.slice(offset, offset + opts.perPage)
-  return { success: true, data: pageRows, total }
+  return { success: true, data: pageRows, total, lifecycleCounts }
 }

@@ -14,6 +14,7 @@ export type TeamMemberContest = {
   /** contest_participation.updated_at */
   participation_registered_at?: string | null
   participation_status?: string | null
+  lifecycle_status?: string | null
   award_status?: string | null
   has_prize?: boolean | null
   prize_amount?: number | null
@@ -102,13 +103,14 @@ export async function fetchTeamParticipationOverview(): Promise<{
     const { data: detailRows } = await sb
       .from('contest_participation_detail')
       .select(
-        'user_id, source, contest_id, participation_status, award_status, has_prize, prize_amount, prize_settlement_status, submitted_at, result_announcement_date, result_announcement_method, document_path, document_filename',
+        'user_id, source, contest_id, participation_status, lifecycle_status, award_status, has_prize, prize_amount, prize_settlement_status, submitted_at, result_announcement_date, result_announcement_method, document_path, document_filename',
       )
       .in('user_id', userIds)
     const detailByKey = new Map<
       string,
       {
         participation_status?: string | null
+        lifecycle_status?: string | null
         award_status?: string | null
         has_prize?: boolean | null
         prize_amount?: number | null
@@ -126,6 +128,7 @@ export async function fetchTeamParticipationOverview(): Promise<{
         source?: string
         contest_id?: string
         participation_status?: string | null
+        lifecycle_status?: string | null
         award_status?: string | null
         has_prize?: boolean | null
         prize_amount?: number | string | null
@@ -142,6 +145,7 @@ export async function fetchTeamParticipationOverview(): Promise<{
       if (!uid || !src || !cid) continue
       detailByKey.set(`${uid}:${src}:${cid}`, {
         participation_status: dr.participation_status ?? null,
+        lifecycle_status: dr.lifecycle_status ?? null,
         award_status: dr.award_status ?? null,
         has_prize: dr.has_prize ?? null,
         prize_amount:
@@ -186,6 +190,7 @@ export async function fetchTeamParticipationOverview(): Promise<{
         has_detail: !!det,
         participation_registered_at: partU.updated_at ?? null,
         participation_status: det?.participation_status ?? undefined,
+        lifecycle_status: det?.lifecycle_status ?? undefined,
         award_status: det?.award_status ?? undefined,
         has_prize: det?.has_prize ?? undefined,
         prize_amount: det?.prize_amount ?? undefined,

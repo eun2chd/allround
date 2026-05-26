@@ -408,7 +408,7 @@ export function TeamDashboardView() {
                           <td>
                             <Link to={`/mypage/${encodeURIComponent(m.id)}`}>{m.nickname || '회원'}</Link>
                           </td>
-                          <td>{cnt > 0 ? `${cnt}건` : '—'}</td>
+                          <td>{cnt > 0 ? `${cnt}건` : '-'}</td>
                         </tr>
                       )
                     })}

@@ -1,7 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import {
+  isAllowedParticipationFile,
+  participationFileRejectMessage,
+} from '../../features/participation/participationFileUpload'
 import { HiXMark } from 'react-icons/hi2'
 import { appToast } from '../../lib/appToast'
+import {
+  lifecycleForParticipationStatus,
+  PARTICIPATION_LIFECYCLE_STATUSES,
+} from '../../features/participation/participationLifecycle'
 import { PRIZE_SETTLEMENT_STATUSES } from '../../features/participation/prizeSettlement'
+import { ParticipationFileDropzone } from '../common/ParticipationFileDropzone'
+import { ParticipationAttachmentPreview } from '../participation/ParticipationAttachmentPreview'
 import {
   deleteParticipationDetailRow,
   fetchParticipationDetailRow,
@@ -28,6 +38,7 @@ type Props = {
 
 export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props) {
   const [status, setStatus] = useState<string>('지원완료')
+  const [lifecycle, setLifecycle] = useState<string>('진행중')
   const [award, setAward] = useState('')
   const [hasPrize, setHasPrize] = useState(false)
   const [prizeAmount, setPrizeAmount] = useState('')
@@ -39,6 +50,12 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
   const [docFilename, setDocFilename] = useState('')
   const [docFile, setDocFile] = useState<File | null>(null)
   const [docUploadLabel, setDocUploadLabel] = useState('등록')
+  const [awardWorkPath, setAwardWorkPath] = useState('')
+  const [awardWorkFilename, setAwardWorkFilename] = useState('')
+  const [awardWorkFile, setAwardWorkFile] = useState<File | null>(null)
+  const [awardWorkUploadLabel, setAwardWorkUploadLabel] = useState('등록')
+  const [awardWorkCleared, setAwardWorkCleared] = useState(false)
+  const pasteTargetRef = useRef<'doc' | 'award'>('doc')
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
 
@@ -48,6 +65,7 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
     ;(async () => {
       setLoading(true)
       setStatus('지원완료')
+      setLifecycle('진행중')
       setAward('')
       setHasPrize(false)
       setPrizeAmount('')
@@ -59,10 +77,16 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
       setDocFilename('')
       setDocFile(null)
       setDocUploadLabel('등록')
+      setAwardWorkPath('')
+      setAwardWorkFilename('')
+      setAwardWorkFile(null)
+      setAwardWorkUploadLabel('등록')
+      setAwardWorkCleared(false)
       try {
         const d = await fetchParticipationDetailRow(ctx.profileUserId, ctx.source, ctx.contestId)
         if (cancelled || !d) return
         setStatus(String(d.participation_status || '지원완료'))
+        setLifecycle(String((d as { lifecycle_status?: string }).lifecycle_status || '진행중'))
         setAward(String(d.award_status || ''))
         setHasPrize(!!d.has_prize)
         setPrizeAmount(d.prize_amount != null ? String(d.prize_amount) : '')
@@ -84,6 +108,11 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
         setDocPath(path)
         setDocFilename(fn)
         if (path && fn) setDocUploadLabel('변경')
+        const awardPath = String((d as { award_work_path?: string }).award_work_path || '')
+        const awardFn = String((d as { award_work_filename?: string }).award_work_filename || '')
+        setAwardWorkPath(awardPath)
+        setAwardWorkFilename(awardFn)
+        if (awardPath && awardFn) setAwardWorkUploadLabel('변경')
       } finally {
         if (!cancelled) setLoading(false)
       }
@@ -97,12 +126,21 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
 
   const showAward = status === '수상'
   const hasDisplayDoc = !!(docPath && docFilename)
+  const hasDisplayAwardWork = !!(awardWorkPath && awardWorkFilename)
 
   const clearDoc = () => {
     setDocPath('')
     setDocFilename('')
     setDocFile(null)
     setDocUploadLabel('등록')
+  }
+
+  const clearAwardWork = () => {
+    setAwardWorkPath('')
+    setAwardWorkFilename('')
+    setAwardWorkFile(null)
+    setAwardWorkUploadLabel('등록')
+    setAwardWorkCleared(true)
   }
 
   const onSave = async () => {
@@ -118,6 +156,7 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
         source: ctx.source,
         contest_id: ctx.contestId,
         participation_status: status,
+        lifecycle_status: lifecycle,
         award_status: showAward ? award : null,
         has_prize: hasPrize,
         prize_amount: prizeAmount.trim() ? Number(prizeAmount) : null,
@@ -128,6 +167,10 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
         document_path: docPath || null,
         document_filename: docFilename || null,
         documentFile: docFile,
+        award_work_path: awardWorkPath || null,
+        award_work_filename: awardWorkFilename || null,
+        awardWorkFile: awardWorkFile,
+        clear_award_work: awardWorkCleared && !awardWorkPath && !awardWorkFilename && !awardWorkFile,
       })
       if (!r.success) {
         appToast(r.error || '저장 실패', 'error')
@@ -139,6 +182,28 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
     } finally {
       setSaving(false)
     }
+  }
+
+  const applyPastedFile = (f: File) => {
+    if (!isAllowedParticipationFile(f)) {
+      appToast(participationFileRejectMessage(), 'error')
+      return
+    }
+    if (pasteTargetRef.current === 'award') {
+      setAwardWorkFile(f)
+      setAwardWorkCleared(false)
+      setAwardWorkUploadLabel(`변경됨 (${f.name})`)
+      return
+    }
+    setDocFile(f)
+    setDocUploadLabel(`변경됨 (${f.name})`)
+  }
+
+  const onModalPaste = (e: React.ClipboardEvent) => {
+    const f = e.clipboardData.files?.[0]
+    if (!f) return
+    e.preventDefault()
+    applyPastedFile(f)
   }
 
   const onDelete = async () => {
@@ -165,17 +230,33 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
             <HiXMark className="modal-close-ico" aria-hidden />
           </button>
         </div>
-        <div className="modal-body">
+        <div className="modal-body" onPaste={onModalPaste}>
           {loading ? (
             <div className="exp-loading">불러오는 중...</div>
           ) : (
             <>
               <div className="form-group">
+                <label>진행 상태</label>
+                <select value={lifecycle} onChange={(e) => setLifecycle(e.target.value)}>
+                  {PARTICIPATION_LIFECYCLE_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+                <p className="participation-detail-settlement-hint">
+                  진행중 = 아직 진행 중인 공모전 · 종료 = 결과 확정·취소 등 마무리된 참가
+                </p>
+              </div>
+              <div className="form-group">
                 <label>지원·심사 단계</label>
                 <select
                   value={status}
                   onChange={(e) => {
-                    setStatus(e.target.value)
+                    const v = e.target.value
+                    setStatus(v)
+                    const nextLifecycle = lifecycleForParticipationStatus(v)
+                    if (nextLifecycle) setLifecycle(nextLifecycle)
                   }}
                 >
                   {STATUSES.map((s) => (
@@ -256,44 +337,84 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
                   onChange={(e) => setResultMethod(e.target.value)}
                 />
               </div>
-              {hasDisplayDoc ? (
-                <div className="form-group">
-                  <label>현재 제출물</label>
-                  <div className="participation-doc-current">
-                    <span className="participation-doc-filename">{docFilename}</span>
-                    <div className="participation-doc-actions">
-                      {docPath.startsWith('http') ? (
-                        <a
-                          href={docPath}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="btn-outline btn-sm"
-                        >
-                          열기
-                        </a>
-                      ) : null}
-                      <button type="button" className="btn-outline btn-sm" onClick={clearDoc}>
-                        제거
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ) : null}
-              <div className="form-group">
+              <div className="form-group participation-attachment-form-group">
                 <label>
                   제출물 <span className="form-required-star">*</span>{' '}
                   <span>{docUploadLabel}</span>
                 </label>
-                <input
-                  type="file"
-                  accept=".pdf,.doc,.docx,.hwp,.ppt,.pptx,.xls,.xlsx,.zip,.txt"
-                  className="participation-doc-file-input"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0] || null
+                {hasDisplayDoc && !docFile ? (
+                  <ParticipationAttachmentPreview
+                    heading="제출물"
+                    filename={docFilename}
+                    path={docPath}
+                    onRemove={clearDoc}
+                  />
+                ) : null}
+                {docFile ? (
+                  <ParticipationAttachmentPreview
+                    heading="제출물 (변경 예정)"
+                    filename={docFile.name}
+                    localFile={docFile}
+                    onRemove={() => {
+                      setDocFile(null)
+                      setDocUploadLabel(docPath && docFilename ? '변경' : '등록')
+                    }}
+                  />
+                ) : null}
+                <ParticipationFileDropzone
+                  pendingName={docFile?.name ?? null}
+                  onActivate={() => {
+                    pasteTargetRef.current = 'doc'
+                  }}
+                  onFile={(f) => {
                     setDocFile(f)
                     if (f) setDocUploadLabel(`변경됨 (${f.name})`)
                   }}
                 />
+              </div>
+              <div className="participation-award-work-block">
+                  <div className="form-group participation-attachment-form-group">
+                    <label>
+                      수상작 첨부 <span>{awardWorkUploadLabel}</span>
+                    </label>
+                    {hasDisplayAwardWork && !awardWorkFile ? (
+                      <ParticipationAttachmentPreview
+                        heading="수상작"
+                        filename={awardWorkFilename}
+                        path={awardWorkPath}
+                        onRemove={clearAwardWork}
+                      />
+                    ) : null}
+                    {awardWorkFile ? (
+                      <ParticipationAttachmentPreview
+                        heading="수상작 (변경 예정)"
+                        filename={awardWorkFile.name}
+                        localFile={awardWorkFile}
+                        onRemove={() => {
+                          setAwardWorkFile(null)
+                          setAwardWorkUploadLabel(
+                            awardWorkPath && awardWorkFilename ? '변경' : '등록',
+                          )
+                        }}
+                      />
+                    ) : null}
+                    <ParticipationFileDropzone
+                      pendingName={awardWorkFile?.name ?? null}
+                      onActivate={() => {
+                        pasteTargetRef.current = 'award'
+                      }}
+                      onFile={(f) => {
+                        setAwardWorkFile(f)
+                        if (f) {
+                          setAwardWorkCleared(false)
+                          setAwardWorkUploadLabel(`변경됨 (${f.name})`)
+                        }
+                      }}
+                    />
+                    <p className="participation-detail-settlement-hint">
+                      수상한 경우 입상 작품·시안·PDF·한글·이미지 등을 추가로 올릴 수 있습니다. (선택)
+                    </p>
+                  </div>
               </div>
               <div className="participation-detail-actions">
                 <button type="button" className="btn-outline danger" onClick={onDelete}>

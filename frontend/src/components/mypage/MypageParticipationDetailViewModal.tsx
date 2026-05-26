@@ -2,7 +2,9 @@ import { useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { HiXMark } from 'react-icons/hi2'
 import { contestFocusPath } from '../../features/contests/contestTypes'
+import { ParticipationLifecycleBadge } from '../participation/ParticipationLifecycleBadge'
 import { normalizePrizeSettlement } from '../../features/participation/prizeSettlement'
+import { ParticipationAttachmentPreview } from '../participation/ParticipationAttachmentPreview'
 import { fetchParticipationDetailRow } from '../../services/participationDetailService'
 
 export type ParticipationDetailViewCtx = {
@@ -26,7 +28,7 @@ type Props = {
 }
 
 function formatDt(iso: string | null | undefined) {
-  if (!iso) return '—'
+  if (!iso) return '-'
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return String(iso)
   return d.toLocaleString('ko-KR', {
@@ -39,7 +41,7 @@ function formatDt(iso: string | null | undefined) {
 }
 
 function formatDateOnly(s: string | null | undefined) {
-  if (!s) return '—'
+  if (!s) return '-'
   const t = String(s)
   return t.length >= 10 ? t.slice(0, 10) : t
 }
@@ -112,7 +114,14 @@ export function MypageParticipationDetailViewModal({ ctx, onClose }: Props) {
             <p className="participation-view-empty">상세 정보를 불러올 수 없습니다.</p>
           ) : (
             <div className="participation-view-fields">
-              <DetailField label="지원·심사 단계">{String(data.participation_status || '—')}</DetailField>
+              <DetailField label="진행 상태">
+                <ParticipationLifecycleBadge
+                  lifecycle_status={(data as { lifecycle_status?: string }).lifecycle_status}
+                  participation_status={data.participation_status}
+                  result_announcement_date={data.result_announcement_date}
+                />
+              </DetailField>
+              <DetailField label="지원·심사 단계">{String(data.participation_status || '-')}</DetailField>
               {String(data.participation_status) === '수상' && data.award_status ? (
                 <DetailField label="수상 등급">{String(data.award_status)}</DetailField>
               ) : null}
@@ -138,27 +147,29 @@ export function MypageParticipationDetailViewModal({ ctx, onClose }: Props) {
               <DetailField label="제출일">{formatDt(data.submitted_at as string | null)}</DetailField>
               <DetailField label="결과 발표일">{formatDateOnly(data.result_announcement_date as string | null)}</DetailField>
               <DetailField label="결과 발표 (경로)">
-                {data.result_announcement_method ? String(data.result_announcement_method) : '—'}
-              </DetailField>
-              <DetailField label="제출물">
-                {data.document_filename ? (
-                  <>
-                    <span>{String(data.document_filename)}</span>
-                    {data.document_path && String(data.document_path).startsWith('http') ? (
-                      <>
-                        {' '}
-                        <a href={String(data.document_path)} target="_blank" rel="noreferrer" className="participation-view-doc-link">
-                          열기
-                        </a>
-                      </>
-                    ) : null}
-                  </>
-                ) : (
-                  '—'
-                )}
+                {data.result_announcement_method ? String(data.result_announcement_method) : '-'}
               </DetailField>
             </div>
           )}
+
+          {ctx.hasDetail && !loading && data ? (
+            <div className="participation-view-attachments">
+              {data.document_filename ? (
+                <ParticipationAttachmentPreview
+                  heading="제출물"
+                  filename={String(data.document_filename)}
+                  path={data.document_path as string | null}
+                />
+              ) : null}
+              {(data as { award_work_filename?: string }).award_work_filename ? (
+                <ParticipationAttachmentPreview
+                  heading="수상작"
+                  filename={String((data as { award_work_filename?: string }).award_work_filename)}
+                  path={(data as { award_work_path?: string }).award_work_path as string | null}
+                />
+              ) : null}
+            </div>
+          ) : null}
 
           <div className="participation-view-footer participation-view-footer--stack">
             <Link to={contestFocusPath(ctx.source, ctx.contestId)} className="participation-view-open-app">

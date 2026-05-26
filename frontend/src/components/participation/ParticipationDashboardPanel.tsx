@@ -1,11 +1,27 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import {
+  countParticipationLifecycle,
+  isParticipationEnded,
+  matchesLifecycleFilter,
+  type LifecycleFilter,
+} from '../../features/participation/participationLifecycle'
 import { participationRowTouchesYear } from '../../features/participation/participationRowYear'
+import { ParticipationLifecycleBadge } from './ParticipationLifecycleBadge'
+import { ParticipationLifecycleMetricGrid } from './ParticipationLifecycleMetricGrid'
 import { normalizePrizeSettlement, PRIZE_SETTLEMENT_STATUSES } from '../../features/participation/prizeSettlement'
 import { parseDdayDays } from '../../services/contestDashboardSummaryService'
 import type { TeamMemberContest, TeamMemberOverview } from '../../services/teamParticipationService'
 import { TeamPrizeVault, type PrizeVaultProgress } from './TeamPrizeVault'
 import { PaginationBar } from '../common/PaginationBar'
+import { TableActionDropdown, type TableActionMenuItem } from '../common/TableActionDropdown'
+import {
+  formatParticipationDateFull,
+  formatParticipationDateTable,
+  participationDateIso,
+} from '../../features/participation/participationDates'
+import { openParticipationFile, resolveParticipationFileUrl } from '../../features/participation/participationFilePreview'
+import { onParticipationTableRowClick } from '../../features/participation/participationTableRowClick'
+import { TableEllipsis } from '../common/TableEllipsis'
 
 export type DashboardFlatRow = TeamMemberContest & {
   memberId: string
@@ -38,12 +54,11 @@ function formatKrw(n: number): string {
   }).format(n)
 }
 
-function formatDateShort(iso: string | null | undefined): string {
-  if (!iso) return '—'
-  const s = String(iso).slice(0, 10)
-  if (s.length < 10) return iso
-  const [, m, day] = s.split('-')
-  return `${m}.${day}`
+function formatCalendarDayLabel(iso: string): string {
+  const d = new Date(`${iso}T12:00:00`)
+  if (Number.isNaN(d.getTime())) return iso
+  const weekdays = ['일', '월', '화', '수', '목', '금', '토']
+  return `${d.getMonth() + 1}월 ${d.getDate()}일 (${weekdays[d.getDay()]})`
 }
 
 function daysUntilAnnouncement(dateStr: string | null | undefined, now: Date): number | null {
@@ -59,16 +74,6 @@ function ddayRankForSort(d: string | undefined): number {
   if (n === null) return 999
   if (n === -1) return 998
   return n
-}
-
-function isRowEnded(r: DashboardFlatRow, startToday: number): boolean {
-  if (r.result_announcement_date) {
-    const t = new Date(`${String(r.result_announcement_date).slice(0, 10)}T12:00:00`).getTime()
-    if (!Number.isNaN(t) && t < startToday) return true
-  }
-  const st = r.participation_status || ''
-  if (st === '수상' || st === '미수상' || st === '취소') return true
-  return false
 }
 
 function rowTouchesYear(r: DashboardFlatRow, year: number): boolean {
@@ -88,7 +93,11 @@ type Props = {
   onOpenContest: (member: TeamMemberOverview, c: TeamMemberContest) => void
 }
 
-const DASHBOARD_PAGE_SIZE = 10
+const DASHBOARD_PAGE_SIZE = 5
+
+function tableRowNo(page: number, index: number): number {
+  return (page - 1) * DASHBOARD_PAGE_SIZE + index + 1
+}
 
 type IncompleteDetailsProps = {
   incompleteRows: DashboardFlatRow[]
@@ -98,6 +107,7 @@ type IncompleteDetailsProps = {
   onMemberFilterChange: (memberId: string) => void
   members: TeamMemberOverview[]
   onOpenContest: (member: TeamMemberOverview, c: TeamMemberContest) => void
+  now: Date
 }
 
 /** 페이지 state는 여기 두고 상위에서 `key`로 필터·연도 변경 시 리셋 */
@@ -109,6 +119,7 @@ function ParticipationIncompleteDetailsBlock({
   onMemberFilterChange,
   members,
   onOpenContest,
+  now,
 }: IncompleteDetailsProps) {
   const [incompletePage, setIncompletePage] = useState(1)
   const paginatedIncompleteRows = useMemo(
@@ -124,7 +135,7 @@ function ParticipationIncompleteDetailsBlock({
     members.find((m) => m.id === memberId)
 
   return (
-    <details className="participation-incomplete-details">
+    <details className="participation-incomplete-details" open>
       <summary className="participation-incomplete-summary">
         <span className="participation-incomplete-summary-title">상세 등록이 필요한 참가</span>
         <span className="participation-incomplete-summary-count">
@@ -155,55 +166,126 @@ function ParticipationIncompleteDetailsBlock({
             ))}
           </select>
         </div>
-        <div className="participation-incomplete-list">
-          {incompleteFilteredRows.length === 0 ? (
-            <p className="participation-incomplete-filter-empty">선택한 팀원에 해당하는 항목이 없습니다.</p>
-          ) : null}
-          {paginatedIncompleteRows.map((r) => {
-            const n = parseDdayDays(r.d_day)
-            const urgent5 = n !== null && n !== -1 && n <= 5
-            const urgent10 = n !== null && n !== -1 && n <= 10
-            const m = resolveMember(r.memberId)
-            return (
-              <div
-                key={`${r.memberId}-${r.source}-${r.id}`}
-                className={
-                  'participation-incomplete-card' +
-                  (urgent5 ? ' participation-incomplete-card--d5' : '') +
-                  (!urgent5 && urgent10 ? ' participation-incomplete-card--d10' : '')
-                }
-              >
-                <div className="participation-incomplete-main">
-                  <span className="participation-incomplete-dday">
-                    {r.d_day?.trim() ? r.d_day : 'D-day —'}
-                  </span>
-                  <span className="participation-incomplete-title">{r.title || '(제목 없음)'}</span>
-                </div>
-                <div className="participation-incomplete-meta">
-                  <span>{r.memberNickname}</span>
-                  <span>·</span>
-                  <span>{r.source || '요즘것들'}</span>
-                </div>
-                <div className="participation-incomplete-actions">
-                  {m ? (
-                    <button
-                      type="button"
-                      className="btn btn-outline participation-incomplete-btn"
-                      onClick={() => onOpenContest(m, r)}
+        <div className="participation-dashboard-table-wrap">
+          <table className="participation-dashboard-table">
+            <colgroup>
+              <col className="participation-dashboard-col-no" />
+              <col className="participation-dashboard-col-lifecycle" />
+              <col className="participation-dashboard-col-dday" />
+              <col className="participation-dashboard-col-date" />
+              <col className="participation-dashboard-col-title" />
+              <col className="participation-dashboard-col-member" />
+              <col className="participation-dashboard-col-source" />
+              <col className="participation-dashboard-col-actions" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th scope="col" className="participation-dt-no-col">
+                  No
+                </th>
+                <th scope="col">진행</th>
+                <th scope="col">D-day</th>
+                <th scope="col">결과 발표</th>
+                <th scope="col">공모전</th>
+                <th scope="col">팀원</th>
+                <th scope="col">출처</th>
+                <th scope="col">비고·링크</th>
+              </tr>
+            </thead>
+            <tbody>
+              {incompleteFilteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="participation-dashboard-table-empty">
+                    선택한 팀원에 해당하는 항목이 없습니다.
+                  </td>
+                </tr>
+              ) : (
+                paginatedIncompleteRows.map((r, i) => {
+                  const n = parseDdayDays(r.d_day)
+                  const urgent5 = n !== null && n !== -1 && n <= 5
+                  const urgent10 = n !== null && n !== -1 && n <= 10
+                  const m = resolveMember(r.memberId)
+                  const incompleteActions: TableActionMenuItem[] = []
+                  if (m) {
+                    incompleteActions.push({
+                      kind: 'button',
+                      label: '요약',
+                      onClick: () => onOpenContest(m, r),
+                    })
+                  }
+                  incompleteActions.push({
+                    kind: 'link',
+                    label: '상세 등록',
+                    to: `/mypage/${encodeURIComponent(r.memberId)}#participationSection`,
+                  })
+                  const lifecycleEnded = isParticipationEnded(
+                    {
+                      lifecycle_status: r.lifecycle_status,
+                      participation_status: r.participation_status,
+                      result_announcement_date: r.result_announcement_date,
+                    },
+                    now,
+                  )
+                  return (
+                    <tr
+                      key={`${r.memberId}-${r.source}-${r.id}`}
+                      className={
+                        'participation-table-row--clickable' +
+                        (urgent5 ? ' participation-incomplete-row--d5' : '') +
+                        (!urgent5 && urgent10 ? ' participation-incomplete-row--d10' : '') +
+                        (lifecycleEnded
+                          ? ' participation-table-row--lifecycle-ended'
+                          : ' participation-table-row--lifecycle-ongoing')
+                      }
+                      onClick={(e) => {
+                        if (!m) return
+                        onParticipationTableRowClick(e, () => onOpenContest(m, r))
+                      }}
                     >
-                      요약 보기
-                    </button>
-                  ) : null}
-                  <Link
-                    to={`/mypage/${encodeURIComponent(r.memberId)}#participationSection`}
-                    className="btn btn-primary participation-incomplete-btn"
-                  >
-                    상세 등록하러 가기
-                  </Link>
-                </div>
-              </div>
-            )
-          })}
+                      <td className="participation-dt-no">{tableRowNo(incompletePage, i)}</td>
+                      <td>
+                        <ParticipationLifecycleBadge
+                          lifecycle_status={r.lifecycle_status}
+                          participation_status={r.participation_status}
+                          result_announcement_date={r.result_announcement_date}
+                          now={now}
+                        />
+                      </td>
+                      <td
+                        className={
+                          'participation-incomplete-dday participation-table-cell-clip' +
+                          (urgent5 ? ' participation-incomplete-dday--d5' : '')
+                        }
+                      >
+                        <TableEllipsis text={r.d_day?.trim() ? r.d_day : ''} />
+                      </td>
+                      <td
+                        className="participation-table-cell-clip participation-table-date"
+                        data-date={participationDateIso(r.result_announcement_date) ?? ''}
+                      >
+                        <TableEllipsis
+                          text={formatParticipationDateTable(r.result_announcement_date)}
+                          title={formatParticipationDateFull(r.result_announcement_date)}
+                        />
+                      </td>
+                      <td className="participation-table-cell-clip participation-dt-title">
+                        <TableEllipsis text={r.title || ''} emptyLabel="(제목 없음)" />
+                      </td>
+                      <td className="participation-table-cell-clip">
+                        <TableEllipsis text={r.memberNickname || ''} />
+                      </td>
+                      <td className="participation-table-cell-clip">
+                        <TableEllipsis text={r.source || '요즘것들'} />
+                      </td>
+                      <td className="participation-dt-actions">
+                        <TableActionDropdown items={incompleteActions} />
+                      </td>
+                    </tr>
+                  )
+                })
+              )}
+            </tbody>
+          </table>
         </div>
         {incompleteFilteredRows.length > DASHBOARD_PAGE_SIZE ? (
           <div className="participation-dashboard-pagination">
@@ -252,7 +334,7 @@ function ParticipationHistoryTableBlock({
     members.find((m) => m.id === memberId)
 
   return (
-    <details className="participation-incomplete-details participation-table-accordion">
+    <details className="participation-incomplete-details participation-table-accordion" open>
       <summary className="participation-incomplete-summary">
         <span className="participation-incomplete-summary-title">전체 지원 이력</span>
         <span className="participation-incomplete-summary-count">{tableRows.length}건</span>
@@ -294,8 +376,23 @@ function ParticipationHistoryTableBlock({
         </div>
         <div className="participation-dashboard-table-wrap">
           <table className="participation-dashboard-table">
+            <colgroup>
+              <col className="participation-dashboard-col-no" />
+              <col className="participation-dashboard-col-lifecycle" />
+              <col className="participation-dashboard-col-title" />
+              <col className="participation-dashboard-col-member" />
+              <col className="participation-dashboard-col-date" />
+              <col className="participation-dashboard-col-announce" />
+              <col className="participation-dashboard-col-prize" />
+              <col className="participation-dashboard-col-status" />
+              <col className="participation-dashboard-col-actions" />
+            </colgroup>
             <thead>
               <tr>
+                <th scope="col" className="participation-dt-no-col">
+                  No
+                </th>
+                <th scope="col">진행</th>
                 <th scope="col">공모전</th>
                 <th scope="col">팀원</th>
                 <th scope="col">지원일</th>
@@ -308,59 +405,125 @@ function ParticipationHistoryTableBlock({
             <tbody>
               {paginatedRows.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="participation-dashboard-table-empty">
+                  <td colSpan={9} className="participation-dashboard-table-empty">
                     조건에 맞는 행이 없습니다.
                   </td>
                 </tr>
               ) : (
-                paginatedRows.map((r) => {
+                paginatedRows.map((r, i) => {
                   const m = resolveMember(r.memberId)
                   const prize =
-                    r.has_prize && r.prize_amount != null ? formatKrw(Number(r.prize_amount)) : '—'
-                  const st = r.has_detail ? r.participation_status || '—' : '상세 미등록'
+                    r.has_prize && r.prize_amount != null ? formatKrw(Number(r.prize_amount)) : '-'
+                  const st = r.has_detail ? r.participation_status || '-' : '상세 미등록'
                   const du = daysUntilAnnouncement(r.result_announcement_date, now)
+                  const historyActions: TableActionMenuItem[] = []
+                  if (r.url) {
+                    historyActions.push({
+                      kind: 'link',
+                      label: '원문',
+                      to: String(r.url),
+                      external: true,
+                    })
+                  }
+                  if (r.document_filename && r.document_path) {
+                    const docName = String(r.document_filename)
+                    const docUrl = resolveParticipationFileUrl(r.document_path)
+                    historyActions.push({
+                      kind: 'button',
+                      label: docName.length > 18 ? `첨부: ${docName.slice(0, 16)}…` : `첨부: ${docName}`,
+                      title: docName,
+                      onClick: () => {
+                        if (docUrl) openParticipationFile(docUrl)
+                      },
+                      disabled: !docUrl,
+                    })
+                  }
+                  if (m) {
+                    historyActions.push({
+                      kind: 'button',
+                      label: '상세',
+                      onClick: () => onOpenContest(m, r),
+                    })
+                  }
+                  const lifecycleEnded = isParticipationEnded(
+                    {
+                      lifecycle_status: r.lifecycle_status,
+                      participation_status: r.participation_status,
+                      result_announcement_date: r.result_announcement_date,
+                    },
+                    now,
+                  )
                   return (
-                    <tr key={`${r.memberId}-${r.source}-${r.id}-tb`}>
-                      <td className="participation-dt-title">{r.title || '—'}</td>
-                      <td>{r.memberNickname}</td>
-                      <td>{formatDateShort(r.participation_registered_at || r.submitted_at)}</td>
+                    <tr
+                      key={`${r.memberId}-${r.source}-${r.id}-tb`}
+                      className={
+                        'participation-table-row--clickable' +
+                        (lifecycleEnded
+                          ? ' participation-table-row--lifecycle-ended'
+                          : ' participation-table-row--lifecycle-ongoing')
+                      }
+                      onClick={(e) => {
+                        if (!m) return
+                        onParticipationTableRowClick(e, () => onOpenContest(m, r))
+                      }}
+                    >
+                      <td className="participation-dt-no">{tableRowNo(tablePage, i)}</td>
                       <td>
-                        {formatDateShort(r.result_announcement_date)}
-                        {du != null && du >= 0 ? (
-                          <span className="participation-dt-dd"> (D-{du})</span>
-                        ) : null}
+                        <ParticipationLifecycleBadge
+                          lifecycle_status={r.lifecycle_status}
+                          participation_status={r.participation_status}
+                          result_announcement_date={r.result_announcement_date}
+                          now={now}
+                        />
                       </td>
-                      <td>{prize}</td>
-                      <td>
-                        <span
+                      <td className="participation-table-cell-clip participation-dt-title">
+                        <TableEllipsis text={r.title || ''} />
+                      </td>
+                      <td className="participation-table-cell-clip">
+                        <TableEllipsis text={r.memberNickname || ''} />
+                      </td>
+                      <td
+                        className="participation-table-cell-clip participation-table-date"
+                        data-date={
+                          participationDateIso(r.participation_registered_at || r.submitted_at) ?? ''
+                        }
+                      >
+                        <TableEllipsis
+                          text={formatParticipationDateTable(
+                            r.participation_registered_at || r.submitted_at,
+                          )}
+                          title={formatParticipationDateFull(
+                            r.participation_registered_at || r.submitted_at,
+                          )}
+                        />
+                      </td>
+                      <td
+                        className="participation-table-cell-clip participation-table-date"
+                        data-date={participationDateIso(r.result_announcement_date) ?? ''}
+                      >
+                        <TableEllipsis
+                          text={formatParticipationDateTable(r.result_announcement_date)}
+                          title={
+                            du != null && du >= 0
+                              ? `${formatParticipationDateFull(r.result_announcement_date)} (D-${du})`
+                              : formatParticipationDateFull(r.result_announcement_date)
+                          }
+                        />
+                      </td>
+                      <td className="participation-table-cell-clip">
+                        <TableEllipsis text={prize} />
+                      </td>
+                      <td className="participation-table-cell-clip">
+                        <TableEllipsis
+                          text={st}
                           className={
                             'participation-dt-status' +
                             (st === '상세 미등록' ? ' participation-dt-status--warn' : '')
                           }
-                        >
-                          {st}
-                        </span>
+                        />
                       </td>
                       <td className="participation-dt-actions">
-                        {r.url ? (
-                          <a href={r.url} target="_blank" rel="noreferrer" className="participation-dt-link">
-                            원문
-                          </a>
-                        ) : null}
-                        {r.document_filename ? (
-                          <span className="participation-dt-doc" title={r.document_filename}>
-                            첨부
-                          </span>
-                        ) : null}
-                        {m ? (
-                          <button
-                            type="button"
-                            className="participation-dt-link-btn"
-                            onClick={() => onOpenContest(m, r)}
-                          >
-                            상세
-                          </button>
-                        ) : null}
+                        <TableActionDropdown items={historyActions} />
                       </td>
                     </tr>
                   )
@@ -395,16 +558,64 @@ export function ParticipationDashboardPanel({
 }: Props) {
   const [tableFilter, setTableFilter] = useState<TableFilter>('all')
   const [scopeFilter, setScopeFilter] = useState<ScopeFilter>('focus')
+  const [lifecycleFilter, setLifecycleFilter] = useState<LifecycleFilter>('all')
   const [incompleteMemberIdFilter, setIncompleteMemberIdFilter] = useState('')
+  const [selectedCalendarIso, setSelectedCalendarIso] = useState<string | null>(null)
+  const [calendarMonth, setCalendarMonth] = useState(() =>
+    dashboardYear === new Date().getFullYear() ? new Date().getMonth() : 0,
+  )
 
   const flat = useMemo(() => flattenMembers(members), [members])
   const flatFiltered = useMemo(
     () => flat.filter((r) => rowTouchesYear(r, dashboardYear)),
     [flat, dashboardYear],
   )
+  const flatLifecycleFiltered = useMemo(() => {
+    if (lifecycleFilter === 'all') return flatFiltered
+    return flatFiltered.filter((r) =>
+      matchesLifecycleFilter(
+        {
+          lifecycle_status: r.lifecycle_status,
+          participation_status: r.participation_status,
+          result_announcement_date: r.result_announcement_date,
+        },
+        lifecycleFilter,
+      ),
+    )
+  }, [flatFiltered, lifecycleFilter])
   const now = useMemo(() => new Date(), [])
   const startToday = startOfToday(now)
   const viewIsCalendarYear = dashboardYear === now.getFullYear()
+
+  const effectiveSelectedCalendarIso = useMemo(() => {
+    if (!selectedCalendarIso) return null
+    const [yStr, mStr] = selectedCalendarIso.split('-')
+    const y = Number(yStr)
+    const m = Number(mStr) - 1
+    if (y !== dashboardYear || m !== calendarMonth) return null
+    return selectedCalendarIso
+  }, [selectedCalendarIso, dashboardYear, calendarMonth])
+
+  const handleDashboardYearChange = (year: number) => {
+    setCalendarMonth(year === now.getFullYear() ? now.getMonth() : 0)
+    setSelectedCalendarIso(null)
+    onDashboardYearChange(year)
+  }
+
+  const canPrevCalendarMonth = calendarMonth > 0
+  const canNextCalendarMonth = calendarMonth < 11
+
+  const goPrevCalendarMonth = () => {
+    if (!canPrevCalendarMonth) return
+    setCalendarMonth((m) => m - 1)
+    setSelectedCalendarIso(null)
+  }
+
+  const goNextCalendarMonth = () => {
+    if (!canNextCalendarMonth) return
+    setCalendarMonth((m) => m + 1)
+    setSelectedCalendarIso(null)
+  }
 
   const metrics = useMemo(() => {
     const cy = now.getFullYear()
@@ -427,8 +638,21 @@ export function ParticipationDashboardPanel({
     return { ongoingSupport, announcementsThisMonth, totalPrize }
   }, [flatFiltered, now, viewIsCalendarYear])
 
+  const lifecycleCounts = useMemo(
+    () =>
+      countParticipationLifecycle(
+        flatFiltered.map((r) => ({
+          lifecycle_status: r.lifecycle_status,
+          participation_status: r.participation_status,
+          result_announcement_date: r.result_announcement_date,
+        })),
+        now,
+      ),
+    [flatFiltered, now],
+  )
+
   const incompleteRows = useMemo(() => {
-    return flatFiltered
+    return flatLifecycleFiltered
       .filter((r) => !r.has_detail)
       .sort((a, b) => {
         const ra = ddayRankForSort(a.d_day)
@@ -436,7 +660,7 @@ export function ParticipationDashboardPanel({
         if (ra !== rb) return ra - rb
         return (a.title || '').localeCompare(b.title || '')
       })
-  }, [flatFiltered])
+  }, [flatLifecycleFiltered])
 
   const incompleteMemberOptions = useMemo(() => {
     const byId = new Map<string, string>()
@@ -528,17 +752,16 @@ export function ParticipationDashboardPanel({
 
   const calendarMarks = useMemo(() => {
     const y = dashboardYear
-    const mon = viewIsCalendarYear ? now.getMonth() : 0
     const set = new Set<string>()
     for (const r of flatFiltered) {
       if (!r.result_announcement_date) continue
       const s = String(r.result_announcement_date).slice(0, 10)
       const d = new Date(`${s}T12:00:00`)
       if (Number.isNaN(d.getTime())) continue
-      if (d.getFullYear() === y && d.getMonth() === mon) set.add(s)
+      if (d.getFullYear() === y && d.getMonth() === calendarMonth) set.add(s)
     }
     return set
-  }, [flatFiltered, dashboardYear, viewIsCalendarYear, now])
+  }, [flatFiltered, dashboardYear, calendarMonth])
 
   const todayIso = useMemo(() => {
     const y = now.getFullYear()
@@ -547,9 +770,19 @@ export function ParticipationDashboardPanel({
     return `${y}-${String(mon + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`
   }, [now])
 
+  const selectedCalendarRows = useMemo(() => {
+    if (!effectiveSelectedCalendarIso) return []
+    return flatFiltered
+      .filter((r) => {
+        if (!r.result_announcement_date) return false
+        return String(r.result_announcement_date).slice(0, 10) === effectiveSelectedCalendarIso
+      })
+      .sort((a, b) => (a.title || '').localeCompare(b.title || '', 'ko'))
+  }, [flatFiltered, effectiveSelectedCalendarIso])
+
   const calendarGrid = useMemo(() => {
     const y = dashboardYear
-    const mon = viewIsCalendarYear ? now.getMonth() : 0
+    const mon = calendarMonth
     const first = new Date(y, mon, 1)
     const last = new Date(y, mon + 1, 0)
     const startPad = (first.getDay() + 6) % 7
@@ -566,12 +799,22 @@ export function ParticipationDashboardPanel({
       })
     }
     return { cells, label: `${y}년 ${mon + 1}월` }
-  }, [dashboardYear, viewIsCalendarYear, now, calendarMarks, todayIso])
+  }, [dashboardYear, calendarMonth, calendarMarks, todayIso])
 
   const tableRows = useMemo(() => {
-    let list = flatFiltered.slice()
+    let list = flatLifecycleFiltered.slice()
     if (scopeFilter === 'focus') {
-      list = list.filter((r) => !isRowEnded(r, startToday))
+      list = list.filter(
+        (r) =>
+          !isParticipationEnded(
+            {
+              lifecycle_status: r.lifecycle_status,
+              participation_status: r.participation_status,
+              result_announcement_date: r.result_announcement_date,
+            },
+            now,
+          ),
+      )
     }
     if (tableFilter === 'all') return list
     return list.filter((r) => {
@@ -582,7 +825,7 @@ export function ParticipationDashboardPanel({
       if (tableFilter === '미수상') return st === '미수상'
       return true
     })
-  }, [flatFiltered, tableFilter, scopeFilter, startToday])
+  }, [flatLifecycleFiltered, tableFilter, scopeFilter, now])
 
   const resolveMember = (memberId: string): TeamMemberOverview | undefined =>
     members.find((m) => m.id === memberId)
@@ -602,7 +845,7 @@ export function ParticipationDashboardPanel({
             id="participation-dashboard-year-select-empty"
             className="participation-dashboard-year-select"
             value={dashboardYear}
-            onChange={(e) => onDashboardYearChange(Number(e.target.value))}
+            onChange={(e) => handleDashboardYearChange(Number(e.target.value))}
           >
             {dashboardYearOptions.map((y) => (
               <option key={y} value={y}>
@@ -628,7 +871,7 @@ export function ParticipationDashboardPanel({
           id="participation-dashboard-year-select"
           className="participation-dashboard-year-select"
           value={dashboardYear}
-          onChange={(e) => onDashboardYearChange(Number(e.target.value))}
+          onChange={(e) => handleDashboardYearChange(Number(e.target.value))}
         >
           {dashboardYearOptions.map((y) => (
             <option key={y} value={y}>
@@ -676,11 +919,85 @@ export function ParticipationDashboardPanel({
         </div>
       </section>
 
+      <ParticipationLifecycleMetricGrid
+        ongoing={lifecycleCounts.ongoing}
+        ended={lifecycleCounts.ended}
+        activeFilter={lifecycleFilter}
+        onFilter={(f) => {
+          setLifecycleFilter(f)
+          setIncompleteMemberIdFilter('')
+        }}
+        hint={`${dashboardYear}년 팀 참가 기준 · 상세 등록 여부와 관계없이 진행 상태를 집계합니다.`}
+      />
+
       <div className="participation-dashboard-main-grid participation-dashboard-main-grid--top">
-        <section className="participation-dashboard-timeline" aria-label="다가오는 발표">
-          <h2 className="participation-dashboard-h2">가까운 발표 일정</h2>
-          {timeline.length === 0 ? (
-            <p className="participation-dashboard-empty">예정된 결과 발표일이 없거나 이미 지났습니다.</p>
+        <section
+          className="participation-dashboard-timeline"
+          aria-label={effectiveSelectedCalendarIso ? '선택한 날짜 결과 발표' : '다가오는 발표'}
+          aria-live="polite"
+        >
+          <h2 className="participation-dashboard-h2">
+            {effectiveSelectedCalendarIso
+              ? `${formatCalendarDayLabel(effectiveSelectedCalendarIso)} 결과 발표`
+              : '가까운 발표 일정'}
+          </h2>
+          {effectiveSelectedCalendarIso ? (
+            selectedCalendarRows.length === 0 ? (
+              <p className="participation-dashboard-empty">
+                이 날짜에 예정된 결과 발표가 없습니다.
+              </p>
+            ) : (
+              <ul className="participation-timeline-list">
+                {selectedCalendarRows.map((r) => {
+                  const du = daysUntilAnnouncement(r.result_announcement_date, now)
+                  const m = resolveMember(r.memberId)
+                  return (
+                    <li
+                      key={`${r.memberId}-${r.source}-${r.id}-cal`}
+                      className="participation-timeline-item"
+                    >
+                      <div className="participation-timeline-date">
+                        {formatParticipationDateTable(r.result_announcement_date)}
+                        {du != null && du >= 0 ? (
+                          <span
+                            className={
+                              du <= 3
+                                ? 'participation-timeline-dd participation-timeline-dd--hot'
+                                : 'participation-timeline-dd'
+                            }
+                          >
+                            D-{du}
+                          </span>
+                        ) : null}
+                      </div>
+                      <div className="participation-timeline-body">
+                        <div className="participation-timeline-title">{r.title || '(제목 없음)'}</div>
+                        <div className="participation-timeline-sub">
+                          {r.memberNickname}
+                          {r.result_announcement_method
+                            ? ` · ${r.result_announcement_method}`
+                            : ''}
+                        </div>
+                      </div>
+                      {m ? (
+                        <button
+                          type="button"
+                          className="btn btn-outline participation-timeline-open"
+                          onClick={() => onOpenContest(m, r)}
+                        >
+                          보기
+                        </button>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            )
+          ) : timeline.length === 0 ? (
+            <p className="participation-dashboard-empty">
+              예정된 결과 발표일이 없거나 이미 지났습니다. 달력에서 날짜를 선택하면 해당 일 발표를 볼 수
+              있습니다.
+            </p>
           ) : (
             <ul className="participation-timeline-list">
               {timeline.map((r) => {
@@ -689,7 +1006,7 @@ export function ParticipationDashboardPanel({
                 return (
                   <li key={`${r.memberId}-${r.source}-${r.id}-tl`} className="participation-timeline-item">
                     <div className="participation-timeline-date">
-                      {formatDateShort(r.result_announcement_date)}
+                      {formatParticipationDateTable(r.result_announcement_date)}
                       {du != null && du >= 0 ? (
                         <span className={du <= 3 ? 'participation-timeline-dd participation-timeline-dd--hot' : 'participation-timeline-dd'}>
                           D-{du}
@@ -719,25 +1036,61 @@ export function ParticipationDashboardPanel({
           )}
         </section>
 
-        <section className="participation-dashboard-calendar" aria-label="이번 달 발표일">
-          <h2 className="participation-dashboard-h2">{calendarGrid.label}</h2>
+        <section className="participation-dashboard-calendar" aria-label="결과 발표일 달력">
+          <div className="participation-mini-cal-nav">
+            <button
+              type="button"
+              className="participation-mini-cal-nav-btn"
+              onClick={goPrevCalendarMonth}
+              disabled={!canPrevCalendarMonth}
+              aria-label="이전 달"
+            >
+              ‹
+            </button>
+            <h2 className="participation-dashboard-h2 participation-mini-cal-nav-title">
+              {calendarGrid.label}
+            </h2>
+            <button
+              type="button"
+              className="participation-mini-cal-nav-btn"
+              onClick={goNextCalendarMonth}
+              disabled={!canNextCalendarMonth}
+              aria-label="다음 달"
+            >
+              ›
+            </button>
+          </div>
           <div className="participation-mini-cal">
             <div className="participation-mini-cal-weekdays">
               {['월', '화', '수', '목', '금', '토', '일'].map((w) => (
                 <span key={w}>{w}</span>
               ))}
             </div>
-            <div className="participation-mini-cal-cells">
+            <div className="participation-mini-cal-cells" role="grid">
               {calendarGrid.cells.map((c, i) =>
                 c.day == null ? (
                   <span key={`e-${i}`} className="participation-mini-cal-cell participation-mini-cal-cell--empty" />
                 ) : (
-                  <span
+                  <button
                     key={c.iso || i}
+                    type="button"
                     className={
-                      'participation-mini-cal-cell' +
+                      'participation-mini-cal-cell participation-mini-cal-cell--btn' +
                       (c.mark ? ' participation-mini-cal-cell--mark' : '') +
-                      (c.isToday ? ' participation-mini-cal-cell--today' : '')
+                      (c.isToday ? ' participation-mini-cal-cell--today' : '') +
+                      (c.iso === effectiveSelectedCalendarIso
+                        ? ' participation-mini-cal-cell--selected'
+                        : '')
+                    }
+                    aria-pressed={c.iso === effectiveSelectedCalendarIso}
+                    aria-label={
+                      c.isToday && c.mark
+                        ? `${c.day}일, 오늘, 결과 발표 ${effectiveSelectedCalendarIso === c.iso ? '선택됨' : '선택'}`
+                        : c.isToday
+                          ? `${c.day}일, 오늘${effectiveSelectedCalendarIso === c.iso ? ', 선택됨' : ''}`
+                          : c.mark
+                            ? `${c.day}일, 결과 발표 ${effectiveSelectedCalendarIso === c.iso ? '선택됨' : '선택'}`
+                            : `${c.day}일${effectiveSelectedCalendarIso === c.iso ? ', 선택됨' : ''}`
                     }
                     title={
                       c.isToday && c.mark
@@ -748,22 +1101,51 @@ export function ParticipationDashboardPanel({
                             ? '결과 발표일 있음'
                             : undefined
                     }
+                    onClick={() =>
+                      setSelectedCalendarIso((prev) => (prev === c.iso ? null : c.iso))
+                    }
                   >
                     {c.day}
-                  </span>
+                  </button>
                 ),
               )}
             </div>
           </div>
           <p className="participation-mini-cal-legend">
-            테두리 강조 = 오늘 · 보라 배경 = 결과 발표일 (겹치면 둘 다 표시)
+            날짜를 누르면 왼쪽에 해당 일 발표 목록이 표시됩니다. 테두리 강조 = 오늘 · 보라 배경 = 결과
+            발표일
           </p>
         </section>
       </div>
 
+      <div className="participation-dashboard-lifecycle-filter" role="group" aria-label="진행 상태 필터">
+        <span className="participation-dashboard-lifecycle-filter-label">진행 상태</span>
+        <div className="participation-scope-toggle">
+          {(
+            [
+              ['all', '전체'],
+              ['ongoing', '진행중'],
+              ['ended', '종료'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={lifecycleFilter === value ? 'active' : ''}
+              onClick={() => {
+                setLifecycleFilter(value)
+                setIncompleteMemberIdFilter('')
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {incompleteRows.length > 0 ? (
         <ParticipationIncompleteDetailsBlock
-          key={`${incompleteMemberIdFilter}:${dashboardYear}`}
+          key={`${incompleteMemberIdFilter}:${dashboardYear}:${lifecycleFilter}`}
           incompleteRows={incompleteRows}
           incompleteFilteredRows={incompleteFilteredRows}
           incompleteMemberOptions={incompleteMemberOptions}
@@ -771,11 +1153,12 @@ export function ParticipationDashboardPanel({
           onMemberFilterChange={setIncompleteMemberIdFilter}
           members={members}
           onOpenContest={onOpenContest}
+          now={now}
         />
       ) : null}
 
       <ParticipationHistoryTableBlock
-        key={`${tableFilter}:${scopeFilter}:${dashboardYear}`}
+        key={`${tableFilter}:${scopeFilter}:${dashboardYear}:${lifecycleFilter}`}
         tableRows={tableRows}
         tableFilter={tableFilter}
         scopeFilter={scopeFilter}
