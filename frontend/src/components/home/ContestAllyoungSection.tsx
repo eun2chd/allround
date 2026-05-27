@@ -1427,6 +1427,36 @@ function FragmentWithDetail({
                         패스
                       </button>
                     </li>
+                    {row.url ? (
+                      <li role="none">
+                        <button
+                          type="button"
+                          role="menuitem"
+                          className="contest-menu-item"
+                          onClick={async () => {
+                            setMenuOpen(false)
+                            const shareUrl = row.url!
+                            const shareTitle = row.title || '공모전 공유'
+                            if (navigator.share) {
+                              try {
+                                await navigator.share({ title: shareTitle, url: shareUrl })
+                              } catch {
+                                // 사용자가 취소한 경우 무시
+                              }
+                            } else {
+                              try {
+                                await navigator.clipboard.writeText(shareUrl)
+                                showToast('링크가 복사되었습니다.')
+                              } catch {
+                                showToast('링크 복사에 실패했습니다.', 'error')
+                              }
+                            }
+                          }}
+                        >
+                          공유
+                        </button>
+                      </li>
+                    ) : null}
                   </ul>,
                   document.body,
                 )

@@ -134,7 +134,7 @@ export async function upsertParticipationDetailRow(opts: {
   awardWorkFile?: File | null
   clear_award_work?: boolean
 }): Promise<{ success: boolean; error?: string }> {
-  const validStatuses = ['지원완료', '심사중', '본선진출', '수상', '미수상', '취소'] as const
+  const validStatuses = ['미등록', '지원완료', '심사중', '본선진출', '수상', '미수상', '취소'] as const
   if (!validStatuses.includes(opts.participation_status as (typeof validStatuses)[number])) {
     return { success: false, error: '참가 상태가 올바르지 않습니다.' }
   }
@@ -171,9 +171,7 @@ export async function upsertParticipationDetailRow(opts: {
     document_filename = up.filename
   }
 
-  if (!document_path || !document_filename) {
-    return { success: false, error: '제출물을 등록해 주세요.' }
-  }
+  // 제출물은 선택 사항 — 없으면 null로 저장
 
   if (opts.awardWorkFile && opts.awardWorkFile.name) {
     const up = await uploadPrivateContestFile(

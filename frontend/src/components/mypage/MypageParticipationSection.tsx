@@ -62,7 +62,7 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
 
   useEffect(() => {
     setPage(1)
-  }, [titleSearch, detailRegistrationFilter, lifecycleFilter])
+  }, [titleSearch, detailRegistrationFilter, lifecycleFilter, filter])
 
   useEffect(() => {
     let cancelled = false
@@ -155,6 +155,9 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
               onClick={() => {
                 setFilter(f)
                 setPage(1)
+                if (f !== 'participate' && detailRegistrationFilter !== 'all') {
+                  setDetailRegistrationFilter('all')
+                }
               }}
             >
               {f === 'all' ? '전체' : f === 'participate' ? '참가만 보기' : '패스만 보기'}
@@ -163,28 +166,48 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
         </div>
       </div>
       <div className="participation-subfilter-row">
-        <label className="participation-detail-only-label">
-          <input
-            type="checkbox"
-            className="participation-detail-only-check"
-            checked={detailRegistrationFilter === 'detail'}
-            onChange={(e) =>
-              setDetailRegistrationFilter(e.target.checked ? 'detail' : 'all')
-            }
-          />
-          <span>상세등록만</span>
-        </label>
-        <label className="participation-detail-only-label">
-          <input
-            type="checkbox"
-            className="participation-detail-only-check"
-            checked={detailRegistrationFilter === 'nodetail'}
-            onChange={(e) =>
-              setDetailRegistrationFilter(e.target.checked ? 'nodetail' : 'all')
-            }
-          />
-          <span>미등록만</span>
-        </label>
+        {isOwnProfile && (
+          <>
+            <label className="participation-detail-only-label">
+              <input
+                type="checkbox"
+                className="participation-detail-only-check"
+                checked={detailRegistrationFilter === 'detail'}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setDetailRegistrationFilter('detail')
+                    if (filter !== 'participate') {
+                      setFilter('participate')
+                      setPage(1)
+                    }
+                  } else {
+                    setDetailRegistrationFilter('all')
+                  }
+                }}
+              />
+              <span>상세등록만</span>
+            </label>
+            <label className="participation-detail-only-label">
+              <input
+                type="checkbox"
+                className="participation-detail-only-check"
+                checked={detailRegistrationFilter === 'nodetail'}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setDetailRegistrationFilter('nodetail')
+                    if (filter !== 'participate') {
+                      setFilter('participate')
+                      setPage(1)
+                    }
+                  } else {
+                    setDetailRegistrationFilter('all')
+                  }
+                }}
+              />
+              <span>미등록만</span>
+            </label>
+          </>
+        )}
         <div className="participation-lifecycle-filter" role="group" aria-label="진행 상태 필터">
           <span className="participation-lifecycle-filter-label">진행 상태</span>
           {(
@@ -270,7 +293,11 @@ export function MypageParticipationSection({ profileId, isOwnProfile }: Props) {
             ) : rows.length === 0 ? (
               <tr>
                 <td colSpan={12} className="participation-list-msg">
-                  목록이 없습니다.
+                  {detailRegistrationFilter === 'detail'
+                    ? '상세 등록된 공모전이 없습니다. 비고·링크 메뉴의 「상세」 버튼으로 등록할 수 있습니다.'
+                    : detailRegistrationFilter === 'nodetail'
+                      ? '미등록 공모전이 없습니다.'
+                      : '목록이 없습니다.'}
                 </td>
               </tr>
             ) : (

@@ -29,6 +29,17 @@ export type ParticipationRow = {
 
 const CONTEST_BATCH = 100
 
+function parseDDaySort(dday: string | null | undefined): number {
+  const s = (dday || '').trim()
+  if (!s || s === '-') return 200000
+  if (/^[Dd]-?[Dd]ay$/.test(s)) return 0
+  const minusMatch = s.match(/^[Dd]-(\d+)$/)
+  if (minusMatch) return parseInt(minusMatch[1], 10)
+  const plusMatch = s.match(/^[Dd]\+(\d+)$/)
+  if (plusMatch) return 100000 + parseInt(plusMatch[1], 10)
+  return 200000
+}
+
 async function loadContestsMapForPairs(
   pairs: { source: string; contest_id: string }[],
 ): Promise<Map<string, { title: string; url: string; d_day: string; host: string }>> {
@@ -104,7 +115,7 @@ export async function fetchUserParticipationPage(opts: {
   const { data: detailRows } = await sb
     .from('contest_participation_detail')
     .select(
-      'source, contest_id, participation_status, lifecycle_status, award_status, submitted_at, result_announcement_date',
+      'source, contest_id, participation_status, lifecycle_status, award_status, submitted_at, result_announcement_date, document_path',
     )
     .eq('user_id', userId)
   const detailByKey = new Map<
@@ -115,6 +126,7 @@ export async function fetchUserParticipationPage(opts: {
       award_status?: string | null
       submitted_at?: string | null
       result_announcement_date?: string | null
+      document_path?: string | null
     }
   >()
   for (const d of detailRows || []) {
@@ -124,6 +136,7 @@ export async function fetchUserParticipationPage(opts: {
       award_status: d.award_status as string | null | undefined,
       submitted_at: d.submitted_at as string | null | undefined,
       result_announcement_date: d.result_announcement_date as string | null | undefined,
+      document_path: d.document_path as string | null | undefined,
     })
   }
 
@@ -165,7 +178,7 @@ export async function fetchUserParticipationPage(opts: {
       url: c?.url ? String(c.url) : '',
       d_day: c?.d_day ?? '-',
       host: c?.host ?? '-',
-      has_detail: detail != null,
+      has_detail: !!(detail?.document_path),
       participation_status: detail?.participation_status ?? null,
       lifecycle_status: detail?.lifecycle_status ?? null,
       result_announcement_date: detail?.result_announcement_date ?? null,
@@ -212,11 +225,7 @@ export async function fetchUserParticipationPage(opts: {
   }
 
   filtered.sort((a, b) => {
-    const sa = String(a.status || '')
-    const sb_ = String(b.status || '')
-    const ar = sa === 'participate' ? 0 : 1
-    const br = sb_ === 'participate' ? 0 : 1
-    return ar - br
+    return parseDDaySort(a.d_day) - parseDDaySort(b.d_day)
   })
 
   const total = filtered.length

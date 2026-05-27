@@ -18,7 +18,7 @@ import {
   upsertParticipationDetailRow,
 } from '../../services/participationDetailService'
 
-const STATUSES = ['지원완료', '심사중', '본선진출', '수상', '미수상', '취소'] as const
+const STATUSES = ['미등록', '지원완료', '심사중', '본선진출', '수상', '미수상', '취소'] as const
 const AWARDS = ['대상', '최우수상', '우수상', '장려상', '입선', '기타'] as const
 
 export type ParticipationDetailModalCtx = {
@@ -37,7 +37,7 @@ type Props = {
 }
 
 export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props) {
-  const [status, setStatus] = useState<string>('지원완료')
+  const [status, setStatus] = useState<string>('미등록')
   const [lifecycle, setLifecycle] = useState<string>('진행중')
   const [award, setAward] = useState('')
   const [hasPrize, setHasPrize] = useState(false)
@@ -85,7 +85,7 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
       try {
         const d = await fetchParticipationDetailRow(ctx.profileUserId, ctx.source, ctx.contestId)
         if (cancelled || !d) return
-        setStatus(String(d.participation_status || '지원완료'))
+        setStatus(String(d.participation_status || '미등록'))
         setLifecycle(String((d as { lifecycle_status?: string }).lifecycle_status || '진행중'))
         setAward(String(d.award_status || ''))
         setHasPrize(!!d.has_prize)
@@ -144,12 +144,6 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
   }
 
   const onSave = async () => {
-    const hasFile = !!docFile
-    const hasDoc = (docPath && docFilename) || hasFile
-    if (!hasDoc) {
-      appToast('제출물을 등록해 주세요.', 'error')
-      return
-    }
     setSaving(true)
     try {
       const r = await upsertParticipationDetailRow({
@@ -339,8 +333,7 @@ export function MypageParticipationDetailModal({ ctx, onClose, onSaved }: Props)
               </div>
               <div className="form-group participation-attachment-form-group">
                 <label>
-                  제출물 <span className="form-required-star">*</span>{' '}
-                  <span>{docUploadLabel}</span>
+                  제출물 <span>{docUploadLabel}</span>
                 </label>
                 {hasDisplayDoc && !docFile ? (
                   <ParticipationAttachmentPreview
