@@ -1,4 +1,5 @@
 # Ntpercent 공모전 대시보드
+프로젝트 실힝시 : $  py -3 crawl_server.py --page-batch-size 4 --sleep-batch-odd 10 --sleep-batch-even 20 --cycle-wait-minutes 1440 이것만 돌려
 
 요즘것들(allforyoung.com), 위비티(wevity.com), K-Startup 등의 공고·창업 정보를 모아 Supabase에 두고, **React 웹 앱**에서 조회·관리하는 프로젝트입니다.
 
